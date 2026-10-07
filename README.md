@@ -19,7 +19,7 @@ Run these commands in your terminal to clone, install dependencies, and launch t
 
 ```bash
 # Clone the repo and enter the project folder
-git clone [https://github.com/FPASTORIES/ai-inference-token-burn-forecast.git](https://github.com/FPASTORIES/ai-inference-token-burn-forecast.git)
+git clone https://github.com/FPASTORIES/ai-inference-token-burn-forecast.git
 cd ai-inference-token-burn-forecast
 
 # Install dependencies and launch the dashboard
