@@ -1,0 +1,6 @@
+# AI Inference & Token Burn Forecast Dependencies
+# Copyright (c) 2026. Released under the MIT License.
+
+streamlit>=1.30.0
+pandas>=2.0.0
+plotly>=5.18.0
