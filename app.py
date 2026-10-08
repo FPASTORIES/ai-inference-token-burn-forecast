@@ -187,4 +187,4 @@ for idx, m in enumerate(months):
     
     gross_revenue = current_dau * arpu_monthly
     gross_margin = gross_revenue - total_cogs
-    gross_margin_pct = (gross_margin / gross_revenue
+    gross_margin_pct = (gross_margin / gross_revenue) * 100 if gross_revenue > 0 else 0
