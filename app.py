@@ -188,3 +188,103 @@ for idx, m in enumerate(months):
     gross_revenue = current_dau * arpu_monthly
     gross_margin = gross_revenue - total_cogs
     gross_margin_pct = (gross_margin / gross_revenue) * 100 if gross_revenue > 0 else 0
+    
+    credit_applied = min(remaining_credits, total_cogs)
+    remaining_credits -= credit_applied
+    out_of_pocket_cash_cogs = total_cogs - credit_applied
+
+    data.append({
+        "Month": month_labels[idx],
+        "DAU": int(current_dau),
+        "Input Context/Prompt": int(current_input_tokens),
+        "Prompts/User/Day": round(daily_prompts_per_user, 1),
+        "Gross Revenue ($)": round(gross_revenue, 2),
+        "API Spend ($)": round(total_api_cost, 2),
+        "Vector DB Cost ($)": round(vector_db_cost, 2),
+        "Fixed Infra ($)": round(fixed_infra_monthly, 2),
+        "Total GAAP COGS ($)": round(total_cogs, 2),
+        "Gross Margin ($)": round(gross_margin, 2),
+        "Gross Margin (%)": round(gross_margin_pct, 1),
+        "Credits Used ($)": round(credit_applied, 2),
+        "Remaining Credits ($)": round(remaining_credits, 2),
+        "Out-of-Pocket Cash Spend ($)": round(out_of_pocket_cash_cogs, 2)
+    })
+
+df = pd.DataFrame(data)
+
+# ==========================================
+# ALERTS & METRICS
+# ==========================================
+
+credit_depletion_df = df[df["Remaining Credits ($)"] == 0]
+first_out_of_pocket_month = credit_depletion_df["Month"].iloc[0] if not credit_depletion_df.empty else None
+
+margin_breach_df = df[df["Gross Margin (%)"] < min_margin_target]
+first_breach_month = margin_breach_df["Month"].iloc[0] if not margin_breach_df.empty else None
+
+if first_out_of_pocket_month:
+    st.warning(f"💳 **CLOUD CREDIT EXPIRATION:** Cloud credits fully burn out in **{first_out_of_pocket_month}**. Cash spend hits bank account directly starting M{first_out_of_pocket_month}.")
+
+if first_breach_month:
+    st.error(f"⚠️ **MARGIN COMPRESSION WARNING:** GAAP Gross Margin falls below {min_margin_target}% threshold starting in **{first_breach_month}**.")
+
+col1, col2, col3, col4 = st.columns(4)
+col1.metric("Run-Rate Revenue (M12)", f"${df['Gross Revenue ($)'].iloc[-1]:,.0f}")
+col2.metric("M12 Total GAAP COGS", f"${df['Total GAAP COGS ($)'].iloc[-1]:,.0f}")
+col3.metric("M12 Gross Margin %", f"{df['Gross Margin (%)'].iloc[-1]}%")
+col4.metric("Credit Balance (M12)", f"${df['Remaining Credits ($)'].iloc[-1]:,.0f}")
+
+st.markdown("<br>", unsafe_allow_html=True)
+
+# ==========================================
+# VISUALIZATIONS WITH LIGHT NEUTRAL TEMPLATE
+# ==========================================
+
+tab1, tab2, tab3 = st.tabs(["📉 Revenue, GAAP COGS & Gross Margin", "💳 Cloud Credit Depletion & Cash Burn", "📋 Full P&L Breakdown Table"])
+
+with tab1:
+    fig = make_subplots(specs=[[{"secondary_y": True}]])
+    
+    fig.add_trace(go.Bar(x=df["Month"], y=df["Gross Revenue ($)"], name="Gross Revenue ($)", marker_color="#3182ce"), secondary_y=False)
+    fig.add_trace(go.Scatter(x=df["Month"], y=df["Total GAAP COGS ($)"], name="Total GAAP COGS ($)", mode="lines+markers", line=dict(color="#e53e3e", width=4)), secondary_y=False)
+    fig.add_trace(go.Scatter(x=df["Month"], y=df["Gross Margin (%)"], name="Gross Margin (%)", mode="lines+markers", line=dict(color="#28a745", width=3, dash="dash")), secondary_y=True)
+    
+    fig.update_layout(
+        template="plotly_white",
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="#ffffff",
+        title="12-Month GAAP Revenue vs. Total COGS (API + Vector DB + Hosting)",
+        xaxis_title="Month",
+        legend=dict(x=0.01, y=0.99)
+    )
+    fig.update_yaxes(title_text="USD ($)", secondary_y=False, gridcolor="#edf2f7")
+    fig.update_yaxes(title_text="Gross Margin (%)", range=[0, 100], secondary_y=True, gridcolor="#edf2f7")
+    
+    st.plotly_chart(fig, use_container_width=True)
+
+with tab2:
+    fig_credit = make_subplots(specs=[[{"secondary_y": True}]])
+    
+    fig_credit.add_trace(go.Bar(x=df["Month"], y=df["Credits Used ($)"], name="Cloud Credits Applied ($)", marker_color="#38a169"), secondary_y=False)
+    fig_credit.add_trace(go.Bar(x=df["Month"], y=df["Out-of-Pocket Cash Spend ($)"], name="Out-of-Pocket Cash COGS ($)", marker_color="#dd6b20"), secondary_y=False)
+    fig_credit.add_trace(go.Scatter(x=df["Month"], y=df["Remaining Credits ($)"], name="Remaining Credit Balance ($)", mode="lines+markers", line=dict(color="#805ad5", width=3)), secondary_y=True)
+    
+    fig_credit.update_layout(
+        template="plotly_white",
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="#ffffff",
+        title="Cloud Credit Cushion vs. Out-of-Pocket Cash Spend",
+        barmode="stack",
+        xaxis_title="Month"
+    )
+    fig_credit.update_yaxes(title_text="Monthly Cost ($)", secondary_y=False, gridcolor="#edf2f7")
+    fig_credit.update_yaxes(title_text="Credit Balance ($)", secondary_y=True, gridcolor="#edf2f7")
+    
+    st.plotly_chart(fig_credit, use_container_width=True)
+
+with tab3:
+    st.subheader("Complete 12-Month Financial Output")
+    st.dataframe(df, use_container_width=True)
+
+st.markdown("---")
+st.caption("© 2026. Released under the MIT License. Built for FP&A Leaders and Startup CFOs evaluating AI unit economics.")
