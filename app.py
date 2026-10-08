@@ -5,7 +5,7 @@ Copyright (c) 2026. Released under the MIT License.
 
 Description: Enterprise FP&A dashboard modeling non-linear token burn, 
 prompt caching, model routing, vector database infrastructure COGS, 
-and cloud credit cash runway depletion with custom modern UI styling.
+and cloud credit cash runway depletion with custom soft beige styling.
 """
 
 import numpy as np
@@ -23,49 +23,57 @@ st.set_page_config(
 )
 
 # ==========================================
-# CUSTOM CSS STYLING
+# CUSTOM CSS STYLING (SOFT BEIGE & NEUTRAL PALETTE)
 # ==========================================
 st.markdown("""
 <style>
-    /* Main Background & Font Styling */
+    /* Main Background & Soft Neutral Canvas */
     .stApp {
-        background-color: #0e1117;
+        background-color: #fcfbf9;
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        color: #2d3748;
     }
     
     /* Header Container Styling */
     .main-header {
-        background: linear-gradient(135deg, #1e2640 0%, #0e1117 100%);
+        background: linear-gradient(135deg, #f5f0eb 0%, #ebe5df 100%);
         padding: 24px;
         border-radius: 12px;
-        border: 1px solid #2e3856;
+        border: 1px solid #e2d9d0;
         margin-bottom: 24px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
     }
     .main-header h1 {
-        color: #ffffff;
+        color: #2d3748;
         font-weight: 700;
         margin-bottom: 8px;
     }
     .main-header p {
-        color: #a0aec0;
+        color: #615a52;
         font-size: 1.05rem;
         margin: 0;
     }
 
+    /* Sidebar Styling */
+    section[data-testid="stSidebar"] {
+        background-color: #f5f2ed !important;
+        border-right: 1px solid #e5dfd7;
+    }
+
     /* Custom Metric Cards Styling */
     div[data-testid="stMetric"] {
-        background-color: #1a202c;
-        border: 1px solid #2d3748;
+        background-color: #ffffff;
+        border: 1px solid #e2d9d0;
         padding: 16px;
         border-radius: 10px;
-        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
     }
     div[data-testid="stMetric"] label {
-        color: #a0aec0 !important;
+        color: #615a52 !important;
         font-weight: 600;
     }
     div[data-testid="stMetric"] div[data-testid="stMetricValue"] {
-        color: #63b3ed !important;
+        color: #2b6cb0 !important;
         font-weight: 700;
     }
 
@@ -75,15 +83,18 @@ st.markdown("""
     }
     .stTabs [data-baseweb="tab"] {
         height: 48px;
-        background-color: #1a202c;
+        background-color: #f0eae1;
         border-radius: 8px 8px 0px 0px;
         padding-left: 16px;
         padding-right: 16px;
-        color: #a0aec0;
+        color: #615a52;
+        border: 1px solid #e2d9d0;
     }
     .stTabs [aria-selected="true"] {
-        background-color: #2b6cb0 !important;
-        color: #ffffff !important;
+        background-color: #ffffff !important;
+        color: #2b6cb0 !important;
+        font-weight: 600;
+        border-bottom: 2px solid #2b6cb0 !important;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -176,104 +187,4 @@ for idx, m in enumerate(months):
     
     gross_revenue = current_dau * arpu_monthly
     gross_margin = gross_revenue - total_cogs
-    gross_margin_pct = (gross_margin / gross_revenue) * 100 if gross_revenue > 0 else 0
-    
-    credit_applied = min(remaining_credits, total_cogs)
-    remaining_credits -= credit_applied
-    out_of_pocket_cash_cogs = total_cogs - credit_applied
-
-    data.append({
-        "Month": month_labels[idx],
-        "DAU": int(current_dau),
-        "Input Context/Prompt": int(current_input_tokens),
-        "Prompts/User/Day": round(daily_prompts_per_user, 1),
-        "Gross Revenue ($)": round(gross_revenue, 2),
-        "API Spend ($)": round(total_api_cost, 2),
-        "Vector DB Cost ($)": round(vector_db_cost, 2),
-        "Fixed Infra ($)": round(fixed_infra_monthly, 2),
-        "Total GAAP COGS ($)": round(total_cogs, 2),
-        "Gross Margin ($)": round(gross_margin, 2),
-        "Gross Margin (%)": round(gross_margin_pct, 1),
-        "Credits Used ($)": round(credit_applied, 2),
-        "Remaining Credits ($)": round(remaining_credits, 2),
-        "Out-of-Pocket Cash Spend ($)": round(out_of_pocket_cash_cogs, 2)
-    })
-
-df = pd.DataFrame(data)
-
-# ==========================================
-# ALERTS & METRICS
-# ==========================================
-
-credit_depletion_df = df[df["Remaining Credits ($)"] == 0]
-first_out_of_pocket_month = credit_depletion_df["Month"].iloc[0] if not credit_depletion_df.empty else None
-
-margin_breach_df = df[df["Gross Margin (%)"] < min_margin_target]
-first_breach_month = margin_breach_df["Month"].iloc[0] if not margin_breach_df.empty else None
-
-if first_out_of_pocket_month:
-    st.warning(f"💳 **CLOUD CREDIT EXPIRATION:** Cloud credits fully burn out in **{first_out_of_pocket_month}**. Cash spend hits bank account directly starting M{first_out_of_pocket_month}.")
-
-if first_breach_month:
-    st.error(f"⚠️ **MARGIN COMPRESSION WARNING:** GAAP Gross Margin falls below {min_margin_target}% threshold starting in **{first_breach_month}**.")
-
-col1, col2, col3, col4 = st.columns(4)
-col1.metric("Run-Rate Revenue (M12)", f"${df['Gross Revenue ($)'].iloc[-1]:,.0f}")
-col2.metric("M12 Total GAAP COGS", f"${df['Total GAAP COGS ($)'].iloc[-1]:,.0f}")
-col3.metric("M12 Gross Margin %", f"{df['Gross Margin (%)'].iloc[-1]}%")
-col4.metric("Credit Balance (M12)", f"${df['Remaining Credits ($)'].iloc[-1]:,.0f}")
-
-st.markdown("<br>", unsafe_allow_html=True)
-
-# ==========================================
-# VISUALIZATIONS WITH DARK TEMPLATE
-# ==========================================
-
-tab1, tab2, tab3 = st.tabs(["📉 Revenue, GAAP COGS & Gross Margin", "💳 Cloud Credit Depletion & Cash Burn", "📋 Full P&L Breakdown Table"])
-
-with tab1:
-    fig = make_subplots(specs=[[{"secondary_y": True}]])
-    
-    fig.add_trace(go.Bar(x=df["Month"], y=df["Gross Revenue ($)"], name="Gross Revenue ($)", marker_color="#3182ce"), secondary_y=False)
-    fig.add_trace(go.Scatter(x=df["Month"], y=df["Total GAAP COGS ($)"], name="Total GAAP COGS ($)", mode="lines+markers", line=dict(color="#e53e3e", width=4)), secondary_y=False)
-    fig.add_trace(go.Scatter(x=df["Month"], y=df["Gross Margin (%)"], name="Gross Margin (%)", mode="lines+markers", line=dict(color="#38a169", width=3, dash="dash")), secondary_y=True)
-    
-    fig.update_layout(
-        template="plotly_dark",
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
-        title="12-Month GAAP Revenue vs. Total COGS (API + Vector DB + Hosting)",
-        xaxis_title="Month",
-        legend=dict(x=0.01, y=0.99)
-    )
-    fig.update_yaxes(title_text="USD ($)", secondary_y=False, gridcolor="#2d3748")
-    fig.update_yaxes(title_text="Gross Margin (%)", range=[0, 100], secondary_y=True, gridcolor="#2d3748")
-    
-    st.plotly_chart(fig, use_container_width=True)
-
-with tab2:
-    fig_credit = make_subplots(specs=[[{"secondary_y": True}]])
-    
-    fig_credit.add_trace(go.Bar(x=df["Month"], y=df["Credits Used ($)"], name="Cloud Credits Applied ($)", marker_color="#38a169"), secondary_y=False)
-    fig_credit.add_trace(go.Bar(x=df["Month"], y=df["Out-of-Pocket Cash Spend ($)"], name="Out-of-Pocket Cash COGS ($)", marker_color="#dd6b20"), secondary_y=False)
-    fig_credit.add_trace(go.Scatter(x=df["Month"], y=df["Remaining Credits ($)"], name="Remaining Credit Balance ($)", mode="lines+markers", line=dict(color="#805ad5", width=3)), secondary_y=True)
-    
-    fig_credit.update_layout(
-        template="plotly_dark",
-        paper_bgcolor="rgba(0,0,0,0)",
-        plot_bgcolor="rgba(0,0,0,0)",
-        title="Cloud Credit Cushion vs. Out-of-Pocket Cash Spend",
-        barmode="stack",
-        xaxis_title="Month"
-    )
-    fig_credit.update_yaxes(title_text="Monthly Cost ($)", secondary_y=False, gridcolor="#2d3748")
-    fig_credit.update_yaxes(title_text="Credit Balance ($)", secondary_y=True, gridcolor="#2d3748")
-    
-    st.plotly_chart(fig_credit, use_container_width=True)
-
-with tab3:
-    st.subheader("Complete 12-Month Financial Output")
-    st.dataframe(df, use_container_width=True)
-
-st.markdown("---")
-st.caption("© 2026. Released under the MIT License. Built for FP&A Leaders and Startup CFOs evaluating AI unit economics.")
+    gross_margin_pct = (gross_margin / gross_revenue
