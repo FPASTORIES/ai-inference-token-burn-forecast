@@ -643,7 +643,7 @@ with tab4:
     csv = df.to_csv(index=False).encode("utf-8")
     st.download_button("Download Full Audit CSV", data=csv, file_name="ai_inference_cogs_model.csv", mime="text/csv")
 
-ith tab5:
+with tab5:
     st.subheader("📑 Complete Source & Assumptions Audit Register")
     st.caption("Governance register detailing data provenance, verification status, and owner across UI inputs.")
     
