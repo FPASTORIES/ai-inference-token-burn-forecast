@@ -643,14 +643,17 @@ with tab4:
     csv = df.to_csv(index=False).encode("utf-8")
     st.download_button("Download Full Audit CSV", data=csv, file_name="ai_inference_cogs_model.csv", mime="text/csv")
 
-with tab5:
+ith tab5:
     st.subheader("📑 Complete Source & Assumptions Audit Register")
     st.caption("Governance register detailing data provenance, verification status, and owner across UI inputs.")
     
     today_str = datetime.date.today().strftime("%Y-%m-%d")
     
+    # Generate start month string safely outside run_model_simulation scope
+    start_period_str = pd.Period(freq='M', year=start_year, month=start_month).strftime("%b %Y")
+    
     assumptions_data = [
-        {"Parameter": "1. Forecast Start Date", "Current Value": f"{month_names[0]}", "Unit / Scale": "Calendar Period", "Primary Source / Evidence Required": "FP&A Planning Horizon Config", "Verification Status": "User Estimate — Dynamic Calendar Roll-Forward", "Owner": "Finance", "Last Updated": today_str},
+        {"Parameter": "1. Forecast Start Date", "Current Value": f"{start_period_str}", "Unit / Scale": "Calendar Period", "Primary Source / Evidence Required": "FP&A Planning Horizon Config", "Verification Status": "User Estimate — Dynamic Calendar Roll-Forward", "Owner": "Finance", "Last Updated": today_str},
         {"Parameter": "2. Starting DAU & Paid Subs", "Current Value": f"{starting_dau:,} DAU / {starting_paid_subs:,} Subs", "Unit / Scale": "Active Accounts", "Primary Source / Evidence Required": "Mixpanel & Stripe Billing Baseline", "Verification Status": "User Estimate — Pending Actuals Upload", "Owner": "Growth / Finance", "Last Updated": today_str},
         {"Parameter": "3. Monthly DAU Growth", "Current Value": f"{monthly_growth*100:.1f}%", "Unit / Scale": "% MoM Growth", "Primary Source / Evidence Required": "Acquisition Model", "Verification Status": "Management Estimate", "Owner": "Marketing", "Last Updated": today_str},
         {"Parameter": "4. New User Day-1 Conversion", "Current Value": f"{new_user_conversion*100:.1f}%", "Unit / Scale": "% Day-1 Signup", "Primary Source / Evidence Required": "Stripe Checkout Day-1 Upgrade Analytics", "Verification Status": "Illustrative Baseline — Source Required", "Owner": "Growth", "Last Updated": today_str},
@@ -665,7 +668,7 @@ with tab5:
         {"Parameter": "13. Prompt Caching Rules", "Current Value": f"{cache_hit_rate*100:.0f}% hit / {cache_price_ratio*100:.0f}% cost", "Unit / Scale": "% Hit / % Cost", "Primary Source / Evidence Required": "LLM Gateway Caching Logs", "Verification Status": "Telemetry Estimate", "Owner": "Engineering", "Last Updated": today_str},
         {"Parameter": "14. Async Batch Routing", "Current Value": f"{batch_share*100:.0f}% traffic / {batch_price_ratio*100:.0f}% cost", "Unit / Scale": "% Async Share", "Primary Source / Evidence Required": "Batch API Route Telemetry", "Verification Status": "Management Estimate", "Owner": "Engineering", "Last Updated": today_str},
         {"Parameter": "15. Base Fixed Infra Spend", "Current Value": f"${base_fixed_infra:,.0f}/mo", "Unit / Scale": "$ / Month", "Primary Source / Evidence Required": "AWS / GCP Monthly Invoices", "Verification Status": "Covers Tier 1 Base Capacity (Block 1)", "Owner": "DevOps", "Last Updated": today_str},
-        {"Parameter": "16. Infra Step-Up Trigger", "Current Value": f"${step_cost_increment:,.0f} per {step_threshold_input:,} {step_trigger_type}", "Unit / Scale": "$ / Capacity Block", "Primary Source / Evidence Required": "DevOps Infrastructure Capacity Plan", "Verification Status": "Triggers on excess capacity beyond Block 1", "Owner": "Engineering", "Last Updated": today_str},
+        {"Parameter": "16. Infra Step-Up Trigger", "Current Value": f"${step_cost_increment:,.0f} per {step_threshold_input:,.0f} {step_trigger_type}", "Unit / Scale": "$ / Capacity Block", "Primary Source / Evidence Required": "DevOps Infrastructure Capacity Plan", "Verification Status": "Triggers on excess capacity beyond Block 1", "Owner": "Engineering", "Last Updated": today_str},
         {"Parameter": "17. Vector DB Unit Cost", "Current Value": f"${vector_cost_per_user:.2f} / DAU / mo", "Unit / Scale": "$ / DAU / Month", "Primary Source / Evidence Required": "Pinecone / Qdrant Invoice Rate", "Verification Status": "Simplified Storage + Query Driver", "Owner": "DevOps", "Last Updated": today_str},
         {"Parameter": "18. Starting Credit Balances", "Current Value": f"${starting_ai_credits:,.0f} AI / ${starting_cloud_credits:,.0f} Cloud", "Unit / Scale": "$ Total Grant", "Primary Source / Evidence Required": "AWS Activate & OpenAI Portal Grants", "Verification Status": "User Estimate — Pending Grant Terms", "Owner": "Finance", "Last Updated": today_str},
     ]
