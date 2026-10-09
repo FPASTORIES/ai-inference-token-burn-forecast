@@ -159,4 +159,184 @@ df = pd.DataFrame(rows)
 df["Budget ($)"] = budget_monthly if budget_monthly > 0 else np.nan
 df["Budget Variance ($)"] = df["Modeled Inference + Infrastructure Cost ($)"] - budget_monthly if budget_monthly > 0 else np.nan
 df["Cost per 1,000 Prompts ($)"] = df["Modeled Inference + Infrastructure Cost ($)"] / df["Monthly Prompts"].replace(0, np.nan) * 1000
-df["Cost per Paying Subscriber ($)"] = df["Modeled Inference + Infrastructure Cost ($)"] / df["Estimated Paying Subscribers"].
+df["Cost per Paying Subscriber ($)"] = df["Modeled Inference + Infrastructure Cost ($)"] / df["Estimated Paying Subscribers"].replace(0, np.nan)
+
+# ==========================================
+# 3. EXECUTIVE ALERTS
+# ==========================================
+depleted = df.index[df["Remaining Credits ($)"] <= 0.005].tolist()
+if starting_credits <= 0:
+    st.warning("No starting cloud credits are available. Modeled costs are not offset by credits.")
+elif depleted:
+    idx = depleted[0]
+    prev_balance = starting_credits if idx == 0 else df.loc[idx - 1, "Remaining Credits ($)"]
+    if prev_balance > 0:
+        st.warning(f"Cloud credits are exhausted during **{df.loc[idx, 'Month']}**. Estimated cash payable may begin in that month; monthly totals do not identify the exact exhaustion day.")
+    else:
+        st.warning(f"No cloud credits remain by **{df.loc[idx, 'Month']}**.")
+
+breach = df.index[df["Modeled Gross Margin (%)"].notna() & (df["Modeled Gross Margin (%)"] < margin_target)].tolist()
+if breach:
+    st.error(f"Modeled gross margin falls below the {margin_target}% target starting in **{df.loc[breach[0], 'Month']}**.")
+
+if budget_monthly > 0:
+    over = df.index[df["Budget Variance ($)"] > 0].tolist()
+    if over:
+        st.warning(f"Modeled monthly costs exceed budget starting in **{df.loc[over[0], 'Month']}**.")
+
+# ==========================================
+# 4. SUMMARY KPIS
+# ==========================================
+annual_revenue = df["Subscription Revenue ($)"].sum()
+annual_cost = df["Modeled Inference + Infrastructure Cost ($)"].sum()
+annual_profit = annual_revenue - annual_cost
+m12 = df.iloc[-1]
+
+c1, c2, c3, c4 = st.columns(4)
+c1.metric("M12 Revenue Run Rate", f"${m12['Subscription Revenue ($)']:,.0f}")
+c2.metric("M12 Modeled Costs", f"${m12['Modeled Inference + Infrastructure Cost ($)']:,.0f}")
+c3.metric("M12 Gross Margin", "N/A" if pd.isna(m12["Modeled Gross Margin (%)"]) else f"{m12['Modeled Gross Margin (%)']:.1f}%")
+c4.metric("Credits Remaining (M12)", f"${m12['Remaining Credits ($)']:,.0f}")
+
+c5, c6, c7, c8 = st.columns(4)
+c5.metric("12-Month Revenue", f"${annual_revenue:,.0f}")
+c6.metric("12-Month Modeled Costs", f"${annual_cost:,.0f}")
+c7.metric("12-Month Modeled Gross Profit", f"${annual_profit:,.0f}")
+c8.metric("12-Month Estimated Cash Payable", f"${df['Estimated Cash Payable ($)'].sum():,.0f}")
+
+# ==========================================
+# 5. DASHBOARD TABS
+# ==========================================
+tab1, tab2, tab3, tab4 = st.tabs(["📊 Revenue & Margin", "💳 Credits & Cash", "🎛️ Scenario Analysis", "📋 Monthly Detail"])
+
+with tab1:
+    fig = make_subplots(specs=[[{"secondary_y": True}]])
+    fig.add_trace(go.Bar(x=df["Month"], y=df["Subscription Revenue ($)"], name="Modeled Subscription Revenue", marker_color="#3182ce"), secondary_y=False)
+    fig.add_trace(go.Scatter(x=df["Month"], y=df["Modeled Inference + Infrastructure Cost ($)"], name="Modeled Costs", mode="lines+markers", line=dict(color="#e53e3e", width=3)), secondary_y=False)
+    fig.add_trace(go.Scatter(x=df["Month"], y=df["Modeled Gross Margin (%)"], name="Modeled Gross Margin (%)", mode="lines+markers", line=dict(color="#27965a", width=3, dash="dash")), secondary_y=True)
+    
+    fig.update_layout(
+        template="plotly_white", 
+        paper_bgcolor="rgba(0,0,0,0)", 
+        plot_bgcolor="#fff", 
+        title="12-Month Revenue, Modeled Costs & Gross Margin", 
+        legend=dict(orientation="h", y=1.12),
+        margin=dict(l=40, r=60, t=50, b=40)
+    )
+    fig.update_yaxes(title_text="USD ($)", secondary_y=False, rangemode="tozero", gridcolor="#edf2f7")
+    
+    margins = df["Modeled Gross Margin (%)"].dropna()
+    if not margins.empty:
+        lo, hi = min(0, float(margins.min())), max(100, float(margins.max()))
+        pad = max(5, (hi - lo) * 0.08)
+        fig.update_yaxes(title_text="Modeled Gross Margin (%)", range=[lo - pad, hi + pad], secondary_y=True, gridcolor="#edf2f7")
+        
+    st.plotly_chart(fig, use_container_width=True)
+    st.caption("Margin is modeled as subscription revenue less inference and infrastructure costs, divided by modeled subscription revenue. This is not a GAAP gross-margin determination.")
+
+with tab2:
+    fig2 = make_subplots(specs=[[{"secondary_y": True}]])
+    fig2.add_trace(go.Bar(x=df["Month"], y=df["Credits Applied ($)"], name="Credits Applied", marker_color="#38a169"), secondary_y=False)
+    fig2.add_trace(go.Bar(x=df["Month"], y=df["Estimated Cash Payable ($)"], name="Estimated Cash Payable", marker_color="#dd6b20"), secondary_y=False)
+    fig2.add_trace(go.Scatter(x=df["Month"], y=df["Remaining Credits ($)"], name="Remaining Credit Balance", mode="lines+markers", line=dict(color="#805ad5", width=3)), secondary_y=True)
+    
+    fig2.update_layout(
+        template="plotly_white", 
+        paper_bgcolor="rgba(0,0,0,0)", 
+        plot_bgcolor="#fff", 
+        title="Credit Offset vs. Estimated Cash Payable", 
+        barmode="stack", 
+        legend=dict(orientation="h", y=1.12),
+        margin=dict(l=40, r=60, t=50, b=40)
+    )
+    fig2.update_yaxes(title_text="Monthly Amount ($)", secondary_y=False, rangemode="tozero", gridcolor="#edf2f7")
+    fig2.update_yaxes(title_text="Remaining Credits ($)", secondary_y=True, rangemode="tozero", gridcolor="#edf2f7")
+    
+    st.plotly_chart(fig2, use_container_width=True)
+    st.caption("Credits are applied only to the eligible cost share selected in the sidebar. Actual provider credit eligibility and billing timing may differ.")
+
+with tab3:
+    st.subheader("Usage and pricing sensitivity")
+    st.write("Compare the modeled 12-month costs if average usage or effective token pricing changes. This simplified sensitivity holds user growth, model mix and fixed infrastructure assumptions constant.")
+    
+    scenarios = []
+    annual_api = df["API Cost ($)"].sum()
+    annual_vector = df["Vector DB / Search ($)"].sum()
+    annual_fixed = df["Fixed Infrastructure ($)"].sum()
+
+    for label, usage_factor, price_factor in [
+        ("Downside: lower usage", 0.75, 1.0),
+        ("Base case", 1.0, 1.0),
+        ("High usage", 1.5, 1.0),
+        ("Cost optimization", 1.0, 0.75),
+        ("High usage + optimization", 1.5, 0.75),
+    ]:
+        # Variable costs scale with usage/price factors; Fixed Infrastructure remains fixed
+        api_s = annual_api * usage_factor * price_factor
+        vector_s = annual_vector * usage_factor
+        fixed_s = annual_fixed
+        
+        cost_s = api_s + vector_s + fixed_s
+        gross_profit_s = annual_revenue - cost_s
+        margin_s = (gross_profit_s / annual_revenue * 100) if annual_revenue > 0 else np.nan
+
+        scenarios.append({
+            "Scenario": label, 
+            "12-Month Modeled Costs ($)": cost_s, 
+            "12-Month Revenue ($)": annual_revenue, 
+            "Modeled Gross Profit ($)": gross_profit_s, 
+            "Modeled Gross Margin (%)": margin_s
+        })
+        
+    scen_df = pd.DataFrame(scenarios)
+    st.dataframe(
+        scen_df.style.format({
+            "12-Month Modeled Costs ($)": "${:,.0f}", 
+            "12-Month Revenue ($)": "${:,.0f}", 
+            "Modeled Gross Profit ($)": "${:,.0f}", 
+            "Modeled Gross Margin (%)": "{:.1f}%"
+        }, na_rep="—"), 
+        use_container_width=True
+    )
+    
+    fig3 = go.Figure()
+    fig3.add_trace(go.Bar(x=scen_df["Scenario"], y=scen_df["12-Month Modeled Costs ($)"], name="Modeled Costs", marker_color="#3182ce"))
+    fig3.update_layout(
+        template="plotly_white", 
+        title="Scenario: 12-Month Modeled Costs", 
+        yaxis_title="USD ($)", 
+        xaxis_title="", 
+        paper_bgcolor="rgba(0,0,0,0)", 
+        plot_bgcolor="#fff"
+    )
+    st.plotly_chart(fig3, use_container_width=True)
+    st.caption("Sensitivity scenarios are illustrative and simplified; variable multipliers affect API and Vector DB costs. Fixed infrastructure remains unscaled.")
+
+with tab4:
+    st.subheader("Monthly forecast detail")
+    display_df = df.copy()
+    st.dataframe(
+        display_df.style.format({
+            "Subscription Revenue ($)": "${:,.0f}",
+            "API Cost ($)": "${:,.0f}",
+            "Vector DB / Search ($)": "${:,.0f}",
+            "Fixed Infrastructure ($)": "${:,.0f}",
+            "Modeled Inference + Infrastructure Cost ($)": "${:,.0f}",
+            "Modeled Gross Profit ($)": "${:,.0f}",
+            "Modeled Gross Margin (%)": "{:.1f}%",
+            "Credits Applied ($)": "${:,.0f}",
+            "Remaining Credits ($)": "${:,.0f}",
+            "Estimated Cash Payable ($)": "${:,.0f}",
+            "Budget ($)": "${:,.0f}",
+            "Budget Variance ($)": "${:,.0f}",
+            "Cost per 1,000 Prompts ($)": "${:,.4f}",
+            "Cost per Paying Subscriber ($)": "${:,.2f}",
+        }, na_rep="—"), 
+        use_container_width=True
+    )
+    
+    csv = df.to_csv(index=False).encode("utf-8")
+    st.download_button("Download forecast CSV", data=csv, file_name="ai_inference_forecast.csv", mime="text/csv")
+
+st.markdown("---")
+st.caption("© 2026 FPA STORIES | MIT License. Illustrative FP&A planning model. Verify current provider prices, credit terms, tax/accounting treatment and actual billing data before business use.")
