@@ -19,27 +19,52 @@ st.set_page_config(
     layout="wide"
 )
 
-# Custom Soft Neutral Styling
+# Custom Compact Styling
 st.markdown("""
 <style>
 .stApp {background:#fcfbf9;color:#2d3748;font-family:'Inter', sans-serif;}
 section[data-testid="stSidebar"] {background:#f5f2ed !important; border-right: 1px solid #e2d9d0;}
-div[data-testid="stMetric"] {background:#fff;border:1px solid #e2d9d0;padding:12px;border-radius:8px;box-shadow: 0 1px 3px rgba(0,0,0,0.02);}
-.main-header {background:linear-gradient(135deg,#f5f0eb,#ebe5df);padding:14px 20px;border-radius:10px;border:1px solid #e2d9d0;margin-bottom:14px;}
-.main-header h1 {color:#2d3748;margin:0 0 4px 0;font-size:1.6rem;font-weight:700;}
-.main-header p {color:#615a52;margin:0;font-size:0.92rem;}
-.alert-card {padding:10px 14px;border-radius:6px;font-size:0.88rem;margin-bottom:10px;}
-.alert-warning {background:#fffaf0;border:1px solid #feebc8;color:#9c4221;}
-.alert-error {background:#fff5f5;border:1px solid #fed7d7;color:#9b2c2c;}
-.alert-info {background:#ebf8ff;border:1px solid #bee3f8;color:#2c5282;}
+
+/* Compact Metric Cards */
+div[data-testid="stMetric"] {
+    background:#fff;
+    border:1px solid #e2d9d0;
+    padding:8px 12px !important;
+    border-radius:6px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.02);
+}
+div[data-testid="stMetric"] label {font-size:0.78rem !important; color:#615a52 !important;}
+div[data-testid="stMetric"] div[data-testid="stMetricValue"] {font-size:1.25rem !important; font-weight:700;}
+
+/* Ultra-Compact Header */
+.compact-header {
+    background: linear-gradient(135deg,#f5f0eb,#ebe5df);
+    padding: 10px 16px;
+    border-radius: 8px;
+    border: 1px solid #e2d9d0;
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.compact-header h1 {color:#2d3748; margin:0; font-size:1.35rem; font-weight:700;}
+.compact-header p {color:#615a52; margin:0; font-size:0.85rem;}
+
+/* Alert Cards */
+.alert-card {padding:6px 10px; border-radius:5px; font-size:0.82rem; margin-bottom:10px; font-weight:500;}
+.alert-warning {background:#fffaf0; border:1px solid #feebc8; color:#9c4221;}
+.alert-error {background:#fff5f5; border:1px solid #fed7d7; color:#9b2c2c;}
+.alert-info {background:#ebf8ff; border:1px solid #bee3f8; color:#2c5282;}
 </style>
 """, unsafe_allow_html=True)
 
-# Compact Header Banner
+# Compact Header
 st.markdown("""
-<div class="main-header">
-    <h1>⚡ AI Inference, Startup Runway & Unit Economics</h1>
-    <p>Driver-based forecast of token spend, infrastructure step-costs, subscription churn, and cloud-credit runway.</p>
+<div class="compact-header">
+    <div>
+        <h1>⚡ AI Inference, Startup Runway & Unit Economics</h1>
+        <p>Driver-based forecast of token spend, infrastructure step-costs, subscription churn, and cloud-credit runway.</p>
+    </div>
 </div>
 """, unsafe_allow_html=True)
 
@@ -53,98 +78,73 @@ starting_dau = st.sidebar.number_input(
 )
 monthly_growth = st.sidebar.slider(
     "Monthly DAU Growth (%)", 0.0, 25.0, 8.0, 0.5,
-    help="Assumed MoM organic and paid acquisition growth. Default 8% placeholder. Review historical 3-month trailing growth from product analytics."
+    help="Assumed MoM growth. Review historical 3-month trailing growth from product analytics."
 ) / 100
 
 paying_conversion = st.sidebar.slider(
     "New Paid Conversion (% of DAU)", 0.0, 100.0, 20.0, 1.0,
-    help="Percentage of active user base converting to paid subscription. Pull from Stripe Checkout conversion or free-to-paid funnel analytics."
+    help="Percentage of active user base converting to paid subscription."
 ) / 100
 
 monthly_churn = st.sidebar.slider(
     "Monthly Paid Subscriber Churn (%)", 0.0, 15.0, 3.0, 0.5,
-    help="Percentage of paid subscribers cancelling each month. Pull net subscriber churn from Stripe Billing / ProfitWell."
+    help="Percentage of paid subscribers cancelling each month. Source: Stripe Billing."
 ) / 100
 
 arpu = st.sidebar.number_input(
     "Monthly ARPU per Paid Subscriber ($)", min_value=0.0, value=30.0, step=5.0,
-    help="Average Revenue Per User per month for paid tiers. Source: Subscription plan pricing or Stripe MRR / active paid seats."
+    help="Average Revenue Per User per month for paid tiers."
 )
 
 st.sidebar.header("2. Usage Patterns & Token Context")
 baseline_prompts = st.sidebar.slider(
     "Baseline Prompts / Paid User / Day", 1, 20, 5,
-    help="Average daily prompt volume for paid power users during normal activity. Source: LLM logging tables / Helicone / Langfuse."
+    help="Average daily prompt volume for paid users during normal activity."
 )
 peak_prompts = st.sidebar.slider(
     "Peak Prompts / Paid User / Day", 1, 100, 35,
     help="Expected peak usage surge per paid user during heavy usage or launch event."
 )
-peak_month = st.sidebar.slider(
-    "Peak Usage Month (1-12)", 1, 12, 7,
-    help="Month in which usage surge peaks. Align with major feature launches or marketing campaign dates."
-)
-surge_width = st.sidebar.slider(
-    "Peak Usage Spread (Months)", 1.0, 4.0, 2.0, 0.5,
-    help="Standard deviation width of the Gaussian usage surge curve."
-)
+peak_month = st.sidebar.slider("Peak Usage Month (1-12)", 1, 12, 7)
+surge_width = st.sidebar.slider("Peak Usage Spread (Months)", 1.0, 4.0, 2.0, 0.5)
 
 free_user_usage_mult = st.sidebar.slider(
     "Free User Usage Multiplier (%)", 0, 100, 50,
-    help="Usage volume of free users relative to paid users. E.g., 50% means a free user issues half as many daily prompts as a paid user."
+    help="Usage volume of free users relative to paid users."
 ) / 100
 
-input_tokens_start = st.sidebar.number_input(
-    "Initial Input Tokens / Prompt", min_value=0, value=1000, step=100,
-    help="Average prompt context length including system prompts, chat history, and RAG context. Source: OpenAI dashboard / Datadog APM."
-)
-output_tokens_start = st.sidebar.number_input(
-    "Initial Output Tokens / Prompt", min_value=0, value=400, step=50,
-    help="Average completion length per response. Source: LLM provider usage export."
-)
-input_growth = st.sidebar.slider(
-    "MoM Input Token Growth (%)", 0.0, 20.0, 3.0, 0.5,
-    help="Monthly context expansion rate as user workspace data and chat history accumulate."
-) / 100
-output_growth = st.sidebar.slider(
-    "MoM Output Token Growth (%)", 0.0, 20.0, 0.0, 0.5,
-    help="Monthly response expansion rate if features shift toward long-form generation."
-) / 100
+input_tokens_start = st.sidebar.number_input("Initial Input Tokens / Prompt", min_value=0, value=1000, step=100)
+output_tokens_start = st.sidebar.number_input("Initial Output Tokens / Prompt", min_value=0, value=400, step=50)
+input_growth = st.sidebar.slider("MoM Input Token Growth (%)", 0.0, 20.0, 3.0, 0.5) / 100
+output_growth = st.sidebar.slider("MoM Output Token Growth (%)", 0.0, 20.0, 0.0, 0.5) / 100
 
 st.sidebar.header("3. Model Routing & Token Prices")
-frontier_mix = st.sidebar.slider(
-    "Frontier Model Traffic Share (%)", 0, 100, 30,
-    help="Percentage of prompts routed to premium frontier models (e.g., GPT-4o / Claude Sonnet)."
-) / 100
+frontier_mix = st.sidebar.slider("Frontier Model Share (%)", 0, 100, 30) / 100
 standard_mix = 1.0 - frontier_mix
 
-frontier_input_price = st.sidebar.number_input("Frontier Input Price ($ / 1M)", min_value=0.0, value=2.50, step=0.25, help="Check OpenAI / Anthropic official API pricing pages.")
-frontier_output_price = st.sidebar.number_input("Frontier Output Price ($ / 1M)", min_value=0.0, value=10.00, step=0.50, help="Check OpenAI / Anthropic official API pricing pages.")
+frontier_input_price = st.sidebar.number_input("Frontier Input Price ($ / 1M)", min_value=0.0, value=2.50, step=0.25)
+frontier_output_price = st.sidebar.number_input("Frontier Output Price ($ / 1M)", min_value=0.0, value=10.00, step=0.50)
 standard_input_price = st.sidebar.number_input("Standard Input Price ($ / 1M)", min_value=0.0, value=0.15, step=0.05, format="%.4f")
 standard_output_price = st.sidebar.number_input("Standard Output Price ($ / 1M)", min_value=0.0, value=0.60, step=0.05, format="%.4f")
 
-cache_hit_rate = st.sidebar.slider("Eligible Input Tokens Cached (%)", 0, 90, 40, help="Percentage of prompt context hitting system prompt cache.") / 100
-cache_price_ratio = st.sidebar.slider("Cached Price Ratio (% of regular)", 0, 100, 20, help="Discount rate for cached input tokens (e.g. 20% means 80% discount).") / 100
-batch_share = st.sidebar.slider("Traffic Using Batch Pricing (%)", 0, 80, 20, help="Percentage of non-realtime async traffic sent to 24hr batch APIs.") / 100
-batch_price_ratio = st.sidebar.slider("Batch Price Ratio (% of regular)", 0, 100, 50, help="Batch API pricing ratio (typically 50% discount).") / 100
+cache_hit_rate = st.sidebar.slider("Eligible Input Tokens Cached (%)", 0, 90, 40) / 100
+cache_price_ratio = st.sidebar.slider("Cached Price Ratio (% of regular)", 0, 100, 20) / 100
+batch_share = st.sidebar.slider("Traffic Using Batch Pricing (%)", 0, 80, 20) / 100
+batch_price_ratio = st.sidebar.slider("Batch Price Ratio (% of regular)", 0, 100, 50) / 100
 
 st.sidebar.header("4. Infrastructure Step-Costs & Credits")
-base_fixed_infra = st.sidebar.number_input(
-    "Base Fixed Monthly Infra ($)", min_value=0.0, value=2500.0, step=500.0,
-    help="Base monthly cloud, GPU, and core server hosting expenses. Source: AWS / GCP / Azure monthly bill."
-)
+base_fixed_infra = st.sidebar.number_input("Base Fixed Monthly Infra ($)", min_value=0.0, value=2500.0, step=500.0)
 
 step_trigger_type = st.sidebar.selectbox(
-    "Step-Cost Trigger Basis", ["DAU Threshold", "Paid Subscribers Threshold", "Monthly Prompts (Millions)"],
-    help="Select how infrastructure capacity steps up as the business scales."
+    "Step-Cost Trigger Basis", ["DAU Threshold", "Paid Subscribers Threshold", "Monthly Prompts (Millions)"]
 )
-step_threshold = st.sidebar.number_input("Step Threshold Quantity", min_value=1, value=20000, step=5000, help="Capacity threshold triggering an infra upgrade step.")
-step_cost_increment = st.sidebar.number_input("Infra Step-Up Cost ($)", min_value=0.0, value=1500.0, step=250.0, help="Additional fixed hosting cost added per capacity step.")
+step_threshold = st.sidebar.number_input("Step Threshold Quantity", min_value=1, value=20000, step=5000)
+step_cost_increment = st.sidebar.number_input("Infra Step-Up Cost ($)", min_value=0.0, value=1500.0, step=250.0)
 
-vector_cost_per_user = st.sidebar.number_input("Vector DB Cost / Active User ($)", min_value=0.0, value=0.15, step=0.05, help="Monthly cost for Pinecone, Qdrant, or Weaviate index storage per user.")
-starting_credits = st.sidebar.number_input("Starting Cloud Credits ($)", min_value=0.0, value=50000.0, step=5000.0, help="Total dollar balance of AWS Activate, OpenAI, or Anthropic build credits.")
-credit_eligible_share = st.sidebar.slider("Credit Eligible Cost Share (%)", 0, 100, 100, help="Percentage of total infrastructure/API spend covered by cloud credits.") / 100
-margin_target = st.sidebar.slider("Target Gross Margin (%)", 0, 90, 60, help="Corporate gross margin target benchmark.")
+vector_cost_per_user = st.sidebar.number_input("Vector DB Cost / Active User ($)", min_value=0.0, value=0.15, step=0.05)
+starting_credits = st.sidebar.number_input("Starting Cloud Credits ($)", min_value=0.0, value=50000.0, step=5000.0)
+credit_eligible_share = st.sidebar.slider("Credit Eligible Cost Share (%)", 0, 100, 100) / 100
+margin_target = st.sidebar.slider("Target Gross Margin (%)", 0, 90, 60)
 budget_monthly = st.sidebar.number_input("Monthly Budget Cap ($; 0 = none)", min_value=0.0, value=0.0, step=1000.0)
 
 # ==========================================
@@ -164,7 +164,6 @@ rows = []
 for i in range(12):
     dau_val = starting_dau * ((1 + monthly_growth) ** i)
     
-    # Subscriber dynamics with monthly conversion and churn
     if i > 0:
         new_conversions = dau_val * paying_conversion * monthly_growth
         churned_subs = current_paid_subscribers * monthly_churn
@@ -198,12 +197,11 @@ for i in range(12):
 
     vector_cost = dau_val * vector_cost_per_user
     
-    # Step-Function Fixed Infra Scaling
     if step_trigger_type == "DAU Threshold":
         step_multiplier = int(dau_val // step_threshold)
     elif step_trigger_type == "Paid Subscribers Threshold":
         step_multiplier = int(current_paid_subscribers // step_threshold)
-    else:  # Monthly Prompts in Millions
+    else:
         step_multiplier = int((monthly_prompts_total / 1_000_000) // step_threshold)
         
     infrastructure_cost = base_fixed_infra + (step_multiplier * step_cost_increment)
@@ -248,7 +246,7 @@ df["Cost per 1,000 Prompts ($)"] = df["Total Modeled Costs ($)"] / df["Monthly P
 df["Cost per Paid Subscriber ($)"] = df["Total Modeled Costs ($)"] / df["Paid Subscribers"].replace(0, np.nan)
 
 # ==========================================
-# 3. CONSOLIDATED EXECUTIVE ALERT GRID
+# 3. EXECUTIVE ALERT STRIP
 # ==========================================
 alert_cols = st.columns(3)
 
@@ -259,7 +257,7 @@ elif depleted:
     idx = depleted[0]
     alert_cols[0].markdown(f'<div class="alert-card alert-warning">💳 <b>Credits Exhausted in {df.loc[idx, "Month"]}:</b> Out-of-pocket cash starts in M{idx+1}.</div>', unsafe_allow_html=True)
 else:
-    alert_cols[0].markdown(f'<div class="alert-card alert-info">💳 <b>Credits Healthy:</b> Balance remaining in M12 (${df["Remaining Credits ($)"].iloc[-1]:,.0f}).</div>', unsafe_allow_html=True)
+    alert_cols[0].markdown(f'<div class="alert-card alert-info">💳 <b>Credits Healthy:</b> Balance in M12 (${df["Remaining Credits ($)"].iloc[-1]:,.0f}).</div>', unsafe_allow_html=True)
 
 breach = df.index[df["Modeled Gross Margin (%)"].notna() & (df["Modeled Gross Margin (%)"] < margin_target)].tolist()
 if breach:
@@ -270,31 +268,24 @@ else:
 if budget_monthly > 0:
     over = df.index[df["Budget Variance ($)"] > 0].tolist()
     if over:
-        alert_cols[2].markdown(f'<div class="alert-card alert-warning">📈 <b>Budget Overrun in {df.loc[over[0], "Month"]}:</b> Monthly spend exceeds ${budget_monthly:,.0f} cap.</div>', unsafe_allow_html=True)
+        alert_cols[2].markdown(f'<div class="alert-card alert-warning">📈 <b>Budget Overrun in {df.loc[over[0], "Month"]}:</b> Spend exceeds cap.</div>', unsafe_allow_html=True)
     else:
-        alert_cols[2].markdown('<div class="alert-card alert-info">🎯 <b>Budget Compliant:</b> Monthly spend remains under cap.</div>', unsafe_allow_html=True)
+        alert_cols[2].markdown('<div class="alert-card alert-info">🎯 <b>Budget Compliant:</b> Monthly spend under cap.</div>', unsafe_allow_html=True)
 else:
-    alert_cols[2].markdown('<div class="alert-card alert-info">ℹ️ <b>Planning Model:</b> Estimates only—not GAAP or vendor bills.</div>', unsafe_allow_html=True)
+    alert_cols[2].markdown('<div class="alert-card alert-info">ℹ️ <b>Planning Model:</b> Estimates only—not GAAP reporting.</div>', unsafe_allow_html=True)
 
 # ==========================================
-# 4. SUMMARY KPIS
+# 4. COMPACT KPIS (SINGLE 4-COLUMN ROW)
 # ==========================================
 annual_revenue = df["Subscription Revenue ($)"].sum()
 annual_cost = df["Total Modeled Costs ($)"].sum()
-annual_profit = annual_revenue - annual_cost
 m12 = df.iloc[-1]
 
 c1, c2, c3, c4 = st.columns(4)
-c1.metric("M12 Revenue Run Rate", f"${m12['Subscription Revenue ($)']:,.0f}")
-c2.metric("M12 Modeled Costs", f"${m12['Total Modeled Costs ($)']:,.0f}")
+c1.metric("Run Rate (M12)", f"${m12['Subscription Revenue ($)']:,.0f}", f"12M Total: ${annual_revenue:,.0f}")
+c2.metric("M12 Costs", f"${m12['Total Modeled Costs ($)']:,.0f}", f"12M Total: ${annual_cost:,.0f}")
 c3.metric("M12 Gross Margin", "N/A" if pd.isna(m12["Modeled Gross Margin (%)"]) else f"{m12['Modeled Gross Margin (%)']:.1f}%")
-c4.metric("Credits Remaining (M12)", f"${m12['Remaining Credits ($)']:,.0f}")
-
-c5, c6, c7, c8 = st.columns(4)
-c5.metric("12-Month Revenue", f"${annual_revenue:,.0f}")
-c6.metric("12-Month Modeled Costs", f"${annual_cost:,.0f}")
-c7.metric("12-Month Gross Profit", f"${annual_profit:,.0f}")
-c8.metric("12-Month Cash Payable", f"${df['Estimated Cash Payable ($)'].sum():,.0f}")
+c4.metric("Credits Remaining", f"${m12['Remaining Credits ($)']:,.0f}", f"Cash Payable: ${df['Estimated Cash Payable ($)'].sum():,.0f}")
 
 st.markdown("<br>", unsafe_allow_html=True)
 
@@ -310,18 +301,21 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
 ])
 
 with tab1:
+    st.subheader("12-Month Revenue, Modeled Costs & Gross Margin")
+    
     fig = make_subplots(specs=[[{"secondary_y": True}]])
-    fig.add_trace(go.Bar(x=df["Month"], y=df["Subscription Revenue ($)"], name="Modeled Revenue", marker_color="#3182ce"), secondary_y=False)
-    fig.add_trace(go.Scatter(x=df["Month"], y=df["Total Modeled Costs ($)"], name="Modeled Costs", mode="lines+markers", line=dict(color="#e53e3e", width=3)), secondary_y=False)
+    fig.add_trace(go.Bar(x=df["Month"], y=df["Subscription Revenue ($)"], name="Revenue ($)", marker_color="#3182ce"), secondary_y=False)
+    fig.add_trace(go.Scatter(x=df["Month"], y=df["Total Modeled Costs ($)"], name="Modeled Costs ($)", mode="lines+markers", line=dict(color="#e53e3e", width=3)), secondary_y=False)
     fig.add_trace(go.Scatter(x=df["Month"], y=df["Modeled Gross Margin (%)"], name="Gross Margin (%)", mode="lines+markers", line=dict(color="#27965a", width=3, dash="dash")), secondary_y=True)
     
+    # Plotly Layout: Legend moved to top-right to prevent title overlap
     fig.update_layout(
         template="plotly_white", 
         paper_bgcolor="rgba(0,0,0,0)", 
         plot_bgcolor="#fff", 
-        title="12-Month Revenue, Modeled Costs & Gross Margin", 
-        legend=dict(orientation="h", y=1.2, x=0.01),
-        margin=dict(l=40, r=60, t=80, b=40)
+        height=380,
+        legend=dict(orientation="h", y=1.08, x=0.01),
+        margin=dict(l=40, r=60, t=20, b=30)
     )
     fig.update_yaxes(title_text="USD ($)", secondary_y=False, rangemode="tozero", gridcolor="#edf2f7")
     
@@ -334,19 +328,21 @@ with tab1:
     st.plotly_chart(fig, use_container_width=True)
 
 with tab2:
+    st.subheader("Cloud Credit Offset vs. Out-of-Pocket Cash Payable")
+    
     fig2 = make_subplots(specs=[[{"secondary_y": True}]])
-    fig2.add_trace(go.Bar(x=df["Month"], y=df["Credits Applied ($)"], name="Credits Applied", marker_color="#38a169"), secondary_y=False)
-    fig2.add_trace(go.Bar(x=df["Month"], y=df["Estimated Cash Payable ($)"], name="Cash Payable", marker_color="#dd6b20"), secondary_y=False)
-    fig2.add_trace(go.Scatter(x=df["Month"], y=df["Remaining Credits ($)"], name="Remaining Credit Balance", mode="lines+markers", line=dict(color="#805ad5", width=3)), secondary_y=True)
+    fig2.add_trace(go.Bar(x=df["Month"], y=df["Credits Applied ($)"], name="Credits Applied ($)", marker_color="#38a169"), secondary_y=False)
+    fig2.add_trace(go.Bar(x=df["Month"], y=df["Estimated Cash Payable ($)"], name="Cash Payable ($)", marker_color="#dd6b20"), secondary_y=False)
+    fig2.add_trace(go.Scatter(x=df["Month"], y=df["Remaining Credits ($)"], name="Remaining Credit Balance ($)", mode="lines+markers", line=dict(color="#805ad5", width=3)), secondary_y=True)
     
     fig2.update_layout(
         template="plotly_white", 
         paper_bgcolor="rgba(0,0,0,0)", 
         plot_bgcolor="#fff", 
-        title="Cloud Credit Offset vs. Out-of-Pocket Cash Payable", 
+        height=380,
         barmode="stack", 
-        legend=dict(orientation="h", y=1.2, x=0.01),
-        margin=dict(l=40, r=60, t=80, b=40)
+        legend=dict(orientation="h", y=1.08, x=0.01),
+        margin=dict(l=40, r=60, t=20, b=30)
     )
     fig2.update_yaxes(title_text="Monthly Amount ($)", secondary_y=False, rangemode="tozero", gridcolor="#edf2f7")
     fig2.update_yaxes(title_text="Remaining Credits ($)", secondary_y=True, rangemode="tozero", gridcolor="#edf2f7")
