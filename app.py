@@ -1,7 +1,7 @@
 """
 AI Inference, Credit Depletion & Unit Economics Model
 ------------------------------------------------------
-Illustrative FP&A planning model for evaluating direct AI model inference,
+Driver-based FP&A planning model for evaluating direct AI model inference,
 vector storage, and infrastructure COGS. Excludes non-COGS OpEx (payroll, marketing, G&A).
 Prices and assumptions are user-editable estimates; verify against vendor billing portals.
 """
@@ -34,7 +34,7 @@ div[data-testid="stMetric"] {
     box-shadow: 0 1px 2px rgba(0,0,0,0.02);
 }
 div[data-testid="stMetric"] label {font-size:0.78rem !important; color:#615a52 !important;}
-div[data-testid="stMetric"] div[data-testid="stMetricValue"] {font-size:1.18rem !important; font-weight:700;}
+div[data-testid="stMetric"] div[data-testid="stMetricValue"] {font-size:1.15rem !important; font-weight:700;}
 
 /* Compact Header Banner */
 .compact-header {
@@ -80,14 +80,23 @@ st.markdown("""
 # ==========================================
 # 1. SIDEBAR ASSUMPTIONS & HOVER TOOLTIPS
 # ==========================================
+st.sidebar.header("0. Rolling Forecast Horizon")
+current_now = datetime.datetime.now()
+start_year = st.sidebar.number_input("Forecast Start Year", min_value=2024, max_value=2030, value=current_now.year)
+start_month = st.sidebar.slider("Forecast Start Month", 1, 12, current_now.month)
+
 st.sidebar.header("1. User Acquisition & Paid Funnel")
 starting_dau = st.sidebar.number_input(
     "Starting Daily Active Users (DAU)", min_value=0, value=5000, step=500,
     help="Initial active user count at Month 1. Source: Mixpanel, Google Analytics, or PostHog DAU metrics."
 )
+starting_paid_subs = st.sidebar.number_input(
+    "Starting Paid Subscribers", min_value=0, value=250, step=50,
+    help="Explicit initial paid subscriber count before Month 1 roll-forward."
+)
 monthly_growth = st.sidebar.slider(
     "Monthly DAU Growth (%)", 0.0, 25.0, 8.0, 0.5,
-    help="Assumed MoM growth for top-of-funnel acquisition. Source: Trailing 3-month growth analytics."
+    help="Assumed MoM growth for top-of-funnel acquisition."
 ) / 100
 
 new_user_conversion = st.sidebar.slider(
@@ -102,7 +111,7 @@ free_base_conversion = st.sidebar.slider(
 
 monthly_churn = st.sidebar.slider(
     "Monthly Paid Subscriber Churn (%)", 0.0, 15.0, 3.0, 0.5,
-    help="Percentage of paid subscribers cancelling each month. Source: Stripe Billing / ProfitWell."
+    help="Percentage of paid subscribers cancelling each month."
 ) / 100
 
 arpu = st.sidebar.number_input(
@@ -115,20 +124,24 @@ baseline_prompts = st.sidebar.slider(
     "Baseline Prompts / Paid User / Day", 1, 20, 5,
     help="Average daily prompt volume for paid power users during normal activity."
 )
-peak_prompts = st.sidebar.slider(
+peak_prompts_input = st.sidebar.slider(
     "Peak Prompts / Paid User / Day", 1, 100, 35,
     help="Expected peak usage surge per paid user during heavy usage or launch event."
 )
 
-if peak_prompts < baseline_prompts:
-    st.sidebar.warning("⚠️ Peak prompts are set below baseline usage. Adjusting peak assumption.")
+# Input Guardrail Enforcement
+if peak_prompts_input < baseline_prompts:
+    st.sidebar.warning(f"⚠️ Peak prompts ({peak_prompts_input}) cannot be below baseline ({baseline_prompts}). Enforcing peak = {baseline_prompts}.")
+    peak_prompts = baseline_prompts
+else:
+    peak_prompts = peak_prompts_input
 
 peak_month = st.sidebar.slider("Peak Usage Month (1-12)", 1, 12, 7)
 surge_width = st.sidebar.slider("Peak Usage Spread (Months)", 1.0, 4.0, 2.0, 0.5)
 
 free_user_usage_mult = st.sidebar.slider(
     "Free Tier Usage Multiplier (%)", 0, 100, 50,
-    help="Usage volume of free users relative to paid users (e.g., 50% means free users issue half as many daily prompts)."
+    help="Usage volume of free users relative to paid users."
 ) / 100
 
 input_tokens_start = st.sidebar.number_input(
@@ -159,7 +172,7 @@ batch_price_ratio = st.sidebar.slider("Batch Price Ratio (% of regular)", 0, 100
 st.sidebar.header("4. Infrastructure Step-Costs & Credits")
 base_fixed_infra = st.sidebar.number_input(
     "Base Fixed Monthly Infra ($)", min_value=0.0, value=2500.0, step=500.0,
-    help="Base hosting cost covering Tier 1 capacity (Block 1). Additional step costs apply above threshold."
+    help="Base hosting cost covering Tier 1 capacity (Block 1 up to threshold). Additional step costs apply beyond threshold."
 )
 
 step_trigger_type = st.sidebar.selectbox(
@@ -185,8 +198,8 @@ vector_cost_per_user = st.sidebar.number_input(
     help="Monthly vector database storage and query cost per daily active user."
 )
 
-starting_ai_credits = st.sidebar.number_input("Starting AI Vendor Credits ($)", min_value=0.0, value=20000.0, step=2500.0, help="OpenAI / Anthropic build grants.")
-starting_cloud_credits = st.sidebar.number_input("Starting Cloud Hosting Credits ($)", min_value=0.0, value=30000.0, step=5000.0, help="AWS Activate / GCP / Azure grants.")
+starting_ai_credits = st.sidebar.number_input("Starting AI Vendor Credits ($)", min_value=0.0, value=20000.0, step=2500.0)
+starting_cloud_credits = st.sidebar.number_input("Starting Cloud Hosting Credits ($)", min_value=0.0, value=30000.0, step=5000.0)
 ai_credit_eligible_share = st.sidebar.slider("AI Credit Eligible Share (%)", 0, 100, 100) / 100
 cloud_credit_eligible_share = st.sidebar.slider("Cloud Credit Eligible Share (%)", 0, 100, 100) / 100
 
@@ -197,47 +210,51 @@ budget_monthly = st.sidebar.number_input("Monthly COGS Budget Cap ($; 0 = none)"
 # 2. CORE FORECAST ENGINE FUNCTION
 # ==========================================
 def run_model_simulation(
-    p_dau, p_growth, p_new_conv, p_base_conv, p_churn, p_arpu,
+    p_start_year, p_start_month, p_dau, p_start_paid_subs, p_growth, p_new_conv, p_base_conv, p_churn, p_arpu,
     p_base_prompts, p_peak_prompts, p_peak_m, p_surge_w, p_free_mult,
     p_in_tok, p_out_tok, p_in_grow, p_out_grow, p_front_mix,
     p_f_in_p, p_f_out_p, p_s_in_p, p_s_out_p, p_cache_rate, p_cache_ratio,
     p_batch_share, p_batch_ratio, p_base_infra, p_step_type, p_step_thresh_raw,
     p_step_cost, p_vec_cost, p_ai_cred, p_cloud_cred, p_ai_elig, p_cloud_elig
 ):
-    months = np.arange(1, 13)
-    current_year = datetime.datetime.now().year
-    month_days = [pd.Period(f"{current_year}-{m:02d}").days_in_month for m in months]
-    month_names = [f"M{m}" for m in months]
+    # Rolling 12-Month Calendar Generation
+    dates = [pd.Period(freq='M', year=p_start_year, month=p_start_month) + i for i in range(12)]
+    month_names = [d.strftime("%b %Y") for d in dates]
+    month_days = [d.days_in_month for d in dates]
+    m_indices = np.arange(1, 13)
 
-    prompt_curve = p_base_prompts + (p_peak_prompts - p_base_prompts) * np.exp(-((months - p_peak_m) ** 2) / (2 * p_surge_w ** 2))
+    prompt_curve = p_base_prompts + (p_peak_prompts - p_base_prompts) * np.exp(-((m_indices - p_peak_m) ** 2) / (2 * p_surge_w ** 2))
 
     ai_credits_left = float(p_ai_cred)
     cloud_credits_left = float(p_cloud_cred)
     
-    beg_paid_subs = p_dau * p_new_conv
     current_dau = float(p_dau)
+    beg_paid_subs = float(p_start_paid_subs)
     
     sim_rows = []
 
     for i in range(12):
         if i == 0:
             dau_val = current_dau
-            new_users = dau_val
+            new_users_acquired = dau_val  # Initial acquisition cohort
             free_base = max(0.0, dau_val - beg_paid_subs)
-            new_user_conv_subs = new_users * p_new_conv
-            free_base_conv_subs = 0.0
+            
+            # Month 1 conversions apply strictly to newly acquired users + initial free base
+            new_user_conv_subs = new_users_acquired * p_new_conv
+            free_base_conv_subs = free_base * p_base_conv
+            total_new_conversions = new_user_conv_subs + free_base_conv_subs
             churned_subs = beg_paid_subs * p_churn
-            ending_paid_subs = max(0.0, beg_paid_subs + new_user_conv_subs - churned_subs)
+            ending_paid_subs = max(0.0, beg_paid_subs + total_new_conversions - churned_subs)
         else:
             prev_dau = current_dau
             current_dau = prev_dau * (1 + p_growth)
             dau_val = current_dau
-            new_users = dau_val - prev_dau
+            new_users_acquired = dau_val - prev_dau
             
             beg_paid_subs = sim_rows[i-1]["Ending Paid Subscribers"]
             free_base = max(0.0, prev_dau - beg_paid_subs)
             
-            new_user_conv_subs = new_users * p_new_conv
+            new_user_conv_subs = new_users_acquired * p_new_conv
             free_base_conv_subs = free_base * p_base_conv
             total_new_conversions = new_user_conv_subs + free_base_conv_subs
             churned_subs = beg_paid_subs * p_churn
@@ -272,6 +289,7 @@ def run_model_simulation(
 
         vector_cost = dau_val * p_vec_cost
         
+        # Step-Cost Capacity Threshold Fix
         if p_step_type == "DAU Threshold":
             trigger_metric = dau_val
         elif p_step_type == "Paid Subscribers Threshold":
@@ -279,15 +297,24 @@ def run_model_simulation(
         else:
             trigger_metric = monthly_prompts_total
             
-        step_multiplier = int(trigger_metric // p_step_thresh_raw) if p_step_thresh_raw > 0 else 0
+        # Base fixed infra covers Block 1 (up to raw_step_threshold). Steps trigger on excess capacity beyond Block 1.
+        if p_step_thresh_raw > 0 and trigger_metric > p_step_thresh_raw:
+            step_multiplier = int((trigger_metric - 1) // p_step_thresh_raw)
+        else:
+            step_multiplier = 0
+            
         infrastructure_cost = p_base_infra + (step_multiplier * p_step_cost)
-        
         total_modeled_cogs = api_cost + vector_cost + infrastructure_cost
-        revenue = ending_paid_subs * p_arpu
-        gross_profit = revenue - total_modeled_cogs
         
-        gross_margin_pct = (gross_profit / revenue * 100) if revenue > 0 else np.nan
+        # Revenue Recognition via Average Active Paid Subscribers
+        avg_active_paid_subs = (beg_paid_subs + ending_paid_subs) / 2.0
+        recognized_revenue = avg_active_paid_subs * p_arpu
+        ending_mrr_runrate = ending_paid_subs * p_arpu
+        
+        gross_profit = recognized_revenue - total_modeled_cogs
+        gross_margin_pct = (gross_profit / recognized_revenue * 100) if recognized_revenue > 0 else np.nan
 
+        # Dual-Pool Credit Depletion
         eligible_api_cost = api_cost * p_ai_elig
         ai_credits_applied = min(ai_credits_left, eligible_api_cost)
         ai_credits_left = max(0.0, ai_credits_left - ai_credits_applied)
@@ -308,9 +335,11 @@ def run_model_simulation(
             "Free Base Conversions": round(free_base_conv_subs),
             "Churned Subscribers": round(churned_subs),
             "Ending Paid Subscribers": round(ending_paid_subs),
+            "Avg Active Paid Subs": round(avg_active_paid_subs, 1),
             "Free Users": round(free_users),
             "Monthly Prompts": round(monthly_prompts_total),
-            "Subscription Revenue ($)": revenue, 
+            "Ending MRR Run-Rate ($)": ending_mrr_runrate,
+            "Recognized Revenue ($)": recognized_revenue, 
             "API Cost ($)": api_cost,
             "Vector DB Cost ($)": vector_cost, 
             "Fixed Infrastructure ($)": infrastructure_cost,
@@ -330,7 +359,7 @@ def run_model_simulation(
 
 # Run Baseline Simulation
 df = run_model_simulation(
-    starting_dau, monthly_growth, new_user_conversion, free_base_conversion, monthly_churn, arpu,
+    start_year, start_month, starting_dau, starting_paid_subs, monthly_growth, new_user_conversion, free_base_conversion, monthly_churn, arpu,
     baseline_prompts, peak_prompts, peak_month, surge_width, free_user_usage_mult,
     input_tokens_start, output_tokens_start, input_growth, output_growth, frontier_mix,
     frontier_input_price, frontier_output_price, standard_input_price, standard_output_price,
@@ -341,70 +370,75 @@ df = run_model_simulation(
 
 df["Budget ($)"] = budget_monthly if budget_monthly > 0 else np.nan
 df["Budget Variance ($)"] = df["Total Modeled COGS ($)"] - budget_monthly if budget_monthly > 0 else np.nan
-df["Cost per 1,000 Prompts ($)"] = df["Total Modeled COGS ($)"] / df["Monthly Prompts"].replace(0, np.nan) * 1000
+
+# Split KPI Telemetry: API-Only vs Blended COGS
+df["API Cost / 1,000 Prompts ($)"] = df["API Cost ($)"] / df["Monthly Prompts"].replace(0, np.nan) * 1000
+df["Blended COGS / 1,000 Prompts ($)"] = df["Total Modeled COGS ($)"] / df["Monthly Prompts"].replace(0, np.nan) * 1000
 df["Blended COGS / Paid Sub ($)"] = df["Total Modeled COGS ($)"] / df["Ending Paid Subscribers"].replace(0, np.nan)
 
 # ==========================================
 # 3. CFO DASHBOARD KPI PANEL & DECISION ENGINE
 # ==========================================
-annual_revenue = df["Subscription Revenue ($)"].sum()
+annual_revenue = df["Recognized Revenue ($)"].sum()
 annual_cogs = df["Total Modeled COGS ($)"].sum()
 m12 = df.iloc[-1]
-m12_arr = m12['Subscription Revenue ($)'] * 12
+m12_arr = m12['Ending MRR Run-Rate ($)'] * 12
 
 ai_dep_idx = df.index[df["Remaining AI Credits ($)"] <= 0.005].tolist() if starting_ai_credits > 0 else []
 cloud_dep_idx = df.index[df["Remaining Cloud Credits ($)"] <= 0.005].tolist() if starting_cloud_credits > 0 else []
 
-ai_dep_str = f"M{ai_dep_idx[0]+1}" if ai_dep_idx else ("None ($0)" if starting_ai_credits <= 0 else "12M+ Healthy")
-cloud_dep_str = f"M{cloud_dep_idx[0]+1}" if cloud_dep_idx else ("None ($0)" if starting_cloud_credits <= 0 else "12M+ Healthy")
+ai_dep_str = f"Depleted in {df.loc[ai_dep_idx[0], 'Month']}" if ai_dep_idx else ("None ($0)" if starting_ai_credits <= 0 else "Active through M12")
+cloud_dep_str = f"Depleted in {df.loc[cloud_dep_idx[0], 'Month']}" if cloud_dep_idx else ("None ($0)" if starting_cloud_credits <= 0 else "Active through M12")
 
 m12_margin = m12["Modeled Gross Margin (%)"]
 if pd.isna(m12_margin):
     margin_kpi_str = "Pre-Revenue"
-    margin_sub_str = "Undefined ($0 Rev)"
+    margin_sub_str = "Gross Loss ($0 Rev)"
 else:
     margin_var = m12_margin - margin_target
     margin_kpi_str = f"{m12_margin:.1f}%"
     margin_sub_str = f"{margin_var:+.1f}% vs {margin_target}% Target"
 
-c_m1 = df.loc[0, "Cost per 1,000 Prompts ($)"]
-c_m12 = df.loc[11, "Cost per 1,000 Prompts ($)"]
-prompt_cost_delta = ((c_m12 - c_m1) / c_m1 * 100) if c_m1 > 0 else 0
+c_m1_api = df.loc[0, "API Cost / 1,000 Prompts ($)"]
+c_m12_api = df.loc[11, "API Cost / 1,000 Prompts ($)"]
+prompt_api_cost_delta = ((c_m12_api - c_m1_api) / c_m1_api * 100) if c_m1_api > 0 else 0
 
 c1, c2, c3, c4 = st.columns(4)
-c1.metric("1. Revenue & ARR", f"${m12_arr:,.0f} ARR", f"M12 Rev: ${m12['Subscription Revenue ($)']:,.0f}")
-c2.metric("2. Unit Economics Margin", margin_kpi_str, margin_sub_str)
-c3.metric("3. AI Prompt Efficiency", f"${c_m12:.4f} / 1k", f"{prompt_cost_delta:+.1f}% M1 to M12")
-c4.metric("4. Credit Depletion", f"AI: {ai_dep_str}", f"Cloud: {cloud_dep_str}")
+c1.metric("1. ARR Run-Rate (M12)", f"${m12_arr:,.0f} ARR", f"Recognized 12M Rev: ${annual_revenue:,.0f}")
+c2.metric("2. Gross Margin (M12)", margin_kpi_str, margin_sub_str)
+c3.metric("3. Pure API Efficiency", f"${c_m12_api:.4f} / 1k", f"{prompt_api_cost_delta:+.1f}% M1 to M12")
+c4.metric("4. Credit Depletion Horizon", f"AI: {ai_dep_str}", f"Cloud: {cloud_dep_str}")
 
 # DYNAMIC CFO COMMENTARY ENGINE
 bullets = []
 valid_margins = df["Modeled Gross Margin (%)"].dropna()
 if valid_margins.empty:
-    bullets.append("<b>Gross Margin Status:</b> Model is currently in a pre-revenue phase ($0 revenue). All costs flow directly to operating deficit.")
+    bullets.append("<b>Gross Margin Status:</b> The model is generating a gross loss in a pre-revenue phase ($0 revenue). Direct COGS exceed revenues.")
 else:
     breach = df.index[df["Modeled Gross Margin (%)"].notna() & (df["Modeled Gross Margin (%)"] < margin_target)].tolist()
     if breach:
         breach_m = df.loc[breach[0], "Month"]
-        bullets.append(f"<b>Margin Alert:</b> Gross margin drops below the <b>{margin_target}% target</b> in <b>{breach_m}</b> due to context token expansion and step-cost triggers.")
+        bullets.append(f"<b>Margin Alert:</b> Gross margin drops below the <b>{margin_target}% target</b> in <b>{breach_m}</b>. Potential drivers include context token growth and infrastructure step-costs.")
     else:
-        bullets.append(f"<b>Margin Healthy:</b> Gross margin remains compliant above the <b>{margin_target}% target</b> throughout the entire 12-month forecast.")
+        bullets.append(f"<b>Margin Compliant:</b> Gross margin remains above the <b>{margin_target}% target</b> across all 12 forecast months.")
+
+# Budget Breach Commentary
+if budget_monthly > 0:
+    b_breach = df.index[df["Budget Variance ($)"] > 0].tolist()
+    if b_breach:
+        bullets.append(f"<b>Budget Overrun:</b> Monthly COGS exceeds the <b>${budget_monthly:,.0f} cap</b> starting in <b>{df.loc[b_breach[0], 'Month']}</b> (Cumulative 12M Variance: <b>+${df['Budget Variance ($)'].sum():,.0f}</b>).")
 
 if starting_ai_credits > 0 and ai_dep_idx and (not cloud_dep_idx or ai_dep_idx[0] <= cloud_dep_idx[0]):
-    bullets.append(f"<b>Credit Depletion Sequencing:</b> <b>AI Model Credits</b> exhaust first in <b>M{ai_dep_idx[0]+1}</b>. Direct cash payable for API inference begins in M{ai_dep_idx[0]+1}.")
+    bullets.append(f"<b>Credit Depletion:</b> <b>AI Model Credits</b> reach zero in <b>{df.loc[ai_dep_idx[0], 'Month']}</b>. Direct cash payable for token inference begins thereafter.")
 elif starting_cloud_credits > 0 and cloud_dep_idx:
-    bullets.append(f"<b>Credit Depletion Sequencing:</b> <b>Cloud Infrastructure Credits</b> exhaust first in <b>M{cloud_dep_idx[0]+1}</b>. Hosting spend hits cash directly in M{cloud_dep_idx[0]+1}.")
+    bullets.append(f"<b>Credit Depletion:</b> <b>Cloud Infrastructure Credits</b> reach zero in <b>{df.loc[cloud_dep_idx[0], 'Month']}</b>. Hosting spend hits cash directly thereafter.")
 else:
-    bullets.append("<b>Credit Buffer:</b> Available credit balances fully cover eligible COGS spend across the 12-month timeline.")
+    bullets.append("<b>Credit Depletion:</b> Configured credit balances remain active without depleting within the 12-month forecast horizon.")
 
-if prompt_cost_delta > 5.0:
-    bullets.append(f"<b>Inference Scale Efficiency:</b> Cost per 1,000 prompts expands by <b>+{prompt_cost_delta:.1f}%</b> from M1 to M12, driven by compound context growth ({input_growth*100:.1f}% MoM).")
-elif prompt_cost_delta < -5.0:
-    bullets.append(f"<b>Inference Scale Efficiency:</b> Cost per 1,000 prompts improves by <b>{prompt_cost_delta:.1f}%</b> from M1 to M12, driven by caching and batch routing discounts.")
-else:
-    bullets.append("<b>Inference Scale Efficiency:</b> Unit cost per 1,000 prompts remains stable across scaling volume.")
-
-bullets.append(f"<b>Key Operational Driver:</b> Subscriber retention (<b>{monthly_churn*100:.1f}% Churn</b>) and <b>{new_user_conversion*100:.1f}% Day-1 Conversion</b> are the primary levers dictating gross margin stability.")
+if prompt_api_cost_delta > 5.0:
+    bullets.append(f"<b>API Inference Efficiency:</b> Pure API cost per 1,000 prompts expands by <b>+{prompt_api_cost_delta:.1f}%</b> from M1 to M12, primarily driven by compound context token growth ({input_growth*100:.1f}% MoM).")
+elif prompt_api_cost_delta < -5.0:
+    bullets.append(f"<b>API Inference Efficiency:</b> Pure API cost per 1,000 prompts improves by <b>{prompt_api_cost_delta:.1f}%</b> from M1 to M12, supported by prompt caching and async batch routing discounts.")
 
 commentary_html = f"""
 <div class="cfo-commentary">
@@ -428,10 +462,10 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
 ])
 
 with tab1:
-    st.subheader("12-Month Revenue, Modeled COGS & Gross Margin")
+    st.subheader("12-Month Recognized Revenue, Modeled COGS & Gross Margin")
     
     fig = make_subplots(specs=[[{"secondary_y": True}]])
-    fig.add_trace(go.Bar(x=df["Month"], y=df["Subscription Revenue ($)"], name="Subscription Revenue ($)", marker_color="#3182ce"), secondary_y=False)
+    fig.add_trace(go.Bar(x=df["Month"], y=df["Recognized Revenue ($)"], name="Recognized Revenue ($)", marker_color="#3182ce"), secondary_y=False)
     fig.add_trace(go.Scatter(x=df["Month"], y=df["Total Modeled COGS ($)"], name="Direct COGS ($)", mode="lines+markers", line=dict(color="#e53e3e", width=3)), secondary_y=False)
     fig.add_trace(go.Scatter(x=df["Month"], y=df["Modeled Gross Margin (%)"], name="Gross Margin (%)", mode="lines+markers", line=dict(color="#27965a", width=3, dash="dash")), secondary_y=True)
     
@@ -461,8 +495,9 @@ with tab1:
     col_u1, col_u2 = st.columns(2)
     
     fig_u1 = go.Figure()
-    fig_u1.add_trace(go.Scatter(x=df["Month"], y=df["Cost per 1,000 Prompts ($)"], mode="lines+markers", line=dict(color="#805ad5", width=2.5)))
-    fig_u1.update_layout(title="Cost per 1,000 Prompts ($)", template="plotly_white", height=240, margin=dict(l=30,r=30,t=40,b=20))
+    fig_u1.add_trace(go.Scatter(x=df["Month"], y=df["API Cost / 1,000 Prompts ($)"], name="API-Only Cost / 1k", mode="lines+markers", line=dict(color="#805ad5", width=2.5)))
+    fig_u1.add_trace(go.Scatter(x=df["Month"], y=df["Blended COGS / 1,000 Prompts ($)"], name="Blended COGS / 1k", mode="lines+markers", line=dict(color="#e53e3e", width=2, dash="dash")))
+    fig_u1.update_layout(title="API Cost vs Blended COGS per 1,000 Prompts ($)", template="plotly_white", height=240, margin=dict(l=30,r=30,t=40,b=20), legend=dict(orientation="h", y=1.15))
     col_u1.plotly_chart(fig_u1, use_container_width=True)
 
     fig_u2 = go.Figure()
@@ -493,10 +528,10 @@ with tab2:
 
 with tab3:
     st.subheader("Multi-Variable Scenario Matrix (Full 12M Reforecast)")
-    st.caption("[CHANGE-11] Full 8-scenario matrix comparing revenue, COGS, gross margin, and out-of-pocket cash payable against Base Case.")
+    st.caption("Full 8-scenario matrix comparing revenue, COGS, gross margin, unit telemetry, and out-of-pocket cash payable against Base Case.")
 
-    # 8-Scenario Configuration Matrix [CHANGE-11]
-    # Format: (Label, Growth, Churn, NewConv, BaseConv, UsageMult, TokMult, PriceMult, FrontMix, CacheHitRate)
+    # 8-Scenario Configuration Matrix
+    # Format: (Label, Growth, Churn, NewConv, BaseConv, UsageMult, TokMult, PriceMult, FrontMix, CacheHit)
     scenarios_config = [
         ("1. Base Case", monthly_growth, monthly_churn, new_user_conversion, free_base_conversion, 1.0, 1.0, 1.0, frontier_mix, cache_hit_rate),
         ("2. Downside: Growth Slowdown (-50%)", monthly_growth * 0.5, monthly_churn, new_user_conversion, free_base_conversion, 1.0, 1.0, 1.0, frontier_mix, cache_hit_rate),
@@ -508,7 +543,7 @@ with tab3:
         ("8. Market Shift: Vendor Rate Cut (-25% Price)", monthly_growth, monthly_churn, new_user_conversion, free_base_conversion, 1.0, 1.0, 0.75, frontier_mix, cache_hit_rate),
     ]
 
-    base_rev = df["Subscription Revenue ($)"].sum()
+    base_rev = df["Recognized Revenue ($)"].sum()
     base_cogs = df["Total Modeled COGS ($)"].sum()
     base_gp = base_rev - base_cogs
     base_gm = (base_gp / base_rev * 100) if base_rev > 0 else np.nan
@@ -517,7 +552,7 @@ with tab3:
     scen_results = []
     for label, s_growth, s_churn, s_nconv, s_bconv, s_usage_mult, s_tok_mult, s_price_mult, s_fmix, s_cache in scenarios_config:
         s_df = run_model_simulation(
-            starting_dau, s_growth, s_nconv, s_bconv, s_churn, arpu,
+            start_year, start_month, starting_dau, starting_paid_subs, s_growth, s_nconv, s_bconv, s_churn, arpu,
             baseline_prompts * s_usage_mult, peak_prompts * s_usage_mult, peak_month, surge_width, free_user_usage_mult,
             input_tokens_start * s_tok_mult, output_tokens_start * s_tok_mult, input_growth, output_growth, s_fmix,
             frontier_input_price * s_price_mult, frontier_output_price * s_price_mult,
@@ -527,11 +562,14 @@ with tab3:
             starting_ai_credits, starting_cloud_credits, ai_credit_eligible_share, cloud_credit_eligible_share
         )
         
-        s_rev = s_df["Subscription Revenue ($)"].sum()
+        s_rev = s_df["Recognized Revenue ($)"].sum()
         s_cogs = s_df["Total Modeled COGS ($)"].sum()
         s_gp = s_rev - s_cogs
         s_gm = (s_gp / s_rev * 100) if s_rev > 0 else np.nan
         s_cash = s_df["Estimated Cash Payable ($)"].sum()
+        
+        s_m12_api_cost_1k = s_df.loc[11, "API Cost ($)"] / s_df.loc[11, "Monthly Prompts"] * 1000 if s_df.loc[11, "Monthly Prompts"] > 0 else np.nan
+        s_m12_cogs_sub = s_df.loc[11, "Total Modeled COGS ($)"] / s_df.loc[11, "Ending Paid Subscribers"] if s_df.loc[11, "Ending Paid Subscribers"] > 0 else np.nan
 
         scen_results.append({
             "Scenario": label,
@@ -540,9 +578,10 @@ with tab3:
             "12M COGS ($)": s_cogs,
             "Δ COGS vs Base ($)": s_cogs - base_cogs,
             "12M Gross Profit ($)": s_gp,
-            "Δ Gross Profit vs Base ($)": s_gp - base_gp,
             "Gross Margin (%)": s_gm,
             "Δ Margin (pp)": (s_gm - base_gm) if (not pd.isna(s_gm) and not pd.isna(base_gm)) else np.nan,
+            "M12 API Cost / 1k ($)": s_m12_api_cost_1k,
+            "M12 COGS / Sub ($)": s_m12_cogs_sub,
             "12M Cash Payable ($)": s_cash,
             "Δ Cash Payable ($)": s_cash - base_cash,
         })
@@ -555,9 +594,10 @@ with tab3:
             "12M COGS ($)": "${:,.0f}",
             "Δ COGS vs Base ($)": "${:+,.0f}",
             "12M Gross Profit ($)": "${:,.0f}",
-            "Δ Gross Profit vs Base ($)": "${:+,.0f}",
             "Gross Margin (%)": "{:.1f}%",
             "Δ Margin (pp)": "{:+.1f}pp",
+            "M12 API Cost / 1k ($)": "${:,.4f}",
+            "M12 COGS / Sub ($)": "${:,.2f}",
             "12M Cash Payable ($)": "${:,.0f}",
             "Δ Cash Payable ($)": "${:+,.0f}",
         }, na_rep="—"), 
@@ -574,9 +614,11 @@ with tab4:
             "Free Base Conversions": "{:,.0f}",
             "Churned Subscribers": "{:,.0f}",
             "Ending Paid Subscribers": "{:,.0f}",
+            "Avg Active Paid Subs": "{:,.1f}",
             "Free Users": "{:,.0f}",
             "Monthly Prompts": "{:,.0f}",
-            "Subscription Revenue ($)": "${:,.0f}",
+            "Ending MRR Run-Rate ($)": "${:,.0f}",
+            "Recognized Revenue ($)": "${:,.0f}",
             "API Cost ($)": "${:,.0f}",
             "Vector DB Cost ($)": "${:,.0f}",
             "Fixed Infrastructure ($)": "${:,.0f}",
@@ -591,7 +633,8 @@ with tab4:
             "Estimated Cash Payable ($)": "${:,.0f}",
             "Budget ($)": "${:,.0f}",
             "Budget Variance ($)": "${:,.0f}",
-            "Cost per 1,000 Prompts ($)": "${:,.4f}",
+            "API Cost / 1,000 Prompts ($)": "${:,.4f}",
+            "Blended COGS / 1,000 Prompts ($)": "${:,.4f}",
             "Blended COGS / Paid Sub ($)": "${:,.2f}",
         }, na_rep="—"), 
         use_container_width=True
@@ -601,35 +644,35 @@ with tab4:
     st.download_button("Download Full Audit CSV", data=csv, file_name="ai_inference_cogs_model.csv", mime="text/csv")
 
 with tab5:
-    st.subheader("📑 18-Parameter Source & Assumptions Audit Register")
-    st.caption("[CHANGE-10] Complete 18-driver governance log detailing data provenance, verification status, and owner across all UI inputs.")
+    st.subheader("📑 Complete Source & Assumptions Audit Register")
+    st.caption("Governance register detailing data provenance, verification status, and owner across UI inputs.")
     
     today_str = datetime.date.today().strftime("%Y-%m-%d")
     
     assumptions_data = [
-        {"Parameter": "1. Starting DAU", "Current Value": f"{starting_dau:,}", "Unit / Scale": "Active Users", "Primary Source / Evidence Required": "Mixpanel / PostHog Daily Active Analytics", "Verification Status": "User Estimate — Pending Actuals Upload", "Owner": "Growth", "Last Updated": today_str},
-        {"Parameter": "2. Monthly DAU Growth", "Current Value": f"{monthly_growth*100:.1f}%", "Unit / Scale": "% MoM Growth", "Primary Source / Evidence Required": "Growth Model / Acquisition Forecast", "Verification Status": "Management Estimate", "Owner": "Marketing", "Last Updated": today_str},
-        {"Parameter": "3. New User Day-1 Conversion", "Current Value": f"{new_user_conversion*100:.1f}%", "Unit / Scale": "% Day-1 Signup", "Primary Source / Evidence Required": "Stripe Checkout Day-1 Upgrade Analytics", "Verification Status": "Illustrative Baseline — Source Required", "Owner": "Growth", "Last Updated": today_str},
-        {"Parameter": "4. Free Base PLG Conversion", "Current Value": f"{free_base_conversion*100:.1f}%", "Unit / Scale": "% Free Pool / Mo", "Primary Source / Evidence Required": "In-App Product Funnel Telemetry", "Verification Status": "Illustrative Baseline — Source Required", "Owner": "Product", "Last Updated": today_str},
-        {"Parameter": "5. Paid Subscriber Churn", "Current Value": f"{monthly_churn*100:.1f}%", "Unit / Scale": "% Monthly Churn", "Primary Source / Evidence Required": "Stripe Billing Dashboard / ProfitWell", "Verification Status": "User Estimate", "Owner": "Finance", "Last Updated": today_str},
-        {"Parameter": "6. Monthly ARPU", "Current Value": f"${arpu:,.2f}", "Unit / Scale": "$ / Paid Sub / Mo", "Primary Source / Evidence Required": "Subscription Plan Pricing Tier", "Verification Status": "Verified Plan Card", "Owner": "Finance", "Last Updated": today_str},
-        {"Parameter": "7. Daily Prompts (Paid / Free)", "Current Value": f"{baseline_prompts} / {baseline_prompts*free_user_usage_mult:.1f}", "Unit / Scale": "Prompts / Day", "Primary Source / Evidence Required": "Helicone / Langfuse API Logging", "Verification Status": "Telemetry Estimate", "Owner": "Engineering", "Last Updated": today_str},
-        {"Parameter": "8. Token Context & Growth", "Current Value": f"{input_tokens_start:,} in / {output_tokens_start:,} out", "Unit / Scale": "Tokens / Prompt", "Primary Source / Evidence Required": "Datadog APM / LLM Provider Logs", "Verification Status": "Includes System + RAG Overhead", "Owner": "Engineering", "Last Updated": today_str},
-        {"Parameter": "9. Frontier Model Pricing", "Current Value": f"${frontier_input_price:.2f} in / ${frontier_output_price:.2f} out", "Unit / Scale": "$ / 1M Tokens", "Primary Source / Evidence Required": "OpenAI / Anthropic Public Rate Card", "Verification Status": "Verified Vendor Rate Card", "Owner": "DevOps", "Last Updated": today_str},
-        {"Parameter": "10. Standard Model Pricing", "Current Value": f"${standard_input_price:.4f} in / ${standard_output_price:.4f} out", "Unit / Scale": "$ / 1M Tokens", "Primary Source / Evidence Required": "Vendor Pricing API / Contract", "Verification Status": "Verified Vendor Rate Card", "Owner": "DevOps", "Last Updated": today_str},
-        {"Parameter": "11. Prompt Caching Rules", "Current Value": f"{cache_hit_rate*100:.0f}% hit / {cache_price_ratio*100:.0f}% cost", "Unit / Scale": "% Hit / % Cost", "Primary Source / Evidence Required": "LLM Gateway Caching Logs", "Verification Status": "Telemetry Estimate", "Owner": "Engineering", "Last Updated": today_str},
-        {"Parameter": "12. Async Batch Routing", "Current Value": f"{batch_share*100:.0f}% traffic / {batch_price_ratio*100:.0f}% cost", "Unit / Scale": "% Async Share", "Primary Source / Evidence Required": "Batch API Route Telemetry", "Verification Status": "Management Estimate", "Owner": "Engineering", "Last Updated": today_str},
-        {"Parameter": "13. Base Fixed Infra Spend", "Current Value": f"${base_fixed_infra:,.0f}/mo", "Unit / Scale": "$ / Month", "Primary Source / Evidence Required": "AWS / GCP Monthly Invoices", "Verification Status": "Covers Tier 1 Base (Block 1)", "Owner": "DevOps", "Last Updated": today_str},
-        {"Parameter": "14. Infra Step-Up Trigger", "Current Value": f"${step_cost_increment:,.0f} per {step_threshold_input:,} {step_trigger_type}", "Unit / Scale": "$ / Capacity Block", "Primary Source / Evidence Required": "DevOps Infrastructure Capacity Plan", "Verification Status": "Triggers at Block 2+", "Owner": "Engineering", "Last Updated": today_str},
-        {"Parameter": "15. Vector DB Unit Cost", "Current Value": f"${vector_cost_per_user:.2f} / DAU / mo", "Unit / Scale": "$ / DAU / Month", "Primary Source / Evidence Required": "Pinecone / Qdrant Invoice Rate", "Verification Status": "Storage + Query Rate Card", "Owner": "DevOps", "Last Updated": today_str},
-        {"Parameter": "16. Starting Credit Balances", "Current Value": f"${starting_ai_credits:,.0f} AI / ${starting_cloud_credits:,.0f} Cloud", "Unit / Scale": "$ Total Grant", "Primary Source / Evidence Required": "AWS Activate & OpenAI Portal Grants", "Verification Status": "Verified Grant Balance", "Owner": "Finance", "Last Updated": today_str},
-        {"Parameter": "17. Credit Eligibility Share", "Current Value": f"{ai_credit_eligible_share*100:.0f}% AI / {cloud_credit_eligible_share*100:.0f}% Cloud", "Unit / Scale": "% Eligible COGS", "Primary Source / Evidence Required": "Vendor Grant Terms & Exclusions", "Verification Status": "Verified Grant Terms", "Owner": "Finance", "Last Updated": today_str},
-        {"Parameter": "18. Target Margin & Budget Cap", "Current Value": f"{margin_target}% Margin / ${budget_monthly:,.0f} Budget", "Unit / Scale": "% Margin / $ Cap", "Primary Source / Evidence Required": "Board Approved Annual Budget Plan", "Verification Status": "Management Target", "Owner": "Finance", "Last Updated": today_str},
+        {"Parameter": "1. Forecast Start Date", "Current Value": f"{month_names[0]}", "Unit / Scale": "Calendar Period", "Primary Source / Evidence Required": "FP&A Planning Horizon Config", "Verification Status": "User Estimate — Dynamic Calendar Roll-Forward", "Owner": "Finance", "Last Updated": today_str},
+        {"Parameter": "2. Starting DAU & Paid Subs", "Current Value": f"{starting_dau:,} DAU / {starting_paid_subs:,} Subs", "Unit / Scale": "Active Accounts", "Primary Source / Evidence Required": "Mixpanel & Stripe Billing Baseline", "Verification Status": "User Estimate — Pending Actuals Upload", "Owner": "Growth / Finance", "Last Updated": today_str},
+        {"Parameter": "3. Monthly DAU Growth", "Current Value": f"{monthly_growth*100:.1f}%", "Unit / Scale": "% MoM Growth", "Primary Source / Evidence Required": "Acquisition Model", "Verification Status": "Management Estimate", "Owner": "Marketing", "Last Updated": today_str},
+        {"Parameter": "4. New User Day-1 Conversion", "Current Value": f"{new_user_conversion*100:.1f}%", "Unit / Scale": "% Day-1 Signup", "Primary Source / Evidence Required": "Stripe Checkout Day-1 Upgrade Analytics", "Verification Status": "Illustrative Baseline — Source Required", "Owner": "Growth", "Last Updated": today_str},
+        {"Parameter": "5. Free Base PLG Conversion", "Current Value": f"{free_base_conversion*100:.1f}%", "Unit / Scale": "% Free Pool / Mo", "Primary Source / Evidence Required": "In-App Product Funnel Telemetry", "Verification Status": "Illustrative Baseline — Source Required", "Owner": "Product", "Last Updated": today_str},
+        {"Parameter": "6. Paid Subscriber Churn", "Current Value": f"{monthly_churn*100:.1f}%", "Unit / Scale": "% Monthly Churn", "Primary Source / Evidence Required": "Stripe Billing Dashboard", "Verification Status": "User Estimate", "Owner": "Finance", "Last Updated": today_str},
+        {"Parameter": "7. Monthly ARPU", "Current Value": f"${arpu:,.2f}", "Unit / Scale": "$ / Paid Sub / Mo", "Primary Source / Evidence Required": "Subscription Plan Tier Card", "Verification Status": "User Estimate — Public Tier Assumption", "Owner": "Finance", "Last Updated": today_str},
+        {"Parameter": "8. Daily Prompts (Paid / Free)", "Current Value": f"{baseline_prompts} / {baseline_prompts*free_user_usage_mult:.1f}", "Unit / Scale": "Prompts / Day", "Primary Source / Evidence Required": "Helicone / Langfuse API Logging", "Verification Status": "Telemetry Estimate", "Owner": "Engineering", "Last Updated": today_str},
+        {"Parameter": "9. Usage Surge Curve", "Current Value": f"Peak {peak_prompts} Prompts (M{peak_month}, σ={surge_width})", "Unit / Scale": "Prompts / Day", "Primary Source / Evidence Required": "Product Event Capacity Model", "Verification Status": "Management Estimate", "Owner": "Engineering", "Last Updated": today_str},
+        {"Parameter": "10. Token Context & Growth", "Current Value": f"{input_tokens_start:,} in / {output_tokens_start:,} out", "Unit / Scale": "Tokens / Prompt", "Primary Source / Evidence Required": "Datadog APM / LLM Provider Logs", "Verification Status": "Includes System + RAG Overhead", "Owner": "Engineering", "Last Updated": today_str},
+        {"Parameter": "11. Frontier Model Pricing", "Current Value": f"${frontier_input_price:.2f} in / ${frontier_output_price:.2f} out", "Unit / Scale": "$ / 1M Tokens", "Primary Source / Evidence Required": "OpenAI / Anthropic Public Rate Card", "Verification Status": "Vendor Rate Card (Unverified Public Rate)", "Owner": "DevOps", "Last Updated": today_str},
+        {"Parameter": "12. Standard Model Pricing", "Current Value": f"${standard_input_price:.4f} in / ${standard_output_price:.4f} out", "Unit / Scale": "$ / 1M Tokens", "Primary Source / Evidence Required": "Vendor Rate Card", "Verification Status": "Vendor Rate Card (Unverified Public Rate)", "Owner": "DevOps", "Last Updated": today_str},
+        {"Parameter": "13. Prompt Caching Rules", "Current Value": f"{cache_hit_rate*100:.0f}% hit / {cache_price_ratio*100:.0f}% cost", "Unit / Scale": "% Hit / % Cost", "Primary Source / Evidence Required": "LLM Gateway Caching Logs", "Verification Status": "Telemetry Estimate", "Owner": "Engineering", "Last Updated": today_str},
+        {"Parameter": "14. Async Batch Routing", "Current Value": f"{batch_share*100:.0f}% traffic / {batch_price_ratio*100:.0f}% cost", "Unit / Scale": "% Async Share", "Primary Source / Evidence Required": "Batch API Route Telemetry", "Verification Status": "Management Estimate", "Owner": "Engineering", "Last Updated": today_str},
+        {"Parameter": "15. Base Fixed Infra Spend", "Current Value": f"${base_fixed_infra:,.0f}/mo", "Unit / Scale": "$ / Month", "Primary Source / Evidence Required": "AWS / GCP Monthly Invoices", "Verification Status": "Covers Tier 1 Base Capacity (Block 1)", "Owner": "DevOps", "Last Updated": today_str},
+        {"Parameter": "16. Infra Step-Up Trigger", "Current Value": f"${step_cost_increment:,.0f} per {step_threshold_input:,} {step_trigger_type}", "Unit / Scale": "$ / Capacity Block", "Primary Source / Evidence Required": "DevOps Infrastructure Capacity Plan", "Verification Status": "Triggers on excess capacity beyond Block 1", "Owner": "Engineering", "Last Updated": today_str},
+        {"Parameter": "17. Vector DB Unit Cost", "Current Value": f"${vector_cost_per_user:.2f} / DAU / mo", "Unit / Scale": "$ / DAU / Month", "Primary Source / Evidence Required": "Pinecone / Qdrant Invoice Rate", "Verification Status": "Simplified Storage + Query Driver", "Owner": "DevOps", "Last Updated": today_str},
+        {"Parameter": "18. Starting Credit Balances", "Current Value": f"${starting_ai_credits:,.0f} AI / ${starting_cloud_credits:,.0f} Cloud", "Unit / Scale": "$ Total Grant", "Primary Source / Evidence Required": "AWS Activate & OpenAI Portal Grants", "Verification Status": "User Estimate — Pending Grant Terms", "Owner": "Finance", "Last Updated": today_str},
     ]
     
     st.table(pd.DataFrame(assumptions_data))
 
-# MODEL SCOPE FOOTNOTE [CHANGE-11]
+# MODEL SCOPE FOOTNOTE
 st.markdown("---")
 st.caption("© 2026. Released under the MIT License. Built for FP&A Leaders and Startup CFOs evaluating AI unit economics.")
 st.markdown("""
