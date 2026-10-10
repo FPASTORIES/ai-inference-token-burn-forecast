@@ -127,6 +127,11 @@ arpu = st.sidebar.number_input(
     help="Average Revenue Per User per month for paid tiers."
 )
 
+expansion_arpu_pct = st.sidebar.slider(
+    "Expansion / Overage Revenue (% of ARPU)", 0.0, 50.0, 10.0, 1.0,
+    help="Incremental revenue from token overages and credit top-ups as a % of base ARPU."
+) / 100
+
 payment_fee_pct = st.sidebar.slider(
     "Payment Processing Fee (% of Revenue)", 0.0, 30.0, 2.9, 0.1,
     help="Card processor / app-store fees recognized in COGS (modeling assumption)."
@@ -221,7 +226,7 @@ def validate_assumptions(
     p_paid_dau_factor, p_new_conv, p_base_conv, p_arpu, p_front_mix, p_cache_rate,
     p_batch_share, p_ai_elig, p_cloud_elig, p_overhead, p_fee_pct,
     p_in_tok, p_out_tok, p_base_infra, p_step_cost, p_vec_cost, p_ai_cred, p_cloud_cred,
-    p_cache_ratio, p_batch_price_ratio, p_step_thresh_raw
+    p_cache_ratio, p_batch_price_ratio, p_step_thresh_raw, p_expansion_pct
 ):
     """Reject invalid inputs before forecasting."""
     if not 1 <= p_start_month <= 12:
@@ -242,15 +247,15 @@ def validate_assumptions(
         raise ValueError("Mix, caching, and batch share ratios must be between 0% and 100%.")
     if not (0 <= p_cache_ratio <= 1 and 0 <= p_batch_price_ratio <= 1):
         raise ValueError("Cache price ratio and batch price ratio must be between 0% and 100%.")
-    if not (0 <= p_ai_elig <= 1 and 0 <= p_cloud_elig <= 1 and 0 <= p_overhead <= 1 and 0 <= p_fee_pct <= 1):
-        raise ValueError("Credit eligibility, overhead, and fee percentages must be between 0% and 100%.")
+    if not (0 <= p_ai_elig <= 1 and 0 <= p_cloud_elig <= 1 and 0 <= p_overhead <= 1 and 0 <= p_fee_pct <= 1 and 0 <= p_expansion_pct <= 1):
+        raise ValueError("Credit eligibility, overhead, fee, and expansion percentages must be between 0% and 100%.")
     if p_arpu < 0 or p_in_tok < 0 or p_out_tok < 0 or p_base_infra < 0 or p_step_cost < 0 or p_vec_cost < 0 or p_ai_cred < 0 or p_cloud_cred < 0 or p_step_thresh_raw < 0:
         raise ValueError("Token counts, prices, costs, ARPU, credits, and thresholds cannot be negative.")
 
 @st.cache_data(show_spinner=False)
 def run_model_simulation(
     p_start_year, p_start_month, p_horizon, p_dau, p_start_paid_subs, p_growth, p_paid_dau_factor,
-    p_new_conv, p_base_conv, p_churn, p_arpu,
+    p_new_conv, p_base_conv, p_churn, p_arpu, p_expansion_pct,
     p_base_prompts, p_peak_prompts, p_peak_m, p_surge_w, p_free_mult,
     p_in_tok, p_out_tok, p_in_grow, p_out_grow, p_front_mix,
     p_f_in_p, p_f_out_p, p_s_in_p, p_s_out_p, p_cache_rate, p_cache_ratio,
@@ -263,7 +268,7 @@ def run_model_simulation(
         p_paid_dau_factor, p_new_conv, p_base_conv, p_arpu, p_front_mix, p_cache_rate,
         p_batch_share, p_ai_elig, p_cloud_elig, p_overhead, p_fee_pct,
         p_in_tok, p_out_tok, p_base_infra, p_step_cost, p_vec_cost, p_ai_cred, p_cloud_cred,
-        p_cache_ratio, p_batch_price_ratio, p_step_thresh_raw
+        p_cache_ratio, p_batch_price_ratio, p_step_thresh_raw, p_expansion_pct
     )
     n = int(p_horizon)
 
@@ -360,8 +365,10 @@ def run_model_simulation(
 
         infrastructure_cost = p_base_infra + (step_multiplier * p_step_cost)
 
-        recognized_revenue = avg_active_paid_subs * p_arpu
-        ending_mrr_runrate = ending_paid_subs * p_arpu
+        base_revenue = avg_active_paid_subs * p_arpu
+        expansion_revenue = base_revenue * p_expansion_pct
+        recognized_revenue = base_revenue + expansion_revenue
+        ending_mrr_runrate = ending_paid_subs * p_arpu * (1 + p_expansion_pct)
         payment_fees = recognized_revenue * p_fee_pct
 
         total_modeled_cogs = api_cost + vector_cost + infrastructure_cost + payment_fees
@@ -380,6 +387,13 @@ def run_model_simulation(
         total_credits_applied = ai_credits_applied + cloud_credits_applied
         estimated_cash_payable = total_modeled_cogs - total_credits_applied
 
+        # CFO KPI telemetry calculations
+        total_tokens_m = (raw_input_m + raw_output_m)
+        blended_cost_per_m_tokens = (api_cost / total_tokens_m) if total_tokens_m > 0 else 0.0
+        compute_copu = (api_cost + infrastructure_cost) / avg_dau if avg_dau > 0 else 0.0
+        vector_copu = vector_cost / avg_dau if avg_dau > 0 else 0.0
+        credit_burn_velocity = total_credits_applied
+
         sim_rows.append({
             "Month": month_names[i],
             "Calendar Days": month_days[i],
@@ -394,6 +408,8 @@ def run_model_simulation(
             "Monthly Prompts": monthly_prompts_total,
             "Ending MRR Run-Rate ($)": ending_mrr_runrate,
             "Recognized Revenue ($)": recognized_revenue,
+            "Base Subscription Revenue ($)": base_revenue,
+            "Expansion / Overage Revenue ($)": expansion_revenue,
             "API Cost ($)": api_cost,
             "Vector DB Cost ($)": vector_cost,
             "Fixed Infrastructure ($)": infrastructure_cost,
@@ -407,6 +423,10 @@ def run_model_simulation(
             "Remaining Cloud Credits ($)": cloud_credits_left,
             "Total Credits Applied ($)": total_credits_applied,
             "Estimated Cash Payable ($)": estimated_cash_payable,
+            "Blended Cost / 1M Tokens ($)": blended_cost_per_m_tokens,
+            "Compute COPU / DAU ($)": compute_copu,
+            "Vector COPU / DAU ($)": vector_copu,
+            "Credit Burn Velocity ($)": credit_burn_velocity,
         })
 
     sim_df = pd.DataFrame(sim_rows)
@@ -431,7 +451,7 @@ def run_model_simulation(
 try:
     df = run_model_simulation(
         start_year, start_month, forecast_horizon, starting_dau, starting_paid_subs, monthly_growth, paid_dau_factor,
-        new_user_conversion, free_base_conversion, monthly_churn, arpu,
+        new_user_conversion, free_base_conversion, monthly_churn, arpu, expansion_arpu_pct,
         baseline_prompts, peak_prompts, peak_month, surge_width, free_user_usage_mult,
         input_tokens_start, output_tokens_start, input_growth, output_growth, frontier_mix,
         frontier_input_price, frontier_output_price, standard_input_price, standard_output_price,
@@ -542,7 +562,7 @@ with tab1:
     st.subheader(f"Forecast Recognized Revenue, Modeled COGS & Gross Margin — Before Credits ({forecast_horizon}-Month)")
 
     fig = make_subplots(specs=[[{"secondary_y": True}]])
-    fig.add_trace(go.Bar(x=df["Month"], y=df["Recognized Revenue ($)"], name="Recognized Revenue ($)", marker_color="#3182ce"), secondary_y=False)
+    fig.add_trace(go.Bar(x=df["Month"], y=df["Recognized Revenue ($)"], name="Recognized Revenue ($) [Base + Overages]", marker_color="#3182ce"), secondary_y=False)
     fig.add_trace(go.Scatter(x=df["Month"], y=df["Total Modeled COGS ($)"], name="Direct COGS ($)", mode="lines+markers", line=dict(color="#e53e3e", width=3)), secondary_y=False)
     fig.add_trace(go.Scatter(x=df["Month"], y=df["Modeled Gross Margin (%)"], name="Gross Margin (%) — Before Credits", mode="lines+markers", line=dict(color="#27965a", width=3, dash="dash")), secondary_y=True)
 
@@ -568,27 +588,27 @@ with tab1:
 
     st.plotly_chart(fig, use_container_width=True)
 
-    st.subheader("Inference Unit Cost Telemetry")
+    st.subheader("CFO Telemetry: Token Cost Efficiency & COPU Disaggregation")
     col_u1, col_u2 = st.columns(2)
 
     fig_u1 = go.Figure()
-    fig_u1.add_trace(go.Scatter(x=df["Month"], y=df["API Cost / 1,000 Prompts ($)"], name="API-Only Cost / 1k", mode="lines+markers", line=dict(color="#805ad5", width=2.5)))
-    fig_u1.add_trace(go.Scatter(x=df["Month"], y=df["Blended COGS / 1,000 Prompts ($)"], name="Blended COGS / 1k", mode="lines+markers", line=dict(color="#e53e3e", width=2, dash="dash")))
-    fig_u1.update_layout(title="API Cost vs Blended COGS per 1,000 Prompts ($)", template="plotly_white", height=240, margin=dict(l=30, r=30, t=40, b=20), legend=dict(orientation="h", y=1.15))
+    fig_u1.add_trace(go.Scatter(x=df["Month"], y=df["Blended Cost / 1M Tokens ($)"], name="Blended Cost / 1M Tokens", mode="lines+markers", line=dict(color="#805ad5", width=2.5)))
+    fig_u1.update_layout(title="Effective Blended Cost per 1M Tokens ($)", template="plotly_white", height=240, margin=dict(l=30, r=30, t=40, b=20), legend=dict(orientation="h", y=1.15))
     col_u1.plotly_chart(fig_u1, use_container_width=True)
 
     fig_u2 = go.Figure()
-    fig_u2.add_trace(go.Scatter(x=df["Month"], y=df["Blended COGS / Paid Sub ($)"], mode="lines+markers", line=dict(color="#319795", width=2.5)))
-    fig_u2.update_layout(title="Blended COGS / Paid Subscriber ($)", template="plotly_white", height=240, margin=dict(l=30, r=30, t=40, b=20))
+    fig_u2.add_trace(go.Scatter(x=df["Month"], y=df["Compute COPU / DAU ($)"], name="Compute COPU / DAU", mode="lines+markers", line=dict(color="#319795", width=2.5)))
+    fig_u2.add_trace(go.Scatter(x=df["Month"], y=df["Vector COPU / DAU ($)"], name="Vector Storage COPU / DAU", mode="lines+markers", line=dict(color="#dd6b20", width=2, dash="dash")))
+    fig_u2.update_layout(title="Infrastructure COPU per DAU ($) — Compute vs Vector", template="plotly_white", height=240, margin=dict(l=30, r=30, t=40, b=20), legend=dict(orientation="h", y=1.15))
     col_u2.plotly_chart(fig_u2, use_container_width=True)
 
 with tab2:
-    st.subheader("Cloud Credit Depletion vs. Out-of-Pocket Cash Payable")
-    st.caption("Stacked bars reconcile directly to modeled COGS consumption offset by credit grants.")
+    st.subheader("Cloud Credit Burn Velocity & Out-of-Pocket Cash Payable")
+    st.caption("Stacked bars reconcile directly to modeled COGS consumption offset by credit burn velocity.")
 
     fig2 = make_subplots(specs=[[{"secondary_y": True}]])
-    fig2.add_trace(go.Bar(x=df["Month"], y=df["AI Credits Applied ($)"], name="AI Credits Applied ($)", marker_color="#38a169"), secondary_y=False)
-    fig2.add_trace(go.Bar(x=df["Month"], y=df["Cloud Credits Applied ($)"], name="Cloud Credits Applied ($)", marker_color="#4fd1c5"), secondary_y=False)
+    fig2.add_trace(go.Bar(x=df["Month"], y=df["AI Credits Applied ($)"], name="AI Credits Burned ($)", marker_color="#38a169"), secondary_y=False)
+    fig2.add_trace(go.Bar(x=df["Month"], y=df["Cloud Credits Applied ($)"], name="Cloud Credits Burned ($)", marker_color="#4fd1c5"), secondary_y=False)
     fig2.add_trace(go.Bar(x=df["Month"], y=df["Estimated Cash Payable ($)"], name="Cash Payable ($)", marker_color="#dd6b20"), secondary_y=False)
 
     fig2.add_trace(go.Scatter(x=df["Month"], y=df["Remaining AI Credits ($)"], name="Remaining AI Credits ($)", mode="lines", line=dict(color="#2b6cb0", width=2, dash="dash")), secondary_y=True)
@@ -628,7 +648,7 @@ with tab3:
     for label, s_growth, s_churn, s_nconv, s_bconv, s_tok_mult, s_price_mult, s_fmix, s_cache in scenarios_config:
         try:
             s_df = run_model_simulation(
-                int(start_year), int(start_month), int(forecast_horizon), float(starting_dau), float(starting_paid_subs), float(s_growth), float(paid_dau_factor), float(s_nconv), float(s_bconv), float(s_churn), float(arpu),
+                int(start_year), int(start_month), int(forecast_horizon), float(starting_dau), float(starting_paid_subs), float(s_growth), float(paid_dau_factor), float(s_nconv), float(s_bconv), float(s_churn), float(arpu), float(expansion_arpu_pct),
                 float(baseline_prompts), float(peak_prompts), float(peak_month), float(surge_width), float(free_user_usage_mult),
                 float(input_tokens_start * s_tok_mult), float(output_tokens_start * s_tok_mult), float(input_growth), float(output_growth), float(s_fmix),
                 float(frontier_input_price * s_price_mult), float(frontier_output_price * s_price_mult),
@@ -711,6 +731,8 @@ with tab4:
             "Monthly Prompts": "{:,.0f}",
             "Ending MRR Run-Rate ($)": "${:,.0f}",
             "Recognized Revenue ($)": "${:,.0f}",
+            "Base Subscription Revenue ($)": "${:,.0f}",
+            "Expansion / Overage Revenue ($)": "${:,.0f}",
             "API Cost ($)": "${:,.0f}",
             "Vector DB Cost ($)": "${:,.0f}",
             "Fixed Infrastructure ($)": "${:,.0f}",
@@ -724,6 +746,10 @@ with tab4:
             "Remaining Cloud Credits ($)": "${:,.0f}",
             "Total Credits Applied ($)": "${:,.0f}",
             "Estimated Cash Payable ($)": "${:,.0f}",
+            "Blended Cost / 1M Tokens ($)": "${:,.4f}",
+            "Compute COPU / DAU ($)": "${:,.2f}",
+            "Vector COPU / DAU ($)": "${:,.2f}",
+            "Credit Burn Velocity ($)": "${:,.0f}",
             "Budget ($)": "${:,.0f}",
             "Budget Variance ($)": "${:,.0f}",
             "API Cost / 1,000 Prompts ($)": "${:,.4f}",
@@ -758,7 +784,7 @@ with tab5:
         {"Parameter": "5. New User Day-1 Conversion", "Current Value": f"{new_user_conversion*100:.1f}%", "Unit / Scale": "% Day-1 Signup", "Primary Source / Evidence Required": "Stripe Checkout Day-1 Upgrade Analytics", "Verification Status": "Illustrative Baseline — Source Required (applies M2+)", "Owner": "Growth", "Last Updated": today_str},
         {"Parameter": "6. Free-User Proxy Conversion", "Current Value": f"{free_base_conversion*100:.1f}%", "Unit / Scale": "% Active Free Pool / Mo", "Primary Source / Evidence Required": "In-App Product Funnel Telemetry", "Verification Status": "DAU-based Active Proxy Conversion (prev_dau - beg_paid_subs)", "Owner": "Product", "Last Updated": today_str},
         {"Parameter": "7. Paid Subscriber Churn", "Current Value": f"{monthly_churn*100:.1f}%", "Unit / Scale": "% Monthly Churn", "Primary Source / Evidence Required": "Stripe Billing Dashboard", "Verification Status": "User Estimate", "Owner": "Finance", "Last Updated": today_str},
-        {"Parameter": "8. Monthly ARPU", "Current Value": f"${arpu:,.2f}", "Unit / Scale": "$ / Paid Sub / Mo", "Primary Source / Evidence Required": "Subscription Plan Tier Card", "Verification Status": "User Estimate — Public Tier Assumption", "Owner": "Finance", "Last Updated": today_str},
+        {"Parameter": "8. Monthly ARPU & Expansion", "Current Value": f"${arpu:,.2f} base / {expansion_arpu_pct*100:.0f}% expansion", "Unit / Scale": "$ / Paid Sub / Mo", "Primary Source / Evidence Required": "Subscription Plan & Overage Metering", "Verification Status": "User Estimate — Token Overages & Top-Ups", "Owner": "Finance", "Last Updated": today_str},
         {"Parameter": "9. Daily Prompts (Paid / Free)", "Current Value": f"{baseline_prompts} / {baseline_prompts*free_user_usage_mult:.1f}", "Unit / Scale": "Prompts / Day", "Primary Source / Evidence Required": "Helicone / Langfuse API Logging", "Verification Status": "Telemetry Estimate", "Owner": "Engineering", "Last Updated": today_str},
         {"Parameter": "10. Usage Surge Curve", "Current Value": f"Peak {peak_prompts} Prompts (Month {peak_month}, σ={surge_width})", "Unit / Scale": "Prompts / Day", "Primary Source / Evidence Required": "Product Event Capacity Model", "Verification Status": "Management Estimate", "Owner": "Engineering", "Last Updated": today_str},
         {"Parameter": "11. Token Context & Growth", "Current Value": f"{input_tokens_start:,} in / {output_tokens_start:,} out", "Unit / Scale": "Tokens / Prompt", "Primary Source / Evidence Required": "Datadog APM / LLM Provider Logs", "Verification Status": "Includes System + RAG Overhead", "Owner": "Engineering", "Last Updated": today_str},
@@ -769,7 +795,7 @@ with tab5:
         {"Parameter": "16. Base Fixed Infra Spend", "Current Value": f"${base_fixed_infra:,.0f}/mo", "Unit / Scale": "$ / Month", "Primary Source / Evidence Required": "AWS / GCP Monthly Invoices", "Verification Status": "Covers Tier 1 Base Capacity (Block 1)", "Owner": "DevOps", "Last Updated": today_str},
         {"Parameter": "17. Infra Step-Up Trigger", "Current Value": f"${step_cost_increment:,.0f} per {step_threshold_display}", "Unit / Scale": "$ / Capacity Block", "Primary Source / Evidence Required": "DevOps Infrastructure Capacity Plan", "Verification Status": "Triggers on excess capacity beyond Block 1", "Owner": "Engineering", "Last Updated": today_str},
         {"Parameter": "18. Vector DB Unit Cost", "Current Value": f"${vector_cost_per_user:.2f} / DAU / mo", "Unit / Scale": "$ / DAU / Month", "Primary Source / Evidence Required": "Pinecone / Qdrant Invoice Rate", "Verification Status": "Simplified Storage + Query Driver (scaled on avg DAU)", "Owner": "DevOps", "Last Updated": today_str},
-        {"Parameter": "19. Starting Credit Balances", "Current Value": f"${starting_ai_credits:,.0f} AI / ${starting_cloud_credits:,.0f} Cloud", "Unit / Scale": "$ Total Grant", "Primary Source / Evidence Required": "AWS Activate & OpenAI Portal Grants", "Verification Status": "User Estimate — Pending Grant Terms", "Owner": "Finance", "Last Updated": today_str},
+        {"Parameter": "19. Starting Credit Balances & Burn", "Current Value": f"${starting_ai_credits:,.0f} AI / ${starting_cloud_credits:,.0f} Cloud", "Unit / Scale": "$ Total Grant & Burn", "Primary Source / Evidence Required": "AWS Activate & OpenAI Portal Grants", "Verification Status": "Tracked via Monthly Credit Burn Velocity", "Owner": "Finance", "Last Updated": today_str},
         {"Parameter": "20. Inference Overhead & Fees", "Current Value": f"{overhead_pct*100:.0f}% overhead / {payment_fee_pct*100:.1f}% fee", "Unit / Scale": "% Uplift / % Rev", "Primary Source / Evidence Required": "Gateway Logs & Stripe/App Store Schedule", "Verification Status": "Management Estimate", "Owner": "Engineering / Finance", "Last Updated": today_str},
         {"Parameter": "21. Budget Cap & Target Margin", "Current Value": f"${budget_monthly:,.0f}/mo budget / {margin_target}% margin", "Unit / Scale": "$ Cap / % Margin", "Primary Source / Evidence Required": "FP&A Target Guardrails", "Verification Status": "Management Policy", "Owner": "Finance", "Last Updated": today_str},
     ]
