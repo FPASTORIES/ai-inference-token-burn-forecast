@@ -99,7 +99,7 @@ starting_paid_subs = st.sidebar.number_input(
 )
 monthly_growth = st.sidebar.slider(
     "Monthly DAU Growth (%)", 0.0, 25.0, 8.0, 0.5,
-    help="Assumed MoM growth for top-of-funnel acquisition (net DAU growth proxy)."
+    help="Assumed MoM growth for top-of-funnel acquisition (modeled as a simplified net DAU growth proxy)."
 ) / 100
 
 paid_dau_factor = st.sidebar.slider(
@@ -109,7 +109,7 @@ paid_dau_factor = st.sidebar.slider(
 
 new_user_conversion = st.sidebar.slider(
     "New User Conversion (%)", 0.0, 50.0, 15.0, 0.5,
-    help="% of brand-new acquired users who upgrade to paid in their first month (applied to net DAU growth)."
+    help="% of brand-new acquired users who upgrade to paid in their first month (applied to net DAU growth proxy)."
 ) / 100
 
 free_base_conversion = st.sidebar.slider(
@@ -219,7 +219,8 @@ budget_monthly = st.sidebar.number_input("Monthly COGS Budget Cap ($; 0 = none)"
 def validate_assumptions(
     p_start_month, p_horizon, p_peak_m, p_dau, p_start_paid_subs, p_growth, p_churn,
     p_paid_dau_factor, p_new_conv, p_base_conv, p_arpu, p_front_mix, p_cache_rate,
-    p_batch_share, p_ai_elig, p_cloud_elig, p_overhead, p_fee_pct
+    p_batch_share, p_ai_elig, p_cloud_elig, p_overhead, p_fee_pct,
+    p_in_tok, p_out_tok, p_base_infra, p_step_cost, p_vec_cost, p_ai_cred, p_cloud_cred
 ):
     """Reject invalid inputs before forecasting."""
     if not 1 <= p_start_month <= 12:
@@ -240,8 +241,8 @@ def validate_assumptions(
         raise ValueError("Mix, caching, and batch share ratios must be between 0% and 100%.")
     if not (0 <= p_ai_elig <= 1 and 0 <= p_cloud_elig <= 1 and 0 <= p_overhead <= 1 and 0 <= p_fee_pct <= 1):
         raise ValueError("Credit eligibility, overhead, and fee percentages must be between 0% and 100%.")
-    if p_arpu < 0:
-        raise ValueError("ARPU cannot be negative.")
+    if p_arpu < 0 or p_in_tok < 0 or p_out_tok < 0 or p_base_infra < 0 or p_step_cost < 0 or p_vec_cost < 0 or p_ai_cred < 0 or p_cloud_cred < 0:
+        raise ValueError("Token counts, prices, costs, ARPU, and credits cannot be negative.")
 
 @st.cache_data(show_spinner=False)
 def run_model_simulation(
@@ -257,7 +258,8 @@ def run_model_simulation(
     validate_assumptions(
         p_start_month, p_horizon, p_peak_m, p_dau, p_start_paid_subs, p_growth, p_churn,
         p_paid_dau_factor, p_new_conv, p_base_conv, p_arpu, p_front_mix, p_cache_rate,
-        p_batch_share, p_ai_elig, p_cloud_elig, p_overhead, p_fee_pct
+        p_batch_share, p_ai_elig, p_cloud_elig, p_overhead, p_fee_pct,
+        p_in_tok, p_out_tok, p_base_infra, p_step_cost, p_vec_cost, p_ai_cred, p_cloud_cred
     )
     n = int(p_horizon)
 
@@ -296,9 +298,15 @@ def run_model_simulation(
         total_new_conversions = new_user_conv_subs + free_base_conv_subs
         churned_subs = beg_paid_subs * p_churn
         
-        # Ending paid subs bounded by total DAU
+        # Priority 1: Flag when subscriber bridge exceeds DAU instead of silent capping
         raw_ending_subs = beg_paid_subs + total_new_conversions - churned_subs
-        ending_paid_subs = max(0.0, min(raw_ending_subs, dau_val))
+        if raw_ending_subs > dau_val + 1e-6:
+            raise ValueError(
+                f"Paid subscriber forecast ({raw_ending_subs:,.0f}) "
+                f"exceeds DAU ({dau_val:,.0f}) in month {month_names[i]}. "
+                "Review conversion assumptions and user-population definitions."
+            )
+        ending_paid_subs = max(0.0, raw_ending_subs)
         prev_end_subs = ending_paid_subs
 
         avg_active_paid_subs = (beg_paid_subs + ending_paid_subs) / 2.0
@@ -380,7 +388,7 @@ def run_model_simulation(
             "Churned Subscribers": round(churned_subs),
             "Ending Paid Subscribers": round(ending_paid_subs),
             "Avg Active Paid Subs": round(avg_active_paid_subs, 1),
-            "Free Users": round(free_users_snapshot),
+            "Ending Free User Proxy": round(free_users_snapshot),
             "Monthly Prompts": monthly_prompts_total,
             "Ending MRR Run-Rate ($)": ending_mrr_runrate,
             "Recognized Revenue ($)": recognized_revenue,
@@ -468,16 +476,20 @@ else:
 
 c_m1_api = df.loc[0, "API Cost / 1,000 Prompts ($)"]
 c_last_api = df.loc[len(df) - 1, "API Cost / 1,000 Prompts ($)"]
+
+# Priority 5: API efficiency KPI formatting when baseline is zero or unavailable
 if pd.notna(c_m1_api) and pd.notna(c_last_api) and c_m1_api > 0:
     prompt_api_cost_delta = (c_last_api - c_m1_api) / c_m1_api * 100
+    api_delta_str = f"{prompt_api_cost_delta:+.1f}% M1 to M{forecast_horizon}"
 else:
-    prompt_api_cost_delta = 0.0
+    api_delta_str = "Change unavailable: baseline is zero or n/a"
+
 api_kpi_str = f"${c_last_api:.4f} / 1k" if pd.notna(c_last_api) else "n/a"
 
 c1, c2, c3, c4 = st.columns(4)
 c1.metric(f"1. Ending ARR Run-Rate (M{forecast_horizon})", f"${last_arr:,.0f} ARR", f"Recognized Horizon Rev: ${annual_revenue:,.0f}")
 c2.metric(f"2. Gross Margin (M{forecast_horizon})", margin_kpi_str, margin_sub_str)
-c3.metric("3. Pure API Efficiency", api_kpi_str, f"{prompt_api_cost_delta:+.1f}% M1 to M{forecast_horizon}")
+c3.metric("3. Pure API Efficiency", api_kpi_str, api_delta_str)
 c4.metric("4. Credit Depletion Horizon", f"AI: {ai_dep_str}", f"Cloud: {cloud_dep_str}")
 
 bullets = []
@@ -596,13 +608,14 @@ with tab3:
     st.subheader("Multi-Variable Scenario Matrix (Full Reforecast)")
     st.caption("Full 8-scenario matrix comparing revenue, COGS, gross margin, unit telemetry, and out-of-pocket cash payable against Base Case.")
 
+    # Priority 3: Scenario 6 labeled accurately as Token Volume Reduction (-25%)
     scenarios_config = [
         ("1. Base Case", monthly_growth, monthly_churn, new_user_conversion, free_base_conversion, 1.0, 1.0, frontier_mix, cache_hit_rate),
         ("2. Downside: Growth Slowdown (-50%)", monthly_growth * 0.5, monthly_churn, new_user_conversion, free_base_conversion, 1.0, 1.0, frontier_mix, cache_hit_rate),
         ("3. Downside: High Subscriber Churn (2x)", monthly_growth, monthly_churn * 2.0, new_user_conversion, free_base_conversion, 1.0, 1.0, frontier_mix, cache_hit_rate),
         ("4. Downside: Double Whammy (Low Conv + High Churn)", monthly_growth * 0.5, monthly_churn * 2.0, new_user_conversion * 0.5, free_base_conversion * 0.5, 1.0, 1.0, frontier_mix, cache_hit_rate),
         ("5. Cost Pressure: Context Expansion (+25% Tokens)", monthly_growth, monthly_churn, new_user_conversion, free_base_conversion, 1.25, 1.0, frontier_mix, cache_hit_rate),
-        ("6. Efficiency: Token Reduction (-25% Tokens)", monthly_growth, monthly_churn, new_user_conversion, free_base_conversion, 0.75, 1.0, frontier_mix, cache_hit_rate),
+        ("6. Efficiency: Token Volume Reduction (-25%)", monthly_growth, monthly_churn, new_user_conversion, free_base_conversion, 0.75, 1.0, frontier_mix, cache_hit_rate),
         ("7. Efficiency: Routing & Caching Optimization", monthly_growth, monthly_churn, new_user_conversion, free_base_conversion, 1.0, 1.0, min(frontier_mix, 0.20), min(0.90, cache_hit_rate * 1.5)),
         ("8. Market Shift: Vendor Rate Cut (-25% Price)", monthly_growth, monthly_churn, new_user_conversion, free_base_conversion, 1.0, 0.75, frontier_mix, cache_hit_rate),
     ]
@@ -684,7 +697,7 @@ with tab4:
             "Churned Subscribers": "{:,.0f}",
             "Ending Paid Subscribers": "{:,.0f}",
             "Avg Active Paid Subs": "{:,.1f}",
-            "Free Users": "{:,.0f}",
+            "Ending Free User Proxy": "{:,.0f}",
             "Monthly Prompts": "{:,.0f}",
             "Ending MRR Run-Rate ($)": "${:,.0f}",
             "Recognized Revenue ($)": "${:,.0f}",
@@ -720,10 +733,18 @@ with tab5:
     today_str = datetime.date.today().strftime("%Y-%m-%d")
     start_period_str = pd.Period(freq='M', year=int(start_year), month=int(start_month)).strftime("%b %Y")
 
+    # Priority 4: Correct step threshold unit display in assumptions register
+    if step_trigger_type == "DAU Threshold":
+        step_threshold_display = f"{step_threshold_input:,.0f} users"
+    elif step_trigger_type == "Paid Subscribers Threshold":
+        step_threshold_display = f"{step_threshold_input:,.0f} subs"
+    else:
+        step_threshold_display = f"{step_threshold_input:,.0f}M prompts"
+
     assumptions_data = [
         {"Parameter": "1. Forecast Horizon & Start", "Current Value": f"{start_period_str} ({forecast_horizon} Months)", "Unit / Scale": "Calendar Period", "Primary Source / Evidence Required": "FP&A Planning Horizon Config", "Verification Status": "User Estimate — Dynamic Calendar Roll-Forward", "Owner": "Finance", "Last Updated": today_str},
         {"Parameter": "2. Starting DAU & Paid Subs", "Current Value": f"{starting_dau:,} DAU / {starting_paid_subs:,} Subs", "Unit / Scale": "Active Accounts", "Primary Source / Evidence Required": "Mixpanel & Stripe Billing Baseline", "Verification Status": "User Estimate — Pending Actuals Upload", "Owner": "Growth / Finance", "Last Updated": today_str},
-        {"Parameter": "3. Monthly DAU Growth", "Current Value": f"{monthly_growth*100:.1f}%", "Unit / Scale": "% MoM Growth", "Primary Source / Evidence Required": "Acquisition Model (Net DAU Proxy)", "Verification Status": "Management Estimate", "Owner": "Marketing", "Last Updated": today_str},
+        {"Parameter": "3. Monthly DAU Growth", "Current Value": f"{monthly_growth*100:.1f}%", "Unit / Scale": "% MoM Growth", "Primary Source / Evidence Required": "Acquisition Model (Simplified Net DAU Proxy)", "Verification Status": "Management Estimate", "Owner": "Marketing", "Last Updated": today_str},
         {"Parameter": "4. Paid Subscriber Daily Activity", "Current Value": f"{paid_dau_factor*100:.0f}%", "Unit / Scale": "% of paid subscribers", "Primary Source / Evidence Required": "Product analytics / daily activity cohort data", "Verification Status": "Management Estimate — replace with observed paid DAU", "Owner": "Product / Finance", "Last Updated": today_str},
         {"Parameter": "5. New User Day-1 Conversion", "Current Value": f"{new_user_conversion*100:.1f}%", "Unit / Scale": "% Day-1 Signup", "Primary Source / Evidence Required": "Stripe Checkout Day-1 Upgrade Analytics", "Verification Status": "Illustrative Baseline — Source Required (applies M2+)", "Owner": "Growth", "Last Updated": today_str},
         {"Parameter": "6. Free Base PLG Conversion", "Current Value": f"{free_base_conversion*100:.1f}%", "Unit / Scale": "% Free Pool / Mo", "Primary Source / Evidence Required": "In-App Product Funnel Telemetry", "Verification Status": "Illustrative Baseline — Source Required", "Owner": "Product", "Last Updated": today_str},
@@ -737,7 +758,7 @@ with tab5:
         {"Parameter": "14. Prompt Caching Rules", "Current Value": f"{cache_hit_rate*100:.0f}% hit / {cache_price_ratio*100:.0f}% cost", "Unit / Scale": "% Hit / % Cost", "Primary Source / Evidence Required": "LLM Gateway Caching Logs", "Verification Status": "Telemetry Estimate", "Owner": "Engineering", "Last Updated": today_str},
         {"Parameter": "15. Async Batch Routing", "Current Value": f"{batch_share*100:.0f}% traffic / {batch_price_ratio*100:.0f}% cost", "Unit / Scale": "% Async Share", "Primary Source / Evidence Required": "Batch API Route Telemetry", "Verification Status": "Management Estimate", "Owner": "Engineering", "Last Updated": today_str},
         {"Parameter": "16. Base Fixed Infra Spend", "Current Value": f"${base_fixed_infra:,.0f}/mo", "Unit / Scale": "$ / Month", "Primary Source / Evidence Required": "AWS / GCP Monthly Invoices", "Verification Status": "Covers Tier 1 Base Capacity (Block 1)", "Owner": "DevOps", "Last Updated": today_str},
-        {"Parameter": "17. Infra Step-Up Trigger", "Current Value": f"${step_cost_increment:,.0f} per {step_threshold_input:,.0f} {step_trigger_type}", "Unit / Scale": "$ / Capacity Block", "Primary Source / Evidence Required": "DevOps Infrastructure Capacity Plan", "Verification Status": "Triggers on excess capacity beyond Block 1", "Owner": "Engineering", "Last Updated": today_str},
+        {"Parameter": "17. Infra Step-Up Trigger", "Current Value": f"${step_cost_increment:,.0f} per {step_threshold_display}", "Unit / Scale": "$ / Capacity Block", "Primary Source / Evidence Required": "DevOps Infrastructure Capacity Plan", "Verification Status": "Triggers on excess capacity beyond Block 1", "Owner": "Engineering", "Last Updated": today_str},
         {"Parameter": "18. Vector DB Unit Cost", "Current Value": f"${vector_cost_per_user:.2f} / DAU / mo", "Unit / Scale": "$ / DAU / Month", "Primary Source / Evidence Required": "Pinecone / Qdrant Invoice Rate", "Verification Status": "Simplified Storage + Query Driver (scaled on avg DAU)", "Owner": "DevOps", "Last Updated": today_str},
         {"Parameter": "19. Starting Credit Balances", "Current Value": f"${starting_ai_credits:,.0f} AI / ${starting_cloud_credits:,.0f} Cloud", "Unit / Scale": "$ Total Grant", "Primary Source / Evidence Required": "AWS Activate & OpenAI Portal Grants", "Verification Status": "User Estimate — Pending Grant Terms", "Owner": "Finance", "Last Updated": today_str},
         {"Parameter": "20. Inference Overhead & Fees", "Current Value": f"{overhead_pct*100:.0f}% overhead / {payment_fee_pct*100:.1f}% fee", "Unit / Scale": "% Uplift / % Rev", "Primary Source / Evidence Required": "Gateway Logs & Stripe/App Store Schedule", "Verification Status": "Management Estimate", "Owner": "Engineering / Finance", "Last Updated": today_str},
