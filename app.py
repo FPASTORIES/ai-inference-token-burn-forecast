@@ -113,8 +113,8 @@ new_user_conversion = st.sidebar.slider(
 ) / 100
 
 free_base_conversion = st.sidebar.slider(
-    "Free Base Conversion (%)", 0.0, 10.0, 2.0, 0.1,
-    help="% of existing accumulated free user pool who convert to paid each month."
+    "Free-User Proxy Conversion (%)", 0.0, 10.0, 2.0, 0.1,
+    help="% of active free-user proxy pool converting to paid each month."
 ) / 100
 
 monthly_churn = st.sidebar.slider(
@@ -220,7 +220,8 @@ def validate_assumptions(
     p_start_month, p_horizon, p_peak_m, p_dau, p_start_paid_subs, p_growth, p_churn,
     p_paid_dau_factor, p_new_conv, p_base_conv, p_arpu, p_front_mix, p_cache_rate,
     p_batch_share, p_ai_elig, p_cloud_elig, p_overhead, p_fee_pct,
-    p_in_tok, p_out_tok, p_base_infra, p_step_cost, p_vec_cost, p_ai_cred, p_cloud_cred
+    p_in_tok, p_out_tok, p_base_infra, p_step_cost, p_vec_cost, p_ai_cred, p_cloud_cred,
+    p_cache_ratio, p_batch_price_ratio, p_step_thresh_raw
 ):
     """Reject invalid inputs before forecasting."""
     if not 1 <= p_start_month <= 12:
@@ -239,10 +240,12 @@ def validate_assumptions(
         raise ValueError("Rates, conversion factors, and churn must be between 0% and 100%.")
     if not (0 <= p_front_mix <= 1 and 0 <= p_cache_rate <= 1 and 0 <= p_batch_share <= 1):
         raise ValueError("Mix, caching, and batch share ratios must be between 0% and 100%.")
+    if not (0 <= p_cache_ratio <= 1 and 0 <= p_batch_price_ratio <= 1):
+        raise ValueError("Cache price ratio and batch price ratio must be between 0% and 100%.")
     if not (0 <= p_ai_elig <= 1 and 0 <= p_cloud_elig <= 1 and 0 <= p_overhead <= 1 and 0 <= p_fee_pct <= 1):
         raise ValueError("Credit eligibility, overhead, and fee percentages must be between 0% and 100%.")
-    if p_arpu < 0 or p_in_tok < 0 or p_out_tok < 0 or p_base_infra < 0 or p_step_cost < 0 or p_vec_cost < 0 or p_ai_cred < 0 or p_cloud_cred < 0:
-        raise ValueError("Token counts, prices, costs, ARPU, and credits cannot be negative.")
+    if p_arpu < 0 or p_in_tok < 0 or p_out_tok < 0 or p_base_infra < 0 or p_step_cost < 0 or p_vec_cost < 0 or p_ai_cred < 0 or p_cloud_cred < 0 or p_step_thresh_raw < 0:
+        raise ValueError("Token counts, prices, costs, ARPU, credits, and thresholds cannot be negative.")
 
 @st.cache_data(show_spinner=False)
 def run_model_simulation(
@@ -251,7 +254,7 @@ def run_model_simulation(
     p_base_prompts, p_peak_prompts, p_peak_m, p_surge_w, p_free_mult,
     p_in_tok, p_out_tok, p_in_grow, p_out_grow, p_front_mix,
     p_f_in_p, p_f_out_p, p_s_in_p, p_s_out_p, p_cache_rate, p_cache_ratio,
-    p_batch_share, p_batch_ratio, p_base_infra, p_step_type, p_step_thresh_raw,
+    p_batch_share, p_batch_price_ratio, p_base_infra, p_step_type, p_step_thresh_raw,
     p_step_cost, p_vec_cost, p_ai_cred, p_cloud_cred, p_ai_elig, p_cloud_elig,
     p_overhead, p_fee_pct
 ):
@@ -259,7 +262,8 @@ def run_model_simulation(
         p_start_month, p_horizon, p_peak_m, p_dau, p_start_paid_subs, p_growth, p_churn,
         p_paid_dau_factor, p_new_conv, p_base_conv, p_arpu, p_front_mix, p_cache_rate,
         p_batch_share, p_ai_elig, p_cloud_elig, p_overhead, p_fee_pct,
-        p_in_tok, p_out_tok, p_base_infra, p_step_cost, p_vec_cost, p_ai_cred, p_cloud_cred
+        p_in_tok, p_out_tok, p_base_infra, p_step_cost, p_vec_cost, p_ai_cred, p_cloud_cred,
+        p_cache_ratio, p_batch_price_ratio, p_step_thresh_raw
     )
     n = int(p_horizon)
 
@@ -298,7 +302,7 @@ def run_model_simulation(
         total_new_conversions = new_user_conv_subs + free_base_conv_subs
         churned_subs = beg_paid_subs * p_churn
         
-        # Priority 1: Flag when subscriber bridge exceeds DAU instead of silent capping
+        # Priority 1: Flag when subscriber bridge exceeds DAU explicitly
         raw_ending_subs = beg_paid_subs + total_new_conversions - churned_subs
         if raw_ending_subs > dau_val + 1e-6:
             raise ValueError(
@@ -477,7 +481,6 @@ else:
 c_m1_api = df.loc[0, "API Cost / 1,000 Prompts ($)"]
 c_last_api = df.loc[len(df) - 1, "API Cost / 1,000 Prompts ($)"]
 
-# Priority 5: API efficiency KPI formatting when baseline is zero or unavailable
 if pd.notna(c_m1_api) and pd.notna(c_last_api) and c_m1_api > 0:
     prompt_api_cost_delta = (c_last_api - c_m1_api) / c_m1_api * 100
     api_delta_str = f"{prompt_api_cost_delta:+.1f}% M1 to M{forecast_horizon}"
@@ -488,7 +491,7 @@ api_kpi_str = f"${c_last_api:.4f} / 1k" if pd.notna(c_last_api) else "n/a"
 
 c1, c2, c3, c4 = st.columns(4)
 c1.metric(f"1. Ending ARR Run-Rate (M{forecast_horizon})", f"${last_arr:,.0f} ARR", f"Recognized Horizon Rev: ${annual_revenue:,.0f}")
-c2.metric(f"2. Gross Margin (M{forecast_horizon})", margin_kpi_str, margin_sub_str)
+c2.metric(f"2. Gross Margin (Before Credits)", margin_kpi_str, margin_sub_str)
 c3.metric("3. Pure API Efficiency", api_kpi_str, api_delta_str)
 c4.metric("4. Credit Depletion Horizon", f"AI: {ai_dep_str}", f"Cloud: {cloud_dep_str}")
 
@@ -540,12 +543,12 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
 ])
 
 with tab1:
-    st.subheader(f"Forecast Recognized Revenue, Modeled COGS & Gross Margin ({forecast_horizon}-Month)")
+    st.subheader(f"Forecast Recognized Revenue, Modeled COGS & Gross Margin — Before Credits ({forecast_horizon}-Month)")
 
     fig = make_subplots(specs=[[{"secondary_y": True}]])
     fig.add_trace(go.Bar(x=df["Month"], y=df["Recognized Revenue ($)"], name="Recognized Revenue ($)", marker_color="#3182ce"), secondary_y=False)
     fig.add_trace(go.Scatter(x=df["Month"], y=df["Total Modeled COGS ($)"], name="Direct COGS ($)", mode="lines+markers", line=dict(color="#e53e3e", width=3)), secondary_y=False)
-    fig.add_trace(go.Scatter(x=df["Month"], y=df["Modeled Gross Margin (%)"], name="Gross Margin (%)", mode="lines+markers", line=dict(color="#27965a", width=3, dash="dash")), secondary_y=True)
+    fig.add_trace(go.Scatter(x=df["Month"], y=df["Modeled Gross Margin (%)"], name="Gross Margin (%) — Before Credits", mode="lines+markers", line=dict(color="#27965a", width=3, dash="dash")), secondary_y=True)
 
     fig.add_trace(go.Scatter(
         x=df["Month"], y=[margin_target]*len(df), name=f"Target Margin ({margin_target}%)",
@@ -563,9 +566,9 @@ with tab1:
         min_m, max_m = float(valid_margins.min()), float(valid_margins.max())
         y_min = min(-50.0, min_m - 10.0)
         y_max = max(100.0, max_m + 10.0)
-        fig.update_yaxes(title_text="Gross Margin (%)", secondary_y=True, range=[y_min, y_max], gridcolor="#edf2f7")
+        fig.update_yaxes(title_text="Gross Margin (%) — Before Credits", secondary_y=True, range=[y_min, y_max], gridcolor="#edf2f7")
     else:
-        fig.update_yaxes(title_text="Gross Margin (%)", secondary_y=True, range=[-100, 100], gridcolor="#edf2f7")
+        fig.update_yaxes(title_text="Gross Margin (%) — Before Credits", secondary_y=True, range=[-100, 100], gridcolor="#edf2f7")
 
     st.plotly_chart(fig, use_container_width=True)
 
@@ -608,7 +611,6 @@ with tab3:
     st.subheader("Multi-Variable Scenario Matrix (Full Reforecast)")
     st.caption("Full 8-scenario matrix comparing revenue, COGS, gross margin, unit telemetry, and out-of-pocket cash payable against Base Case.")
 
-    # Priority 3: Scenario 6 labeled accurately as Token Volume Reduction (-25%)
     scenarios_config = [
         ("1. Base Case", monthly_growth, monthly_churn, new_user_conversion, free_base_conversion, 1.0, 1.0, frontier_mix, cache_hit_rate),
         ("2. Downside: Growth Slowdown (-50%)", monthly_growth * 0.5, monthly_churn, new_user_conversion, free_base_conversion, 1.0, 1.0, frontier_mix, cache_hit_rate),
@@ -640,33 +642,46 @@ with tab3:
                 float(starting_ai_credits), float(starting_cloud_credits), float(ai_credit_eligible_share), float(cloud_credit_eligible_share),
                 float(overhead_pct), float(payment_fee_pct)
             )
-        except ValueError:
-            continue
+            s_rev = s_df["Recognized Revenue ($)"].sum()
+            s_cogs = s_df["Total Modeled COGS ($)"].sum()
+            s_gp = s_rev - s_cogs
+            s_gm = (s_gp / s_rev * 100) if s_rev > 0 else np.nan
+            s_cash = s_df["Estimated Cash Payable ($)"].sum()
 
-        s_rev = s_df["Recognized Revenue ($)"].sum()
-        s_cogs = s_df["Total Modeled COGS ($)"].sum()
-        s_gp = s_rev - s_cogs
-        s_gm = (s_gp / s_rev * 100) if s_rev > 0 else np.nan
-        s_cash = s_df["Estimated Cash Payable ($)"].sum()
+            last_idx = len(s_df) - 1
+            s_last_api_cost_1k = s_df.loc[last_idx, "API Cost ($)"] / s_df.loc[last_idx, "Monthly Prompts"] * 1000 if s_df.loc[last_idx, "Monthly Prompts"] > 0 else np.nan
+            s_last_cogs_sub = s_df.loc[last_idx, "Total Modeled COGS ($)"] / s_df.loc[last_idx, "Ending Paid Subscribers"] if s_df.loc[last_idx, "Ending Paid Subscribers"] > 0 else np.nan
 
-        last_idx = len(s_df) - 1
-        s_last_api_cost_1k = s_df.loc[last_idx, "API Cost ($)"] / s_df.loc[last_idx, "Monthly Prompts"] * 1000 if s_df.loc[last_idx, "Monthly Prompts"] > 0 else np.nan
-        s_last_cogs_sub = s_df.loc[last_idx, "Total Modeled COGS ($)"] / s_df.loc[last_idx, "Ending Paid Subscribers"] if s_df.loc[last_idx, "Ending Paid Subscribers"] > 0 else np.nan
-
-        scen_results.append({
-            "Scenario": label,
-            "Recognized Revenue ($)": s_rev,
-            "Δ Revenue vs Base ($)": s_rev - base_rev,
-            "Total COGS ($)": s_cogs,
-            "Δ COGS vs Base ($)": s_cogs - base_cogs,
-            "Gross Profit ($)": s_gp,
-            "Gross Margin (%)": s_gm,
-            "Δ Margin (pp)": (s_gm - base_gm) if (not pd.isna(s_gm) and not pd.isna(base_gm)) else np.nan,
-            "Final API Cost / 1k ($)": s_last_api_cost_1k,
-            "Final COGS / Sub ($)": s_last_cogs_sub,
-            "Cash Payable ($)": s_cash,
-            "Δ Cash Payable ($)": s_cash - base_cash,
-        })
+            scen_results.append({
+                "Scenario": label,
+                "Recognized Revenue ($)": s_rev,
+                "Δ Revenue vs Base ($)": s_rev - base_rev,
+                "Total COGS ($)": s_cogs,
+                "Δ COGS vs Base ($)": s_cogs - base_cogs,
+                "Gross Profit ($)": s_gp,
+                "Gross Margin (%)": s_gm,
+                "Δ Margin (pp)": (s_gm - base_gm) if (not pd.isna(s_gm) and not pd.isna(base_gm)) else np.nan,
+                "Final API Cost / 1k ($)": s_last_api_cost_1k,
+                "Final COGS / Sub ($)": s_last_cogs_sub,
+                "Cash Payable ($)": s_cash,
+                "Δ Cash Payable ($)": s_cash - base_cash,
+            })
+        except ValueError as e:
+            # Priority 4: Make scenario omissions/errors visible in the table
+            scen_results.append({
+                "Scenario": f"{label} [Error: {str(e)}]",
+                "Recognized Revenue ($)": np.nan,
+                "Δ Revenue vs Base ($)": np.nan,
+                "Total COGS ($)": np.nan,
+                "Δ COGS vs Base ($)": np.nan,
+                "Gross Profit ($)": np.nan,
+                "Gross Margin (%)": np.nan,
+                "Δ Margin (pp)": np.nan,
+                "Final API Cost / 1k ($)": np.nan,
+                "Final COGS / Sub ($)": np.nan,
+                "Cash Payable ($)": np.nan,
+                "Δ Cash Payable ($)": np.nan,
+            })
 
     scen_df = pd.DataFrame(scen_results)
     st.dataframe(
@@ -733,7 +748,6 @@ with tab5:
     today_str = datetime.date.today().strftime("%Y-%m-%d")
     start_period_str = pd.Period(freq='M', year=int(start_year), month=int(start_month)).strftime("%b %Y")
 
-    # Priority 4: Correct step threshold unit display in assumptions register
     if step_trigger_type == "DAU Threshold":
         step_threshold_display = f"{step_threshold_input:,.0f} users"
     elif step_trigger_type == "Paid Subscribers Threshold":
@@ -747,7 +761,7 @@ with tab5:
         {"Parameter": "3. Monthly DAU Growth", "Current Value": f"{monthly_growth*100:.1f}%", "Unit / Scale": "% MoM Growth", "Primary Source / Evidence Required": "Acquisition Model (Simplified Net DAU Proxy)", "Verification Status": "Management Estimate", "Owner": "Marketing", "Last Updated": today_str},
         {"Parameter": "4. Paid Subscriber Daily Activity", "Current Value": f"{paid_dau_factor*100:.0f}%", "Unit / Scale": "% of paid subscribers", "Primary Source / Evidence Required": "Product analytics / daily activity cohort data", "Verification Status": "Management Estimate — replace with observed paid DAU", "Owner": "Product / Finance", "Last Updated": today_str},
         {"Parameter": "5. New User Day-1 Conversion", "Current Value": f"{new_user_conversion*100:.1f}%", "Unit / Scale": "% Day-1 Signup", "Primary Source / Evidence Required": "Stripe Checkout Day-1 Upgrade Analytics", "Verification Status": "Illustrative Baseline — Source Required (applies M2+)", "Owner": "Growth", "Last Updated": today_str},
-        {"Parameter": "6. Free Base PLG Conversion", "Current Value": f"{free_base_conversion*100:.1f}%", "Unit / Scale": "% Free Pool / Mo", "Primary Source / Evidence Required": "In-App Product Funnel Telemetry", "Verification Status": "Illustrative Baseline — Source Required", "Owner": "Product", "Last Updated": today_str},
+        {"Parameter": "6. Free-User Proxy Conversion", "Current Value": f"{free_base_conversion*100:.1f}%", "Unit / Scale": "% Active Free Pool / Mo", "Primary Source / Evidence Required": "In-App Product Funnel Telemetry", "Verification Status": "DAU-based Active Proxy Conversion (prev_dau - beg_paid_subs)", "Owner": "Product", "Last Updated": today_str},
         {"Parameter": "7. Paid Subscriber Churn", "Current Value": f"{monthly_churn*100:.1f}%", "Unit / Scale": "% Monthly Churn", "Primary Source / Evidence Required": "Stripe Billing Dashboard", "Verification Status": "User Estimate", "Owner": "Finance", "Last Updated": today_str},
         {"Parameter": "8. Monthly ARPU", "Current Value": f"${arpu:,.2f}", "Unit / Scale": "$ / Paid Sub / Mo", "Primary Source / Evidence Required": "Subscription Plan Tier Card", "Verification Status": "User Estimate — Public Tier Assumption", "Owner": "Finance", "Last Updated": today_str},
         {"Parameter": "9. Daily Prompts (Paid / Free)", "Current Value": f"{baseline_prompts} / {baseline_prompts*free_user_usage_mult:.1f}", "Unit / Scale": "Prompts / Day", "Primary Source / Evidence Required": "Helicone / Langfuse API Logging", "Verification Status": "Telemetry Estimate", "Owner": "Engineering", "Last Updated": today_str},
