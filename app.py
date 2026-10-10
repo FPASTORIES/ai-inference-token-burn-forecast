@@ -302,7 +302,6 @@ def run_model_simulation(
         total_new_conversions = new_user_conv_subs + free_base_conv_subs
         churned_subs = beg_paid_subs * p_churn
         
-        # Priority 1: Flag when subscriber bridge exceeds DAU explicitly
         raw_ending_subs = beg_paid_subs + total_new_conversions - churned_subs
         if raw_ending_subs > dau_val + 1e-6:
             raise ValueError(
@@ -316,7 +315,6 @@ def run_model_simulation(
         avg_active_paid_subs = (beg_paid_subs + ending_paid_subs) / 2.0
         avg_dau = (prev_dau_val + dau_val) / 2.0
         
-        # Separated population usage model
         paid_dau = avg_active_paid_subs * p_paid_dau_factor
         free_dau_avg = max(0.0, avg_dau - paid_dau)
         free_users_snapshot = max(0.0, dau_val - ending_paid_subs)
@@ -344,7 +342,7 @@ def run_model_simulation(
         standard_output_cost = raw_output_m * p_s_out_p * std_mix
 
         api_before_batch = frontier_input_cost + standard_input_cost + frontier_output_cost + standard_output_cost
-        api_cost = api_before_batch * ((1 - p_batch_share) + p_batch_share * p_batch_ratio) * (1 + p_overhead)
+        api_cost = api_before_batch * ((1 - p_batch_share) + p_batch_share * p_batch_price_ratio) * (1 + p_overhead)
 
         vector_cost = avg_dau * p_vec_cost
 
@@ -413,7 +411,6 @@ def run_model_simulation(
 
     sim_df = pd.DataFrame(sim_rows)
 
-    # Reconciliation Assertions
     if not sim_df.empty:
         assert np.allclose(
             sim_df["Total Modeled COGS ($)"],
@@ -431,7 +428,6 @@ def run_model_simulation(
 
     return sim_df
 
-# Safely run simulation with exception catching
 try:
     df = run_model_simulation(
         start_year, start_month, forecast_horizon, starting_dau, starting_paid_subs, monthly_growth, paid_dau_factor,
@@ -667,7 +663,6 @@ with tab3:
                 "Δ Cash Payable ($)": s_cash - base_cash,
             })
         except ValueError as e:
-            # Priority 4: Make scenario omissions/errors visible in the table
             scen_results.append({
                 "Scenario": f"{label} [Error: {str(e)}]",
                 "Recognized Revenue ($)": np.nan,
