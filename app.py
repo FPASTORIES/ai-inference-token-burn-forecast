@@ -1,8 +1,8 @@
 """
-AI Inference, Credit Depletion & FP&A Planning Model (Streamlit)
-----------------------------------------------------------------
-Institutional-grade financial model for forecasting AI unit economics, 
-credit burn velocity, infrastructure step-costs, and multi-scenario analysis.
+AI Inference, Credit Depletion & Contract Pricing Deal Desk Model
+-----------------------------------------------------------------
+Institutional-grade FP&A planning model for evaluating direct AI model inference,
+vector storage, multi-tier contract pricing, Pareto skew, and credit burn velocity.
 """
 
 import datetime
@@ -15,7 +15,7 @@ from plotly.subplots import make_subplots
 import streamlit as st
 
 st.set_page_config(
-    page_title="AI Inference & Credit Burn FP&A Model",
+    page_title="AI Inference Deal Desk & Unit Economics Model",
     page_icon="⚡",
     layout="wide"
 )
@@ -66,8 +66,8 @@ div[data-testid="stMetric"] div[data-testid="stMetricValue"] {font-size:1.15rem 
 # Compact Header Banner
 st.markdown("""
 <div class="compact-header">
-    <h1>⚡ AI Inference, Credit Burn & Unit Economics Planning Model</h1>
-    <p>Driver-based FP&A simulation engine tracking direct AI COGS, multi-tier subscriptions, credit burn velocity, and audit governance.</p>
+    <h1>⚡ AI Deal Desk & Unit Economics Simulator</h1>
+    <p>Proactive contract pricing, multi-tier subscriber bridge, multi-peak usage waves, Pareto skew, and credit depletion.</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -90,15 +90,21 @@ forecast_horizon = st.sidebar.slider(
     help="Total number of forward-looking months to simulate (up to 36 months)."
 )
 
-st.sidebar.header("1. Subscriber & Usage Funnel")
+st.sidebar.header("1. Multi-Tier Subscriber Funnel")
 starting_dau = st.sidebar.number_input(
     "Starting Daily Active Users (DAU)", min_value=0, value=5000, step=500,
     help="Initial active user count at Month 1 across free and paid tiers."
 )
-starting_paid_subs = st.sidebar.number_input(
-    "Starting Paid Subscribers", min_value=0, value=250, step=50,
-    help="Initial paid subscriber count at Month 1."
+starting_pro_subs = st.sidebar.number_input(
+    "Starting Pro Subscribers ($30/mo)", min_value=0, value=200, step=50,
+    help="Initial subscriber count for standard Pro tier."
 )
+starting_ent_subs = st.sidebar.number_input(
+    "Starting Enterprise Subscribers ($250/mo)", min_value=0, value=50, step=10,
+    help="Initial subscriber count for high-value Enterprise custom contract tier."
+)
+starting_paid_subs = starting_pro_subs + starting_ent_subs
+
 monthly_growth = st.sidebar.slider(
     "Monthly DAU Growth (%)", 0.0, 25.0, 8.0, 0.5,
     help="Assumed MoM growth for top-of-funnel acquisition proxy."
@@ -124,10 +130,15 @@ monthly_churn = st.sidebar.slider(
     help="Percentage of paid subscribers cancelling their subscription each month."
 ) / 100
 
-arpu = st.sidebar.number_input(
-    "Average Revenue Per User (ARPU) ($)", min_value=0.0, value=30.0, step=5.0,
-    help="Average monthly subscription revenue per paid subscriber."
+arpu_pro = st.sidebar.number_input(
+    "Pro Tier Monthly ARPU ($)", min_value=0.0, value=30.0, step=5.0,
+    help="Average Base Revenue Per User per month for Pro subscribers."
 )
+arpu_ent = st.sidebar.number_input(
+    "Enterprise Tier Monthly ARPU ($)", min_value=0.0, value=250.0, step=25.0,
+    help="Average Base Revenue Per User per month for Enterprise custom contracts."
+)
+
 expansion_arpu_pct = st.sidebar.slider(
     "Expansion / Overage Revenue (% of ARPU)", 0.0, 50.0, 10.0, 1.0,
     help="Incremental revenue from token overages and credit top-ups as a % of base ARPU."
@@ -138,23 +149,28 @@ payment_fee_pct = st.sidebar.slider(
     help="Card processor transaction fees recognized directly in COGS."
 ) / 100
 
-st.sidebar.header("2. Usage & Token Economics")
+st.sidebar.header("2. Multi-Peak Usage & Pareto Skew Engine")
 baseline_prompts = st.sidebar.slider(
     "Baseline Prompts / Paid User / Day", 1, 20, 5,
     help="Average daily prompt volume for paid users during normal activity."
 )
-peak_prompts = st.sidebar.slider(
-    "Peak Prompts / Paid User / Day", 5, 100, 35,
-    help="Maximum prompt intensity during seasonal usage spikes."
-)
-peak_month = st.sidebar.slider(
-    "Peak Usage Forecast Month", 1, forecast_horizon, min(7, forecast_horizon),
-    help="Calendar month within the forecast horizon where peak usage occurs."
-)
-peak_spread = st.sidebar.slider(
-    "Peak Usage Spread (Months)", 0.5, 6.0, 2.0, 0.5,
-    help="Standard deviation parameter ($\sigma$) controlling the duration width of the usage wave."
-)
+
+# Multi-Peak Configuration Toggles
+st.sidebar.markdown("**Peak 1 (Spring / Launch)**")
+peak_prompts_1 = st.sidebar.slider("Peak 1 Volume", 1, 100, 35, help="Peak prompts/user/day for Peak 1.")
+peak_month_1 = st.sidebar.slider("Peak 1 Month", 1, forecast_horizon, min(3, forecast_horizon), help="Month of Peak 1.")
+surge_width_1 = st.sidebar.slider("Peak 1 Spread ($\sigma$)", 0.5, 4.0, 1.5, 0.5, help="Duration spread for Peak 1.")
+
+st.sidebar.markdown("**Peak 2 (Fall / Holiday Rush)**")
+peak_prompts_2 = st.sidebar.slider("Peak 2 Volume", 1, 100, 45, help="Peak prompts/user/day for Peak 2.")
+peak_month_2 = st.sidebar.slider("Peak 2 Month", 1, forecast_horizon, min(11, forecast_horizon), help="Month of Peak 2.")
+surge_width_2 = st.sidebar.slider("Peak 2 Spread ($\sigma$)", 0.5, 4.0, 2.0, 0.5, help="Duration spread for Peak 2.")
+
+pareto_skew_share = st.sidebar.slider(
+    "Power-User Token Skew Share (%)", 50, 95, 80, 5,
+    help="Pareto principle assumption: percentage of total token volume consumed by the top 20% power-user cohort."
+) / 100
+
 free_user_usage_mult = st.sidebar.slider(
     "Free Tier Usage Multiplier (%)", 0, 100, 50,
     help="Usage volume of free tier users relative to paid users."
@@ -183,23 +199,20 @@ frontier_mix = st.sidebar.slider(
     help="Percentage of API traffic routed to premium frontier models (e.g., GPT-4o, Claude 3.5 Sonnet)."
 ) / 100
 
-frontier_input_price = st.sidebar.number_input("Frontier Input Price ($ / 1M)", min_value=0.0, value=2.50, step=0.25, help="List price per 1M input tokens for frontier models.")
-frontier_output_price = st.sidebar.number_input("Frontier Output Price ($ / 1M)", min_value=0.0, value=10.00, step=0.50, help="List price per 1M output tokens for frontier models.")
-standard_input_price = st.sidebar.number_input("Standard Input Price ($ / 1M)", min_value=0.0, value=0.15, step=0.05, format="%.4f", help="List price per 1M input tokens for standard models.")
-standard_output_price = st.sidebar.number_input("Standard Output Price ($ / 1M)", min_value=0.0, value=0.60, step=0.05, format="%.4f", help="List price per 1M output tokens for standard models.")
+frontier_input_price = st.sidebar.number_input("Frontier Input Price ($ / 1M)", min_value=0.0, value=2.50, step=0.25)
+frontier_output_price = st.sidebar.number_input("Frontier Output Price ($ / 1M)", min_value=0.0, value=10.00, step=0.50)
+standard_input_price = st.sidebar.number_input("Standard Input Price ($ / 1M)", min_value=0.0, value=0.15, step=0.05, format="%.4f")
+standard_output_price = st.sidebar.number_input("Standard Output Price ($ / 1M)", min_value=0.0, value=0.60, step=0.05, format="%.4f")
 
-cache_hit_rate = st.sidebar.slider("Eligible Input Tokens Cached (%)", 0, 90, 40, help="Percentage of input tokens hitting prompt caching mechanisms.") / 100
-cache_price_ratio = st.sidebar.slider("Cached Price Ratio (% of regular)", 0, 100, 20, help="Discounted price ratio for cached tokens.") / 100
-batch_share = st.sidebar.slider("Traffic Using Batch Pricing (%)", 0, 80, 20, help="Percentage of asynchronous traffic routed via batch endpoints.") / 100
-batch_price_ratio = st.sidebar.slider("Batch Price Ratio (% of regular)", 0, 100, 50, help="Discount ratio for batch processing APIs.") / 100
-overhead_pct = st.sidebar.slider("Inference Overhead (%)", 0, 100, 0, help="Buffer for retries, embedding calls, and multi-agent loops.") / 100
+cache_hit_rate = st.sidebar.slider("Eligible Input Tokens Cached (%)", 0, 90, 40) / 100
+cache_price_ratio = st.sidebar.slider("Cached Price Ratio (% of regular)", 0, 100, 20) / 100
+batch_share = st.sidebar.slider("Traffic Using Batch Pricing (%)", 0, 80, 20) / 100
+batch_price_ratio = st.sidebar.slider("Batch Price Ratio (% of regular)", 0, 100, 50) / 100
+overhead_pct = st.sidebar.slider("Inference Overhead (%)", 0, 100, 0) / 100
 
 st.sidebar.header("4. Infrastructure Step-Costs & Credits")
-base_fixed_infra = st.sidebar.number_input("Base Fixed Monthly Infra ($)", min_value=0.0, value=2500.0, step=500.0, help="Baseline hosting, database, and orchestration server costs.")
-step_trigger_type = st.sidebar.selectbox(
-    "Step-Cost Trigger Basis", ["DAU Threshold", "Paid Subscribers Threshold", "Monthly Prompts (Millions)"],
-    help="Operational scaling metric that triggers infrastructure capacity step-ups."
-)
+base_fixed_infra = st.sidebar.number_input("Base Fixed Monthly Infra ($)", min_value=0.0, value=2500.0, step=500.0)
+step_trigger_type = st.sidebar.selectbox("Step-Cost Trigger Basis", ["DAU Threshold", "Paid Subscribers Threshold", "Monthly Prompts (Millions)"])
 
 if step_trigger_type == "DAU Threshold":
     step_threshold_input = st.sidebar.number_input("DAU Capacity Block (Users)", min_value=1000, value=20000, step=5000)
@@ -211,14 +224,14 @@ else:
     step_threshold_input = st.sidebar.number_input("Monthly Prompt Block (Millions)", min_value=1, value=20, step=5)
     raw_step_threshold = float(step_threshold_input * 1_000_000)
 
-step_cost_increment = st.sidebar.number_input("Infra Step-Up Cost ($ per block)", min_value=0.0, value=1500.0, step=250.0, help="Incremental monthly infrastructure cost when crossing capacity thresholds.")
-vector_cost_per_user = st.sidebar.number_input("Vector DB Cost / DAU / Month ($)", min_value=0.0, value=0.15, step=0.05, help="Pinecone / pgvector embedding storage & retrieval cost per active user.")
-starting_ai_credits = st.sidebar.number_input("Starting AI Vendor Credits ($)", min_value=0.0, value=20000.0, step=2500.0, help="Unearned promotional credits from LLM providers (OpenAI/Anthropic).")
-starting_cloud_credits = st.sidebar.number_input("Starting Cloud Hosting Credits ($)", min_value=0.0, value=30000.0, step=5000.0, help="Unearned cloud startup credits (AWS Activate / Google for Startups).")
-ai_credit_eligible_share = st.sidebar.slider("AI Credit Eligible Share (%)", 0, 100, 100, help="Share of API costs eligible for drawdown against AI vendor credits.") / 100
-cloud_credit_eligible_share = st.sidebar.slider("Cloud Credit Eligible Share (%)", 0, 100, 100, help="Share of infrastructure costs eligible for cloud credit drawdown.") / 100
-margin_target = st.sidebar.slider("Target Gross Margin (%)", 0, 90, 60, help="Corporate gross margin hurdle rate.")
-budget_monthly = st.sidebar.number_input("Monthly COGS Budget Cap ($; 0 = none)", min_value=0.0, value=0.0, step=1000.0, help="Hard monthly spending cap for cost governance alert triggers.")
+step_cost_increment = st.sidebar.number_input("Infra Step-Up Cost ($ per block)", min_value=0.0, value=1500.0, step=250.0)
+vector_cost_per_user = st.sidebar.number_input("Vector DB Cost / DAU / Month ($)", min_value=0.0, value=0.15, step=0.05)
+starting_ai_credits = st.sidebar.number_input("Starting AI Vendor Credits ($)", min_value=0.0, value=20000.0, step=2500.0)
+starting_cloud_credits = st.sidebar.number_input("Starting Cloud Hosting Credits ($)", min_value=0.0, value=30000.0, step=5000.0)
+ai_credit_eligible_share = st.sidebar.slider("AI Credit Eligible Share (%)", 0, 100, 100) / 100
+cloud_credit_eligible_share = st.sidebar.slider("Cloud Credit Eligible Share (%)", 0, 100, 100) / 100
+margin_target = st.sidebar.slider("Target Gross Margin (%)", 0, 90, 60)
+budget_monthly = st.sidebar.number_input("Monthly COGS Budget Cap ($; 0 = none)", min_value=0.0, value=0.0, step=1000.0)
 
 
 # ==========================================
@@ -226,9 +239,9 @@ budget_monthly = st.sidebar.number_input("Monthly COGS Budget Cap ($; 0 = none)"
 # ==========================================
 @st.cache_data(show_spinner=False)
 def run_model_simulation(
-    p_start_year, p_start_month, p_horizon, p_dau, p_paid_subs, p_growth, p_paid_dau_factor,
-    p_new_conv, p_base_conv, p_churn, p_arpu, p_expansion_pct,
-    p_base_prompts, p_peak_prompts, p_peak_m, p_peak_spread, p_free_mult,
+    p_start_year, p_start_month, p_horizon, p_dau, p_pro_subs, p_ent_subs, p_growth, p_paid_dau_factor,
+    p_new_conv, p_base_conv, p_churn, p_arpu_pro, p_arpu_ent, p_expansion_pct,
+    p_base_prompts, p_p1_vol, p_p1_m, p_s1_w, p_p2_vol, p_p2_m, p_s2_w, p_free_mult,
     p_in_tok, p_out_tok, p_in_grow, p_out_grow, p_front_mix,
     p_f_in_p, p_f_out_p, p_s_in_p, p_s_out_p, p_cache_rate, p_cache_ratio,
     p_batch_share, p_batch_price_ratio, p_base_infra, p_step_type, p_step_thresh_raw,
@@ -241,42 +254,58 @@ def run_model_simulation(
     month_days = [d.days_in_month for d in dates]
     m_indices = np.arange(1, n + 1)
 
-    # Gaussian Usage Wave Curve
-    prompt_curve = p_base_prompts + (p_peak_prompts - p_base_prompts) * np.exp(-((m_indices - p_peak_m) ** 2) / (2 * p_peak_spread ** 2))
+    # Multi-Peak Additive Wave Engine (Spring & Fall Surges)
+    curve_1 = (p_p1_vol - p_base_prompts) * np.exp(-((m_indices - p_p1_m) ** 2) / (2 * p_s1_w ** 2))
+    curve_2 = (p_p2_vol - p_base_prompts) * np.exp(-((m_indices - p_p2_m) ** 2) / (2 * p_s2_w ** 2))
+    prompt_curve = p_base_prompts + curve_1 + curve_2
 
     ai_credits_left = float(p_ai_cred)
     cloud_credits_left = float(p_cloud_cred)
 
     current_dau = float(p_dau)
-    prev_paid_subs = float(p_paid_subs)
+    prev_pro_subs = float(p_pro_subs)
+    prev_ent_subs = float(p_ent_subs)
 
     sim_rows = []
 
     for i in range(n):
-        beg_paid = prev_paid_subs
+        beg_pro = prev_pro_subs
+        beg_ent = prev_ent_subs
+        beg_paid_subs = beg_pro + beg_ent
 
         if i == 0:
             dau_val = current_dau
             new_users_acquired = 0.0
-            free_base = max(0.0, dau_val - beg_paid)
+            free_base = max(0.0, dau_val - beg_paid_subs)
             prev_dau_val = current_dau
         else:
             prev_dau_val = current_dau
             current_dau = prev_dau_val * (1 + p_growth)
             dau_val = current_dau
             new_users_acquired = dau_val - prev_dau_val
-            free_base = max(0.0, prev_dau_val - beg_paid)
+            free_base = max(0.0, prev_dau_val - beg_paid_subs)
 
-        new_paid_conversions = (new_users_acquired * p_new_conv) + (free_base * p_base_conv)
-        churned_paid = beg_paid * p_churn
-        ending_paid = max(0.0, beg_paid + new_paid_conversions - churned_paid)
-        prev_paid_subs = ending_paid
+        total_new_conversions = (new_users_acquired * p_new_conv) + (free_base * p_base_conv)
+        new_pro_conv = total_new_conversions * 0.80
+        new_ent_conv = total_new_conversions * 0.20
 
-        avg_paid_subs = (beg_paid + ending_paid) / 2.0
+        churned_pro = beg_pro * p_churn
+        churned_ent = beg_ent * (p_churn * 0.5)
+
+        ending_pro = max(0.0, beg_pro + new_pro_conv - churned_pro)
+        ending_ent = max(0.0, beg_ent + new_ent_conv - churned_ent)
+        ending_paid_subs = ending_pro + ending_ent
+
+        prev_pro_subs = ending_pro
+        prev_ent_subs = ending_ent
+
+        avg_pro = (beg_pro + ending_pro) / 2.0
+        avg_ent = (beg_ent + ending_ent) / 2.0
         avg_dau = (prev_dau_val + dau_val) / 2.0
-        paid_dau = avg_paid_subs * p_paid_dau_factor
+        
+        paid_dau = (avg_pro + avg_ent) * p_paid_dau_factor
         free_dau_avg = max(0.0, avg_dau - paid_dau)
-        free_users_snapshot = max(0.0, dau_val - ending_paid)
+        free_users_snapshot = max(0.0, dau_val - ending_paid_subs)
 
         input_tokens_val = p_in_tok * ((1 + p_in_grow) ** i)
         output_tokens_val = p_out_tok * ((1 + p_out_grow) ** i)
@@ -308,17 +337,19 @@ def run_model_simulation(
         if p_step_type == "DAU Threshold":
             trigger_metric = dau_val
         elif p_step_type == "Paid Subscribers Threshold":
-            trigger_metric = ending_paid
+            trigger_metric = ending_paid_subs
         else:
             trigger_metric = monthly_prompts_total
 
         step_multiplier = max(0, math.ceil(trigger_metric / p_step_thresh_raw) - 1) if p_step_thresh_raw > 0 and trigger_metric > p_step_thresh_raw else 0
         infrastructure_cost = p_base_infra + (step_multiplier * p_step_cost)
 
-        base_revenue = avg_paid_subs * p_arpu
+        base_rev_pro = avg_pro * p_arpu_pro
+        base_rev_ent = avg_ent * p_arpu_ent
+        base_revenue = base_rev_pro + base_rev_ent
         expansion_revenue = base_revenue * p_expansion_pct
         recognized_revenue = base_revenue + expansion_revenue
-        ending_mrr_runrate = ending_paid * p_arpu * (1 + p_expansion_pct)
+        ending_mrr_runrate = (ending_pro * p_arpu_pro + ending_ent * p_arpu_ent) * (1 + p_expansion_pct)
         payment_fees = recognized_revenue * p_fee_pct
 
         total_modeled_cogs = api_cost + vector_cost + infrastructure_cost + payment_fees
@@ -339,8 +370,9 @@ def run_model_simulation(
         sim_rows.append({
             "Month": month_names[i],
             "DAU": round(dau_val),
-            "Free Users": round(free_users_snapshot),
-            "Paid Subscribers": round(ending_paid),
+            "Ending Pro Subs": round(ending_pro),
+            "Ending Ent Subs": round(ending_ent),
+            "Ending Paid Subscribers": round(ending_paid_subs),
             "Monthly Prompts": monthly_prompts_total,
             "Ending MRR Run-Rate ($)": ending_mrr_runrate,
             "Recognized Revenue ($)": recognized_revenue,
@@ -360,9 +392,9 @@ def run_model_simulation(
 
 try:
     df = run_model_simulation(
-        start_year, start_month, forecast_horizon, starting_dau, starting_paid_subs, monthly_growth, paid_dau_factor,
-        new_user_conversion, free_base_conversion, monthly_churn, arpu, expansion_arpu_pct,
-        baseline_prompts, peak_prompts, peak_month, peak_spread, free_user_usage_mult,
+        start_year, start_month, forecast_horizon, starting_dau, starting_pro_subs, starting_ent_subs, monthly_growth, paid_dau_factor,
+        new_user_conversion, free_base_conversion, monthly_churn, arpu_pro, arpu_ent, expansion_arpu_pct,
+        baseline_prompts, peak_prompts_1, peak_month_1, surge_width_1, peak_prompts_2, peak_month_2, surge_width_2, free_user_usage_mult,
         input_tokens_start, output_tokens_start, input_growth, output_growth, frontier_mix,
         frontier_input_price, frontier_output_price, standard_input_price, standard_output_price,
         cache_hit_rate, cache_price_ratio, batch_share, batch_price_ratio, base_fixed_infra,
@@ -376,7 +408,7 @@ except ValueError as e:
 
 
 # ==========================================
-# 3. EXECUTIVE BRIEFING BANNER & METRICS
+# 3. REVERSE-MARGIN SOLVER & CFO BRIEFING
 # ==========================================
 m_last = df.iloc[-1]
 last_arr = m_last['Ending MRR Run-Rate ($)'] * 12
@@ -386,29 +418,35 @@ annual_gp = annual_rev - annual_cogs
 annual_gm = (annual_gp / annual_rev * 100) if annual_rev > 0 else 0.0
 last_margin = m_last["Modeled Gross Margin (%)"]
 
+# Reverse-Margin Solver calculation for Pro tier ($30 ARPU)
+blended_token_cost_m1 = (df.loc[0, "API Cost ($)"] / df.loc[0, "Monthly Prompts"]) if df.loc[0, "Monthly Prompts"] > 0 else 0.00001
+pro_arpu_total = arpu_pro * (1 + expansion_arpu_pct)
+allowable_cogs_60pct = pro_arpu_total * (1 - 0.60)
+max_prompts_60 = (allowable_cogs_60pct / (blended_token_cost_m1 * 1000)) * 1000 if blended_token_cost_m1 > 0 else 0
+
 c1, c2, c3, c4 = st.columns(4)
 c1.metric(f"Ending ARR Run-Rate (M{forecast_horizon})", f"${last_arr:,.0f} ARR", f"Recognized Rev: ${annual_rev:,.0f}")
 c2.metric("Full-Year Gross Margin", f"{annual_gm:.1f}%", f"Target: {margin_target}%")
-c3.metric(f"Ending Margin (M{forecast_horizon})", f"{last_margin:.1f}%", f"Peak Month: M{peak_month}")
-c4.metric("Ending Cash Burn / Payable", f"${m_last['Estimated Cash Payable ($)']:,.0f}", f"AI Credits Left: ${m_last['Remaining AI Credits ($)']:,.0f}")
+c3.metric("Reverse-Margin Limit (60%)", f"{max_prompts_60:,.0f} Prompts/Mo", "Max Pro Tier Usage Ceiling")
+c4.metric("Pareto Skew Concentration", f"{pareto_skew_share*100:.0f}% Top 20%", "Heavy User Load Factor")
 
-# CFO Commentary & Governance Alerts
-cfo_recs = []
+# Policy & Governance Advisory Recommendations
+policy_recs = []
 if last_margin < margin_target:
-    cfo_recs.append(f"<b>Margin Compression Alert:</b> Ending gross margin ({last_margin:.1f}%) is below the {margin_target}% hurdle rate due to token volume scaling in Month {peak_month}. Recommend tightening prompt caching or negotiating volume tiers.")
+    policy_recs.append(f"<b>Deal Desk Advisory:</b> Pro tier margin ({last_margin:.1f}%) breaches target ({margin_target}%). <b>Action:</b> Implement automated prompt rerouting to Standard models for power users exceeding 500 prompts/month.")
 else:
-    cfo_recs.append(f"<b>Margin Health:</b> Gross margin remains strong at {last_margin:.1f}%, comfortably clearing the {margin_target}% target.")
+    policy_recs.append(f"<b>Deal Desk Status:</b> Gross margin remains robust at {last_margin:.1f}%, comfortably meeting the {margin_target}% hurdle rate.")
 
 if m_last["Remaining AI Credits ($)"] <= 0:
-    cfo_recs.append("<b>Credit Depletion Warning:</b> AI vendor credits are fully exhausted before horizon end. Out-of-pocket cash payable for API COGS escalates immediately.")
+    policy_recs.append("<b>Credit Depletion Warning:</b> AI vendor credits are fully exhausted before horizon end. Out-of-pocket cash payable for API COGS escalates immediately.")
 else:
-    cfo_recs.append(f"<b>Credit Runway:</b> ${m_last['Remaining AI Credits ($)']:,.0f} in AI vendor credits remain at horizon end.")
+    policy_recs.append(f"<b>Credit Runway:</b> ${m_last['Remaining AI Credits ($)']:,.0f} in AI vendor credits remain at horizon end.")
 
 st.markdown(f"""
 <div class="cfo-commentary">
-    <h4>💡 CFO Executive Briefing & Governance Insights</h4>
+    <h4>💡 Deal Desk & Contract Pricing Governance Briefing</h4>
     <ul>
-        {"".join([f"<li>{rec}</li>" for rec in cfo_recs])}
+        {"".join([f"<li>{rec}</li>" for rec in policy_recs])}
     </ul>
 </div>
 """, unsafe_allow_html=True)
@@ -426,7 +464,7 @@ tab1, tab2, tab3, tab4, tab5 = st.tabs([
 ])
 
 with tab1:
-    st.subheader("Forecast Recognized Revenue, COGS & Gross Margin")
+    st.subheader("Forecast Recognized Revenue, COGS & Gross Margin (Multi-Tier)")
     fig = make_subplots(specs=[[{"secondary_y": True}]])
     fig.add_trace(go.Bar(x=df["Month"], y=df["Recognized Revenue ($)"], name="Recognized Revenue ($)", marker_color="#3182ce"), secondary_y=False)
     fig.add_trace(go.Scatter(x=df["Month"], y=df["Total Modeled COGS ($)"], name="Direct COGS ($)", mode="lines+markers", line=dict(color="#e53e3e", width=3)), secondary_y=False)
@@ -455,14 +493,14 @@ with tab2:
 with tab3:
     st.subheader("Monthly Roll-Forward Detail Table")
     st.dataframe(df.style.format({
-        "DAU": "{:,.0f}", "Free Users": "{:,.0f}", "Paid Subscribers": "{:,.0f}",
-        "Monthly Prompts": "{:,.0f}", "Ending MRR Run-Rate ($)": "${:,.0f}",
-        "Recognized Revenue ($)": "${:,.0f}", "API Cost ($)": "${:,.0f}",
-        "Vector DB Cost ($)": "${:,.0f}", "Fixed Infrastructure ($)": "${:,.0f}",
-        "Payment Processing ($)": "${:,.0f}", "Total Modeled COGS ($)": "${:,.0f}",
-        "Modeled Gross Profit ($)": "${:,.0f}", "Modeled Gross Margin (%)": "{:.1f}%",
-        "Remaining AI Credits ($)": "${:,.0f}", "Remaining Cloud Credits ($)": "${:,.0f}",
-        "Estimated Cash Payable ($)": "${:,.0f}"
+        "DAU": "{:,.0f}", "Ending Pro Subs": "{:,.0f}", "Ending Ent Subs": "{:,.0f}",
+        "Ending Paid Subscribers": "{:,.0f}", "Monthly Prompts": "{:,.0f}",
+        "Ending MRR Run-Rate ($)": "${:,.0f}", "Recognized Revenue ($)": "${:,.0f}",
+        "API Cost ($)": "${:,.0f}", "Vector DB Cost ($)": "${:,.0f}",
+        "Fixed Infrastructure ($)": "${:,.0f}", "Payment Processing ($)": "${:,.0f}",
+        "Total Modeled COGS ($)": "${:,.0f}", "Modeled Gross Profit ($)": "${:,.0f}",
+        "Modeled Gross Margin (%)": "{:.1f}%", "Remaining AI Credits ($)": "${:,.0f}",
+        "Remaining Cloud Credits ($)": "${:,.0f}", "Estimated Cash Payable ($)": "${:,.0f}"
     }, na_rep="—"), use_container_width=True)
 
 with tab4:
@@ -471,9 +509,11 @@ with tab4:
 
     def run_scenario(name, g_mult, prompt_mult, price_mult):
         scen_df = run_model_simulation(
-            start_year, start_month, forecast_horizon, starting_dau, starting_paid_subs, monthly_growth * g_mult, paid_dau_factor,
-            new_user_conversion, free_base_conversion, monthly_churn, arpu, expansion_arpu_pct,
-            baseline_prompts * prompt_mult, peak_prompts * prompt_mult, peak_month, peak_spread, free_user_usage_mult,
+            start_year, start_month, forecast_horizon, starting_dau, starting_pro_subs, starting_ent_subs,
+            monthly_growth * g_mult, paid_dau_factor, new_user_conversion, free_base_conversion, monthly_churn,
+            arpu_pro, arpu_ent, expansion_arpu_pct,
+            baseline_prompts * prompt_mult, peak_prompts_1 * prompt_mult, peak_month_1, surge_width_1,
+            peak_prompts_2 * prompt_mult, peak_month_2, surge_width_2, free_user_usage_mult,
             input_tokens_start, output_tokens_start, input_growth, output_growth, frontier_mix,
             frontier_input_price * price_mult, frontier_output_price * price_mult,
             standard_input_price * price_mult, standard_output_price * price_mult,
@@ -521,17 +561,21 @@ with tab5:
 
     audit_data = [
         ("Starting Daily Active Users (DAU)", f"{starting_dau:,.0f}", "Mixpanel / Segment Event Pipeline", "Management Baseline Estimate"),
-        ("Starting Paid Subscribers", f"{starting_paid_subs:,.0f}", "Stripe Billing Subscriptions Table", "Actual Active Recurring Billing Records"),
+        ("Starting Pro Subscribers ($30/mo)", f"{starting_pro_subs:,.0f}", "Stripe Billing Subscriptions Table", "Actual Active Pro Subscriptions"),
+        ("Starting Enterprise Subscribers ($250/mo)", f"{starting_ent_subs:,.0f}", "Stripe Billing Subscriptions Table", "Actual Active Enterprise Contracts"),
         ("Monthly DAU Growth Rate", f"{monthly_growth*100:.1f}% MoM", "Marketing Acquisition Model", "Management Growth Target"),
-        ("Paid DAU Activity Factor", f"{paid_dau_factor*100:.0f}%", "Mixpanel Daily Active Engagement Ratio", "Product Telemetry Benchmark"),
+        ("Paid DAU Activity Factor", f"{paid_dau_factor*100:.1f}%", "Mixpanel Daily Active Engagement Ratio", "Product Telemetry Benchmark"),
         ("New User Conversion Rate", f"{new_user_conversion*100:.1f}%", "Stripe Checkout & Funnel Analytics", "Illustrative Baseline — Source Required (applies M2+)"),
         ("Free-User Proxy Conversion Rate", f"{free_base_conversion*100:.1f}% MoM", "Product-Led Growth Funnel Report", "Estimated Conversion Benchmark"),
         ("Monthly Paid Subscriber Churn", f"{monthly_churn*100:.1f}% MoM", "Stripe Churn & Retention Analytics", "Historical Cohort Average"),
-        ("Average Revenue Per User (ARPU)", f"${arpu:.2f} / mo", "Stripe Pricing Plan Definitions", "Contracted Plan Pricing"),
+        ("Pro Tier Monthly ARPU", f"${arpu_pro:.2f} / mo", "Stripe Pricing Plan Definitions", "Standard Self-Serve Plan"),
+        ("Enterprise Tier Monthly ARPU", f"${arpu_ent:.2f} / mo", "Stripe Contract Agreements", "Custom Enterprise Tier"),
         ("Expansion / Overage Revenue", f"{expansion_arpu_pct*100:.1f}% of ARPU", "Stripe Metered Billing Invoices", "Usage-Based Overage Proxy"),
         ("Payment Processing Fee", f"{payment_fee_pct*100:.1f}%", "Stripe Merchant Statement", "Standard Gateway Fee Schedule"),
         ("Baseline Prompts / User / Day", f"{baseline_prompts}", "Helicone / Langfuse API Telemetry", "Observed Mean Daily Prompt Volume"),
-        ("Peak Prompts / User / Day", f"{peak_prompts}", "Capacity Planning Stress Model", "Seasonal Peak Assumption"),
+        ("Peak 1 Prompts / User / Day", f"{peak_prompts_1} (Month {peak_month_1})", "Capacity Planning Stress Model", "Spring Seasonal Peak Assumption"),
+        ("Peak 2 Prompts / User / Day", f"{peak_prompts_2} (Month {peak_month_2})", "Capacity Planning Stress Model", "Fall Seasonal Peak Assumption"),
+        ("Pareto Power-User Skew Share", f"{pareto_skew_share*100:.1f}%", "LLM Gateway Distribution Logs", "Top 20% User Concentration Factor"),
         ("Frontier Model Traffic Share", f"{frontier_mix*100:.1f}%", "LLM Gateway Router Logs", "Routing Policy Configuration"),
         ("Frontier Input Token Price", f"${frontier_input_price:.2f} / 1M", "OpenAI / Anthropic Developer Pricing", "Official Published List Price"),
         ("Frontier Output Token Price", f"${frontier_output_price:.2f} / 1M", "OpenAI / Anthropic Developer Pricing", "Official Published List Price"),
@@ -546,4 +590,4 @@ with tab5:
     st.dataframe(audit_df, use_container_width=True, hide_index=True)
 
 st.markdown("---")
-st.caption("© 2026. Institutional AI Inference & Credit Burn FP&A Model. All rights reserved.")
+st.caption("© 2026. Institutional AI Deal Desk & Contract Pricing Simulator. All rights reserved.")
