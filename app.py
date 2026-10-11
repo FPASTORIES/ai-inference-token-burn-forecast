@@ -20,46 +20,77 @@ st.set_page_config(
     layout="wide"
 )
 
-# Custom Soft Neutral Styling & Compact Elements
+# Custom Soft Neutral Styling & Ultra-Compact Sidebar Elements
 st.markdown("""
 <style>
 .stApp {background:#fcfbf9;color:#2d3748;font-family:'Inter', sans-serif;}
 section[data-testid="stSidebar"] {background:#f5f2ed !important; border-right: 1px solid #e2d9d0;}
 
+/* Tighten Sidebar Element Spacing */
+section[data-testid="stSidebar"] div.stBlock {gap: 0.35rem !important;}
+section[data-testid="stSidebar"] div[data-testid="stVerticalBlock"] > div {
+    margin-bottom: -0.15rem !important;
+    padding-top: 0rem !important;
+}
+
+/* Compact Sidebar Headers */
+section[data-testid="stSidebar"] h2, section[data-testid="stSidebar"] h3 {
+    font-size: 0.95rem !important;
+    margin-top: 6px !important;
+    margin-bottom: 2px !important;
+    padding-bottom: 0px !important;
+    font-weight: 700 !important;
+}
+
+/* Compact Widget Labels & Padding */
+section[data-testid="stSidebar"] label {
+    font-size: 0.78rem !important;
+    margin-bottom: 1px !important;
+    color: #4a5568 !important;
+}
+section[data-testid="stSidebar"] div[data-baseweb="input"] {
+    padding-top: 2px !important;
+    padding-bottom: 2px !important;
+}
+section[data-testid="stSidebar"] hr {
+    margin-top: 6px !important;
+    margin-bottom: 6px !important;
+}
+
 /* Compact Metric Cards */
 div[data-testid="stMetric"] {
     background:#fff;
     border:1px solid #e2d9d0;
-    padding:8px 12px !important;
+    padding:6px 10px !important;
     border-radius:6px;
     box-shadow: 0 1px 2px rgba(0,0,0,0.02);
 }
-div[data-testid="stMetric"] label {font-size:0.78rem !important; color:#615a52 !important;}
-div[data-testid="stMetric"] div[data-testid="stMetricValue"] {font-size:1.15rem !important; font-weight:700;}
+div[data-testid="stMetric"] label {font-size:0.75rem !important; color:#615a52 !important;}
+div[data-testid="stMetric"] div[data-testid="stMetricValue"] {font-size:1.1rem !important; font-weight:700;}
 
 /* Compact Header Banner */
 .compact-header {
     background: linear-gradient(135deg,#f5f0eb,#ebe5df);
-    padding: 10px 16px;
-    border-radius: 8px;
+    padding: 8px 14px;
+    border-radius: 6px;
     border: 1px solid #e2d9d0;
-    margin-bottom: 10px;
+    margin-bottom: 8px;
 }
-.compact-header h1 {color:#2d3748; margin:0 0 2px 0; font-size:1.3rem; font-weight:700;}
-.compact-header p {color:#615a52; margin:0; font-size:0.82rem;}
+.compact-header h1 {color:#2d3748; margin:0 0 2px 0; font-size:1.25rem; font-weight:700;}
+.compact-header p {color:#615a52; margin:0; font-size:0.8rem;}
 
 /* CFO Commentary Box */
 .cfo-commentary {
     background: #ffffff;
     border: 1px solid #cbd5e0;
     border-left: 4px solid #3182ce;
-    padding: 12px 16px;
+    padding: 10px 14px;
     border-radius: 6px;
-    margin-bottom: 14px;
+    margin-bottom: 12px;
 }
-.cfo-commentary h4 {margin:0 0 6px 0; font-size:0.95rem; color:#2b6cb0; font-weight:700;}
-.cfo-commentary ul {margin:0; padding-left:18px; font-size:0.85rem; color:#4a5568;}
-.cfo-commentary li {margin-bottom:3px;}
+.cfo-commentary h4 {margin:0 0 4px 0; font-size:0.9rem; color:#2b6cb0; font-weight:700;}
+.cfo-commentary ul {margin:0; padding-left:16px; font-size:0.82rem; color:#4a5568;}
+.cfo-commentary li {margin-bottom:2px;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -92,7 +123,6 @@ starting_pro_subs = st.sidebar.number_input("Starting Pro Subscribers ($30/mo)",
 starting_ent_subs = st.sidebar.number_input("Starting Enterprise Subscribers ($250/mo)", min_value=0, value=50, step=10)
 starting_paid_subs = starting_pro_subs + starting_ent_subs
 
-# Split Growth Inputs for Pro vs Enterprise
 pro_monthly_growth = st.sidebar.slider("Pro Tier Monthly Growth (%)", 0.0, 25.0, 8.0, 0.5) / 100
 ent_monthly_growth = st.sidebar.slider("Enterprise Tier Monthly Growth (%)", 0.0, 25.0, 5.0, 0.5) / 100
 baseline_prompts = st.sidebar.slider("Baseline Prompts / Paid User / Day", 1, 20, 5)
@@ -609,23 +639,18 @@ with tab6:
         st.markdown("#### 2. Quantitative Pricing Archetype Comparison Engine")
         st.markdown("Simulating annual revenue, gross margin, and churn risk across standard Metronome/Stripe billing architectures:")
 
-        # Dynamic calculation based on total forecast prompts & costs
         total_forecast_prompts = df["Monthly Prompts"].sum()
         blended_cogs = annual_cogs
 
-        # 1. Pay-as-you-go: Charge per 1k prompts ($0.008/prompt proxy)
         payg_rev = total_forecast_prompts * 0.008
         payg_gm = ((payg_rev - blended_cogs) / payg_rev * 100) if payg_rev > 0 else 0
 
-        # 2. Sub + Allowance (Flat ARPU, capped)
         sub_allow_rev = annual_rev * 0.90
         sub_allow_gm = ((sub_allow_rev - blended_cogs) / sub_allow_rev * 100) if sub_allow_rev > 0 else 0
 
-        # 3. Hybrid (Sub + Overage)
         hybrid_rev = annual_rev
         hybrid_gm = annual_gm
 
-        # 4. Credit Burndown / Replenishing (Prepaid packages)
         credit_rev = annual_rev * 1.05
         credit_gm = ((credit_rev - blended_cogs) / credit_rev * 100) if credit_rev > 0 else 0
 
