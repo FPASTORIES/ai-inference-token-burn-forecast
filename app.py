@@ -250,7 +250,6 @@ def run_model_simulation(
             prev_dau_val = current_dau
         else:
             prev_dau_val = current_dau
-            # Scale DAU growth using blended pro/ent growth weight or aggregate proxy
             current_dau = prev_dau_val * (1 + ((p_pro_growth + p_ent_growth) / 2))
             dau_val = current_dau
             new_users_acquired = dau_val - prev_dau_val
@@ -266,7 +265,6 @@ def run_model_simulation(
         churned_pro = beg_pro * p_churn
         churned_ent = beg_ent * (p_churn * 0.5)
 
-        # Apply independent tier growth factors to ending calculations
         ending_pro = max(0.0, (beg_pro * (1 + p_pro_growth)) + new_pro_conv - churned_pro)
         ending_ent = max(0.0, (beg_ent * (1 + p_ent_growth)) + new_ent_conv - churned_ent)
         ending_paid_subs = ending_pro + ending_ent
@@ -608,14 +606,38 @@ with tab6:
         """)
 
     with col_v2:
-        st.markdown("#### 2. Hybrid & Pricing Model Architectures")
-        st.markdown("""
-        Compare how different Stripe / Metronome billing models impact your revenue capture and risk:
-        * **Pay-as-you-go:** Zero barriers to entry, but highly volatile revenue forecasting.
-        * **Subscription with Allowance:** High predictable MRR, but can trigger churn if usage limits are too restrictive.
-        * **Subscription & Overage (Hybrid):** Combines predictable base MRR ($30/mo) with metered overage charges to protect margins during usage spikes.
-        * **Credit Burndown / Replenishing:** Prepaid packages (e.g., Clay / Perplexity style) locking in cash upfront.
-        """)
+        st.markdown("#### 2. Quantitative Pricing Archetype Comparison Engine")
+        st.markdown("Simulating annual revenue, gross margin, and churn risk across standard Metronome/Stripe billing architectures:")
+
+        # Dynamic calculation based on total forecast prompts & costs
+        total_forecast_prompts = df["Monthly Prompts"].sum()
+        blended_cogs = annual_cogs
+
+        # 1. Pay-as-you-go: Charge per 1k prompts ($0.008/prompt proxy)
+        payg_rev = total_forecast_prompts * 0.008
+        payg_gm = ((payg_rev - blended_cogs) / payg_rev * 100) if payg_rev > 0 else 0
+
+        # 2. Sub + Allowance (Flat ARPU, capped)
+        sub_allow_rev = annual_rev * 0.90
+        sub_allow_gm = ((sub_allow_rev - blended_cogs) / sub_allow_rev * 100) if sub_allow_rev > 0 else 0
+
+        # 3. Hybrid (Sub + Overage)
+        hybrid_rev = annual_rev
+        hybrid_gm = annual_gm
+
+        # 4. Credit Burndown / Replenishing (Prepaid packages)
+        credit_rev = annual_rev * 1.05
+        credit_gm = ((credit_rev - blended_cogs) / credit_rev * 100) if credit_rev > 0 else 0
+
+        archetype_data = [
+            {"Pricing Archetype": "1. Pay-as-you-go", "Est. Full-Year Revenue": f"${payg_rev:,.0f}", "Gross Margin (%)": f"{payg_gm:.1f}%", "Revenue Predictability": "Low (Usage Dependent)", "Churn / Barrier Risk": "Very Low (No Commitment)"},
+            {"Pricing Archetype": "2. Sub + Usage Allowance", "Est. Full-Year Revenue": f"${sub_allow_rev:,.0f}", "Gross Margin (%)": f"{sub_allow_gm:.1f}%", "Revenue Predictability": "High (Fixed MRR)", "Churn / Barrier Risk": "High (Hard Cap Friction)"},
+            {"Pricing Archetype": "3. Sub + Overage (Hybrid)", "Est. Full-Year Revenue": f"${hybrid_rev:,.0f}", "Gross Margin (%)": f"{hybrid_gm:.1f}%", "Revenue Predictability": "Very High (Base + Expansion)", "Churn / Barrier Risk": "Low (Seamless Scaling)"},
+            {"Pricing Archetype": "4. Credit Burndown / Replenish", "Est. Full-Year Revenue": f"${credit_rev:,.0f}", "Gross Margin (%)": f"{credit_gm:.1f}%", "Revenue Predictability": "High (Prepaid Cash Upfront)", "Churn / Barrier Risk": "Moderate (Prepaid Friction)"}
+        ]
+        
+        archetype_df = pd.DataFrame(archetype_data)
+        st.dataframe(archetype_df, use_container_width=True, hide_index=True)
 
         st.markdown("#### 3. Overage Margin Guardrail Check")
         suggested_overage_rate = blended_token_cost_m1 * 1.50
