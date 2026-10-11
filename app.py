@@ -514,12 +514,17 @@ with tab4:
         run_scenario("8. Stress Test (High Usage + Inflation)", 1.1, 1.4, 1.2)
     ]
     scen_summary_df = pd.DataFrame(scen_results)
-    scen_summary_df.index = range(1, len(scen_summary_df) + 1)  # 1-based indexing for scenario table
-    st.dataframe(scen_summary_df.style.format({
+    
+    # Fix scenario table indexing and ensure hide_index or explicit numbering column
+    scen_summary_df.index = range(1, len(scen_summary_df) + 1)
+    scen_summary_df.index.name = "ID"
+    
+    st.dataframe(scen_summary_df.reset_index().style.format({
+        "ID": "{:,.0f}",
         "Total Revenue ($)": "${:,.0f}", "Total COGS ($)": "${:,.0f}",
         "Gross Profit ($)": "${:,.0f}", "Gross Margin (%)": "{:.1f}%",
         "Ending ARR ($)": "${:,.0f}", "Ending Monthly Cash Payable ($)": "${:,.0f}"
-    }), use_container_width=True)
+    }), use_container_width=True, hide_index=True)
 
 with tab5:
     st.subheader("📑 Assumptions & Audit Register (Data Governance)")
