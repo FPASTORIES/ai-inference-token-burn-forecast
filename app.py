@@ -67,7 +67,7 @@ div[data-testid="stMetric"] div[data-testid="stMetricValue"] {font-size:1.15rem 
 st.markdown("""
 <div class="compact-header">
     <h1>⚡ AI Deal Desk & Unit Economics Simulator</h1>
-    <p>Proactive contract pricing, multi-tier subscriber bridge, multi-peak usage waves, Pareto skew, and credit depletion.</p>
+    <p>Proactive contract pricing, value-based pricing metrics, hybrid models, multi-peak usage waves, and credit depletion.</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -416,14 +416,15 @@ st.markdown(f"""
 
 
 # ==========================================
-# 4. DASHBOARD TABS (FULL 5-TAB STRUCTURE)
+# 4. DASHBOARD TABS (FULL 6-TAB STRUCTURE)
 # ==========================================
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     "📊 Revenue & Margin", 
     "💳 Credits & Cash", 
     "📋 Monthly Detail", 
     "📈 Scenario Matrix", 
-    "📑 Audit Register"
+    "📑 Audit Register",
+    "🎯 Value & Pricing Strategy"
 ])
 
 with tab1:
@@ -501,7 +502,6 @@ with tab4:
             "Ending Monthly Cash Payable ($)": end_cash
         }
 
-    # Clean scenario names without leading numbers to prevent duplication with ID column
     scen_results = [
         run_scenario("Base Case", 1.0, 1.0, 1.0),
         run_scenario("High Growth (1.25x)", 1.25, 1.0, 1.0),
@@ -513,8 +513,6 @@ with tab4:
         run_scenario("Stress Test (High Usage + Inflation)", 1.1, 1.4, 1.2)
     ]
     scen_summary_df = pd.DataFrame(scen_results)
-    
-    # Assign clean 1-based ID column and hide pandas index entirely
     scen_summary_df.insert(0, "ID", range(1, len(scen_summary_df) + 1))
     
     st.dataframe(scen_summary_df.style.format({
@@ -557,6 +555,58 @@ with tab5:
     ]
     audit_df = pd.DataFrame(audit_data, columns=["Model Parameter", "Current Value", "Data Source / System of Record", "Provenance / Notes"])
     st.dataframe(audit_df, use_container_width=True, hide_index=True)
+
+with tab6:
+    st.subheader("🎯 Value-Creation Anchor & Hybrid Pricing Strategy")
+    st.markdown("Align your pricing against economic value created (Automation, Augmentation, Connection, Revenue) and evaluate hybrid billing models.")
+
+    col_v1, col_v2 = st.columns(2)
+
+    with col_v1:
+        st.markdown("#### 1. Value-Creation Anchor Calculator")
+        value_metric_type = st.selectbox("Primary AI Value Metric", ["Automation (Hours Saved)", "Augmentation (Error Reduction)", "Connection (Network Access)", "Revenue (Tasks / Leads Generated)"])
+        
+        if value_metric_type == "Automation (Hours Saved)":
+            hours_saved = st.number_input("Hours Saved / User / Month", min_value=0.0, value=10.0, step=1.0)
+            hourly_wage = st.number_input("Average User Hourly Wage ($)", min_value=0.0, value=50.0, step=5.0)
+            economic_value = hours_saved * hourly_wage
+            st.info(f"💡 Total Economic Value Created: **${economic_value:,.0f} / user / month**")
+        elif value_metric_type == "Augmentation (Error Reduction)":
+            errors_avoided = st.number_input("Critical Errors Avoided / Month", min_value=0.0, value=2.0, step=1.0)
+            cost_per_error = st.number_input("Cost per Error ($)", min_value=0.0, value=250.0, step=25.0)
+            economic_value = errors_avoided * cost_per_error
+            st.info(f"💡 Total Economic Value Created: **${economic_value:,.0f} / user / month**")
+        elif value_metric_type == "Connection (Network Access)":
+            economic_value = st.number_input("Estimated Network/Data Value ($ / mo)", min_value=0.0, value=200.0, step=25.0)
+            st.info(f"💡 Total Economic Value Created: **${economic_value:,.0f} / user / month**")
+        else:
+            tasks_generated = st.number_input("Qualified Leads / Tasks Completed / Month", min_value=0.0, value=5.0, step=1.0)
+            value_per_task = st.number_input("Value per Task / Lead ($)", min_value=0.0, value=100.0, step=10.0)
+            economic_value = tasks_generated * value_per_task
+            st.info(f"💡 Total Economic Value Created: **${economic_value:,.0f} / user / month**")
+
+        # ROI Gap & Capture Ratio
+        capture_ratio = (arpu_pro / economic_value * 100) if economic_value > 0 else 0
+        roi_multiple = (economic_value / arpu_pro) if arpu_pro > 0 else 0
+        st.markdown(f"""
+        * **Pro Tier Price Charged:** `${arpu_pro:.2f} / mo`
+        * **Value Capture Ratio:** `{capture_ratio:.1f}%` of total value created
+        * **Customer ROI Multiple:** `{roi_multiple:.1f}x` (Customer gets ${roi_multiple:.1f} of value for every $1 paid)
+        """)
+
+    with col_v2:
+        st.markdown("#### 2. Hybrid & Pricing Model Architectures")
+        st.markdown("""
+        Compare how different Stripe / Metronome billing models impact your revenue capture and risk:
+        * **Pay-as-you-go:** Zero barriers to entry, but highly volatile revenue forecasting.
+        * **Subscription with Allowance:** High predictable MRR, but can trigger churn if usage limits are too restrictive.
+        * **Subscription & Overage (Hybrid):** Combines predictable base MRR ($30/mo) with metered overage charges to protect margins during usage spikes.
+        * **Credit Burndown / Replenishing:** Prepaid packages (e.g., Clay / Perplexity style) locking in cash upfront.
+        """)
+
+        st.markdown("#### 3. Overage Margin Guardrail Check")
+        suggested_overage_rate = blended_token_cost_m1 * 1.50 # 50% markup baseline
+        st.success(f"🛡️ **Guardrail Recommendation:** To maintain your target {margin_target}% gross margin during peak usage surges, suggested minimum overage rate is **${suggested_overage_rate:.5f} per 1K tokens**.")
 
 st.markdown("---")
 st.caption("© 2026. Institutional AI Deal Desk & Contract Pricing Simulator. All rights reserved.")
