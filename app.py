@@ -75,7 +75,7 @@ st.markdown("""
 # ==========================================
 # 1. SIDEBAR ASSUMPTIONS & UX GOVERNANCE
 # ==========================================
-st.sidebar.header("0. Rolling Forecast Horizon")
+st.sidebar.header("1. Rolling Forecast Horizon")
 current_now = datetime.datetime.now()
 start_year = st.sidebar.number_input("Forecast Start Year", min_value=2024, max_value=2035, value=current_now.year)
 start_month = st.sidebar.slider("Forecast Start Month", 1, 12, current_now.month)
@@ -86,7 +86,7 @@ st.sidebar.markdown("---")
 advanced_mode = st.sidebar.toggle("🛠️ Enable Advanced Deal Desk Parameters", value=True, help="Toggle on to access full granular model assumptions. Toggle off for simplified executive overview.")
 
 # --- CORE / DEFAULT INPUTS (Always Visible) ---
-st.sidebar.header("1. Core Growth & Funnel")
+st.sidebar.header("2. Core Growth & Funnel")
 starting_dau = st.sidebar.number_input("Starting Daily Active Users (DAU)", min_value=0, value=5000, step=500)
 starting_pro_subs = st.sidebar.number_input("Starting Pro Subscribers ($30/mo)", min_value=0, value=200, step=50)
 starting_ent_subs = st.sidebar.number_input("Starting Enterprise Subscribers ($250/mo)", min_value=0, value=50, step=10)
@@ -514,6 +514,7 @@ with tab4:
         run_scenario("8. Stress Test (High Usage + Inflation)", 1.1, 1.4, 1.2)
     ]
     scen_summary_df = pd.DataFrame(scen_results)
+    scen_summary_df.index = range(1, len(scen_summary_df) + 1)  # 1-based indexing for scenario table
     st.dataframe(scen_summary_df.style.format({
         "Total Revenue ($)": "${:,.0f}", "Total COGS ($)": "${:,.0f}",
         "Gross Profit ($)": "${:,.0f}", "Gross Margin (%)": "{:.1f}%",
