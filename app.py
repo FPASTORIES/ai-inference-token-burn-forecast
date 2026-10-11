@@ -157,7 +157,6 @@ if advanced_mode:
         margin_target = st.slider("Target Gross Margin (%)", 0, 90, 60)
         budget_monthly = st.number_input("Monthly COGS Budget Cap ($; 0 = none)", min_value=0.0, value=0.0, step=1000.0)
 else:
-    # Default Fallback Values when Advanced Mode is toggled OFF
     paid_dau_factor = 0.70
     new_user_conversion = 0.15
     free_base_conversion = 0.02
@@ -221,7 +220,6 @@ def run_model_simulation(
     month_days = [d.days_in_month for d in dates]
     m_indices = np.arange(1, n + 1)
 
-    # Multi-Peak Additive Wave Engine
     curve_1 = (p_p1_vol - p_base_prompts) * np.exp(-((m_indices - p_p1_m) ** 2) / (2 * p_s1_w ** 2))
     curve_2 = (p_p2_vol - p_base_prompts) * np.exp(-((m_indices - p_p2_m) ** 2) / (2 * p_s2_w ** 2))
     prompt_curve = p_base_prompts + curve_1 + curve_2
@@ -503,23 +501,23 @@ with tab4:
             "Ending Monthly Cash Payable ($)": end_cash
         }
 
+    # Clean scenario names without leading numbers to prevent duplication with ID column
     scen_results = [
-        run_scenario("1. Base Case", 1.0, 1.0, 1.0),
-        run_scenario("2. High Growth (1.25x)", 1.25, 1.0, 1.0),
-        run_scenario("3. Low Growth (0.75x)", 0.75, 1.0, 1.0),
-        run_scenario("4. High Prompt Intensity (1.5x)", 1.0, 1.5, 1.0),
-        run_scenario("5. Low Prompt Intensity (0.7x)", 1.0, 0.7, 1.0),
-        run_scenario("6. API Price Inflation (+25%)", 1.0, 1.0, 1.25),
-        run_scenario("7. Aggressive Caching & Batch", 1.0, 1.0, 0.8),
-        run_scenario("8. Stress Test (High Usage + Inflation)", 1.1, 1.4, 1.2)
+        run_scenario("Base Case", 1.0, 1.0, 1.0),
+        run_scenario("High Growth (1.25x)", 1.25, 1.0, 1.0),
+        run_scenario("Low Growth (0.75x)", 0.75, 1.0, 1.0),
+        run_scenario("High Prompt Intensity (1.5x)", 1.0, 1.5, 1.0),
+        run_scenario("Low Prompt Intensity (0.7x)", 1.0, 0.7, 1.0),
+        run_scenario("API Price Inflation (+25%)", 1.0, 1.0, 1.25),
+        run_scenario("Aggressive Caching & Batch", 1.0, 1.0, 0.8),
+        run_scenario("Stress Test (High Usage + Inflation)", 1.1, 1.4, 1.2)
     ]
     scen_summary_df = pd.DataFrame(scen_results)
     
-    # Fix scenario table indexing and ensure hide_index or explicit numbering column
-    scen_summary_df.index = range(1, len(scen_summary_df) + 1)
-    scen_summary_df.index.name = "ID"
+    # Assign clean 1-based ID column and hide pandas index entirely
+    scen_summary_df.insert(0, "ID", range(1, len(scen_summary_df) + 1))
     
-    st.dataframe(scen_summary_df.reset_index().style.format({
+    st.dataframe(scen_summary_df.style.format({
         "ID": "{:,.0f}",
         "Total Revenue ($)": "${:,.0f}", "Total COGS ($)": "${:,.0f}",
         "Gross Profit ($)": "${:,.0f}", "Gross Margin (%)": "{:.1f}%",
