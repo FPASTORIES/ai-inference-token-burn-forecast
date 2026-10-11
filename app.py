@@ -98,7 +98,7 @@ div[data-testid="stMetric"] div[data-testid="stMetricValue"] {font-size:1.1rem !
 st.markdown("""
 <div class="compact-header">
     <h1>⚡ AI Deal Desk & Unit Economics Simulator</h1>
-    <p>Proactive contract pricing, split Pro/Enterprise growth, value metrics, hybrid models, and credit depletion.</p>
+    <p>Proactive contract pricing, decoupled dual-motion growth, value metrics, hybrid models, and credit depletion.</p>
 </div>
 """, unsafe_allow_html=True)
 
@@ -120,20 +120,21 @@ advanced_mode = st.sidebar.toggle("🛠️ Enable Advanced Deal Desk Parameters"
 st.sidebar.header("2. Core Growth & Funnel")
 starting_dau = st.sidebar.number_input("Starting Daily Active Users (DAU)", min_value=0, value=5000, step=500)
 starting_pro_subs = st.sidebar.number_input("Starting Pro Subscribers ($30/mo)", min_value=0, value=200, step=50)
-starting_ent_subs = st.sidebar.number_input("Starting Enterprise Subscribers ($250/mo)", min_value=0, value=50, step=10)
+starting_ent_subs = st.sidebar.number_input("Starting Enterprise Contracts ($250/mo)", min_value=0, value=50, step=10)
 starting_paid_subs = starting_pro_subs + starting_ent_subs
 
-pro_monthly_growth = st.sidebar.slider("Pro Tier Monthly Growth (%)", 0.0, 25.0, 8.0, 0.5) / 100
-ent_monthly_growth = st.sidebar.slider("Enterprise Tier Monthly Growth (%)", 0.0, 25.0, 5.0, 0.5) / 100
+# PLG Motion vs. Sales-Led Motion
+pro_monthly_growth = st.sidebar.slider("Pro Tier Monthly DAU Growth (%)", 0.0, 25.0, 8.0, 0.5) / 100
+net_new_ent_contracts = st.sidebar.number_input("Net New Enterprise Deals / Month", min_value=0, value=3, step=1, help="Sales pipeline velocity independent of PLG web traffic.")
 baseline_prompts = st.sidebar.slider("Baseline Prompts / Paid User / Day", 1, 20, 5)
 
 # --- ADVANCED INPUTS (Inside Collapsible Expanders if Advanced Mode is True) ---
 if advanced_mode:
     with st.sidebar.expander("📂 1. Subscriber Funnel & Conversion Levers"):
         paid_dau_factor = st.slider("Paid Subscribers Active Daily (%)", 0, 100, 70, 5) / 100
-        new_user_conversion = st.slider("New User Conversion (%)", 0.0, 50.0, 15.0, 0.5) / 100
-        enterprise_acquisition_share = st.slider("Enterprise Share of New Conversions (%)", 0.0, 50.0, 20.0, 1.0) / 100
+        new_user_conversion = st.slider("New PLG User Conversion to Pro (%)", 0.0, 50.0, 15.0, 0.5) / 100
         free_base_conversion = st.slider("Free-User Proxy Conversion (%)", 0.0, 10.0, 2.0, 0.1) / 100
+        ent_monthly_growth = st.slider("Enterprise Account Expansion (%)", 0.0, 25.0, 3.0, 0.5) / 100
         monthly_churn = st.slider("Monthly Paid Subscriber Churn (%)", 0.0, 15.0, 3.0, 0.5) / 100
         arpu_pro = st.number_input("Pro Tier Monthly ARPU ($)", min_value=0.0, value=30.0, step=5.0)
         arpu_ent = st.number_input("Enterprise Tier Monthly ARPU ($)", min_value=0.0, value=250.0, step=25.0)
@@ -193,8 +194,8 @@ if advanced_mode:
 else:
     paid_dau_factor = 0.70
     new_user_conversion = 0.15
-    enterprise_acquisition_share = 0.20
     free_base_conversion = 0.02
+    ent_monthly_growth = 0.03
     monthly_churn = 0.03
     arpu_pro = 30.0
     arpu_ent = 250.0
@@ -240,8 +241,8 @@ else:
 # ==========================================
 @st.cache_data(show_spinner=False)
 def run_model_simulation(
-    p_start_year, p_start_month, p_horizon, p_dau, p_pro_subs, p_ent_subs, p_pro_growth, p_ent_growth, p_paid_dau_factor,
-    p_new_conv, p_ent_acq_share, p_base_conv, p_churn, p_arpu_pro, p_arpu_ent, p_expansion_pct,
+    p_start_year, p_start_month, p_horizon, p_dau, p_pro_subs, p_ent_subs, p_pro_growth, p_net_new_ent, p_paid_dau_factor,
+    p_new_conv, p_base_conv, p_ent_expansion, p_churn, p_arpu_pro, p_arpu_ent, p_expansion_pct,
     p_base_prompts, p_p1_vol, p_p1_m, p_s1_w, p_p2_vol, p_p2_m, p_s2_w, p_free_mult,
     p_in_tok, p_out_tok, p_in_grow, p_out_grow, p_front_mix,
     p_f_in_p, p_f_out_p, p_s_in_p, p_s_out_p, p_cache_rate, p_cache_ratio,
@@ -273,6 +274,7 @@ def run_model_simulation(
         beg_ent = prev_ent_subs
         beg_paid_subs = beg_pro + beg_ent
 
+        # Motion 1: PLG Pro Tier (Driven by organic DAU funnel)
         if i == 0:
             dau_val = current_dau
             new_users_acquired = 0.0
@@ -280,23 +282,21 @@ def run_model_simulation(
             prev_dau_val = current_dau
         else:
             prev_dau_val = current_dau
-            current_dau = prev_dau_val * (1 + ((p_pro_growth + p_ent_growth) / 2))
+            current_dau = prev_dau_val * (1 + p_pro_growth)
             dau_val = current_dau
             new_users_acquired = dau_val - prev_dau_val
             free_base = max(0.0, prev_dau_val - beg_paid_subs)
 
-        total_new_conversions = (new_users_acquired * p_new_conv) + (free_base * p_base_conv)
-        ent_share = p_ent_acq_share
-        pro_share = 1.0 - ent_share
-
-        new_pro_conv = total_new_conversions * pro_share
-        new_ent_conv = total_new_conversions * ent_share
-
+        # 100% of PLG web funnel conversions feed Pro
+        new_pro_conv = (new_users_acquired * p_new_conv) + (free_base * p_base_conv)
         churned_pro = beg_pro * p_churn
-        churned_ent = beg_ent * (p_churn * 0.5)
+        ending_pro = max(0.0, beg_pro + new_pro_conv - churned_pro)
 
-        ending_pro = max(0.0, (beg_pro * (1 + p_pro_growth)) + new_pro_conv - churned_pro)
-        ending_ent = max(0.0, (beg_ent * (1 + p_ent_growth)) + new_ent_conv - churned_ent)
+        # Motion 2: Sales-Led Enterprise Tier (Decoupled sales velocity)
+        new_ent_conv = float(p_net_new_ent) if i > 0 else 0.0
+        churned_ent = beg_ent * (p_churn * 0.5)
+        ending_ent = max(0.0, (beg_ent * (1 + p_ent_expansion)) + new_ent_conv - churned_ent)
+
         ending_paid_subs = ending_pro + ending_ent
 
         prev_pro_subs = ending_pro
@@ -396,8 +396,8 @@ def run_model_simulation(
 try:
     df = run_model_simulation(
         start_year, start_month, forecast_horizon, starting_dau, starting_pro_subs, starting_ent_subs, 
-        pro_monthly_growth, ent_monthly_growth, paid_dau_factor,
-        new_user_conversion, enterprise_acquisition_share, free_base_conversion, monthly_churn, arpu_pro, arpu_ent, expansion_arpu_pct,
+        pro_monthly_growth, net_new_ent_contracts, paid_dau_factor,
+        new_user_conversion, free_base_conversion, ent_monthly_growth, monthly_churn, arpu_pro, arpu_ent, expansion_arpu_pct,
         baseline_prompts, peak_prompts_1, peak_month_1, surge_width_1, peak_prompts_2, peak_month_2, surge_width_2, free_user_usage_mult,
         input_tokens_start, output_tokens_start, input_growth, output_growth, frontier_mix,
         frontier_input_price, frontier_output_price, standard_input_price, standard_output_price,
@@ -513,8 +513,8 @@ with tab4:
     def run_scenario(name, g_mult, prompt_mult, price_mult):
         scen_df = run_model_simulation(
             start_year, start_month, forecast_horizon, starting_dau, starting_pro_subs, starting_ent_subs,
-            pro_monthly_growth * g_mult, ent_monthly_growth * g_mult, paid_dau_factor, 
-            new_user_conversion, enterprise_acquisition_share, free_base_conversion, monthly_churn,
+            pro_monthly_growth * g_mult, round(net_new_ent_contracts * g_mult), paid_dau_factor, 
+            new_user_conversion, free_base_conversion, ent_monthly_growth, monthly_churn,
             arpu_pro, arpu_ent, expansion_arpu_pct,
             baseline_prompts * prompt_mult, peak_prompts_1 * prompt_mult, peak_month_1, surge_width_1,
             peak_prompts_2 * prompt_mult, peak_month_2, surge_width_2, free_user_usage_mult,
@@ -569,12 +569,12 @@ with tab5:
     audit_data = [
         ("Starting Daily Active Users (DAU)", f"{starting_dau:,.0f}", "Mixpanel / Segment Event Pipeline", "Management Baseline Estimate"),
         ("Starting Pro Subscribers ($30/mo)", f"{starting_pro_subs:,.0f}", "Stripe Billing Subscriptions Table", "Actual Active Pro Subscriptions"),
-        ("Starting Enterprise Subscribers ($250/mo)", f"{starting_ent_subs:,.0f}", "Stripe Billing Subscriptions Table", "Actual Active Enterprise Contracts"),
-        ("Pro Tier Monthly Growth Rate", f"{pro_monthly_growth*100:.1f}% MoM", "Self-Serve PLG Growth Model", "Management Pro Growth Target"),
-        ("Enterprise Tier Monthly Growth Rate", f"{ent_monthly_growth*100:.1f}% MoM", "Enterprise Sales Pipeline Forecast", "Management Enterprise Growth Target"),
+        ("Starting Enterprise Contracts ($250/mo)", f"{starting_ent_subs:,.0f}", "Stripe Billing Subscriptions Table", "Actual Active Enterprise Contracts"),
+        ("Pro Tier Monthly DAU Growth", f"{pro_monthly_growth*100:.1f}% MoM", "Self-Serve PLG Growth Model", "Organic Web/App Growth Engine"),
+        ("Net New Enterprise Deals / Month", f"{net_new_ent_contracts} deals/mo", "Sales Pipeline Sales Velocity", "Decoupled Sales-Led Pipeline Target"),
+        ("Enterprise Account Expansion Rate", f"{ent_monthly_growth*100:.1f}% MoM", "Enterprise Net Retention Model", "Account Expansion & Up-Sells"),
         ("Paid DAU Activity Factor", f"{paid_dau_factor*100:.1f}%", "Mixpanel Daily Active Engagement Ratio", "Product Telemetry Benchmark"),
-        ("New User Conversion Rate", f"{new_user_conversion*100:.1f}%", "Stripe Checkout & Funnel Analytics", "Illustrative Baseline — Source Required (applies M2+)"),
-        ("Enterprise Share of New Conversions", f"{enterprise_acquisition_share*100:.1f}%", "Deal Desk Conversion Mix", "Sales vs Self-Serve Ratio"),
+        ("New PLG User Conversion Rate", f"{new_user_conversion*100:.1f}%", "Stripe Checkout & Funnel Analytics", "PLG Self-Serve Conversion Rate"),
         ("Free-User Proxy Conversion Rate", f"{free_base_conversion*100:.1f}% MoM", "Product-Led Growth Funnel Report", "Estimated Conversion Benchmark"),
         ("Monthly Paid Subscriber Churn", f"{monthly_churn*100:.1f}% MoM", "Stripe Churn & Retention Analytics", "Historical Cohort Average"),
         ("Pro Tier Monthly ARPU", f"${arpu_pro:.2f} / mo", "Stripe Pricing Plan Definitions", "Standard Self-Serve Plan"),
