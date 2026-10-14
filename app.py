@@ -128,7 +128,7 @@ def style_frame(df):
 # ==========================================
 FOUNDER_PRESETS = {
     "Pre-launch": {"dau": 100, "pro": 0, "ent": 0, "growth": 5.0, "deals": 0.0, "prompts": 3, "infra": 500.0, "ai_credits": 0.0, "cloud_credits": 0.0},
-    "Early traction": {"dau": 5000, "pro": 200, "ent": 50, "growth": 8.0, "deals": 3.0, "prompts": 5, "infra": 2500.0, "ai_credits": 20000.0, "cloud_credits": 30000.0},
+    "Early traction": {"dau": 2500, "pro": 100, "ent": 5, "growth": 1.5, "deals": 1.0, "prompts": 5, "infra": 2500.0, "ai_credits": 20000.0, "cloud_credits": 30000.0},
     "Scaling": {"dau": 50000, "pro": 2500, "ent": 250, "growth": 10.0, "deals": 8.0, "prompts": 8, "infra": 10000.0, "ai_credits": 50000.0, "cloud_credits": 100000.0},
 }
 
@@ -152,7 +152,7 @@ advanced_mode = st.sidebar.toggle(
 # Engine defaults. Advanced widgets override these; simple mode uses them as-is.
 DEFAULTS = {
     # funnel & revenue
-    "paid_dau_factor": 0.70, "new_conv": 0.15, "base_conv": 0.02, "churn": 0.03,
+    "paid_dau_factor": 0.70, "new_conv": 0.15, "base_conv": 0.005, "churn": 0.05,
     "arpu_pro": 30.0, "arpu_ent": 250.0, "pro_expansion_pct": 0.10, "fee_pct": 0.029,
     # enterprise contracts
     "ent_term": 12, "ent_renewal_rate": 0.80, "ent_in_term_churn": 0.0, "ent_expansion": 0.015,
@@ -198,9 +198,9 @@ if advanced_mode:
     with st.sidebar.expander("📂 A. Subscriber Funnel & Revenue"):
         cfg["paid_dau_factor"] = st.slider("Paid Subscribers Active Daily (%)", 0, 100, 70, 5) / 100
         cfg["new_conv"] = st.slider("New-User Conversion to Pro (%)", 0.0, 50.0, 15.0, 0.5) / 100
-        cfg["base_conv"] = st.slider("Existing Free-Pool Conversion (% / month)", 0.0, 10.0, 2.0, 0.1,
+        cfg["base_conv"] = st.slider("Existing Free-Pool Conversion (% / month)", 0.0, 10.0, 0.5, 0.1,
                                      help="Monthly probability that an existing free active user upgrades. Applied to the free pool net of paid actives.") / 100
-        cfg["churn"] = st.slider("Monthly Pro Churn (%)", 0.0, 15.0, 3.0, 0.5) / 100
+        cfg["churn"] = st.slider("Monthly Pro Churn (%)", 0.0, 15.0, 5.0, 0.5) / 100
         cfg["arpu_pro"] = st.number_input("Pro Tier Monthly ARPU ($)", min_value=0.0, value=30.0, step=5.0)
         cfg["pro_expansion_pct"] = st.slider("Pro Overage / Expansion Revenue (% of Pro base)", 0.0, 50.0, 10.0, 1.0,
                                              help="Applies to Pro revenue only. Enterprise expansion is modeled per account below, so it is not double counted.") / 100
