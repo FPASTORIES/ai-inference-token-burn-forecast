@@ -1,5 +1,5 @@
 """
-AI Inference, Credit Depletion & Contract Pricing Deal Desk Model  (v2 - corrected engine)
+AI Inference, Credit Depletion & Contract Pricing Deal Desk Model  (v2.1 - corrected engine, peer-review follow-ups)
 ------------------------------------------------------------------------------------------
 FP&A planning model for direct AI inference, vector storage, infrastructure step-costs,
 enterprise contract cohorts (term / renewal / expansion), promotional-credit drawdown,
@@ -11,6 +11,7 @@ See the "Change log & limitations" section at the bottom of the page.
 """
 import calendar
 import datetime
+import html
 import inspect
 import math
 
@@ -173,12 +174,15 @@ DEFAULTS = {
 cfg = dict(DEFAULTS)
 
 st.sidebar.header("1. Core Growth & Funnel")
-starting_dau = st.sidebar.number_input("Starting Daily Active Users (DAU)", min_value=0, value=preset["dau"], step=500, key=f"dau_{founder_stage}")
+starting_dau = st.sidebar.number_input(
+    "Month-1 Daily Active Users (DAU)", min_value=0, value=preset["dau"], step=500, key=f"dau_{founder_stage}",
+    help="DAU in the FIRST forecast month, exactly as entered. DAU growth applies from month 2, so month 1 reconciles to your actual DAU.",
+)
 starting_pro_subs = st.sidebar.number_input("Starting Pro Subscribers", min_value=0, value=preset["pro"], step=50, key=f"pro_{founder_stage}")
 starting_ent_accounts = st.sidebar.number_input("Starting Enterprise Accounts (contracts)", min_value=0, value=preset["ent"], step=10, key=f"ent_{founder_stage}")
 dau_monthly_growth = st.sidebar.slider(
     "Total DAU Monthly Growth (%)", 0.0, 25.0, float(preset["growth"]), 0.5, key=f"growth_{founder_stage}",
-    help="Growth of total daily active users (free + paid). Net new DAU feeds new-user conversion.",
+    help="Growth of total daily active users (free + paid), applied from month 2 onward. Net new DAU feeds new-user conversion. Month 1 has no new-user conversions; free-pool conversions still occur.",
 ) / 100
 net_new_ent_contracts = st.sidebar.number_input(
     "Net New Enterprise Deals / Month", min_value=0.0, value=float(preset["deals"]), step=0.5, key=f"deals_{founder_stage}",
@@ -210,7 +214,7 @@ if advanced_mode:
         cfg["ent_in_term_churn"] = st.slider("In-Term Logo Churn (% / month)", 0.0, 10.0, 0.0, 0.5,
                                              help="Committed contracts normally do not churn mid-term. Leave at 0 unless you have termination-for-convenience.") / 100
         cfg["ent_expansion"] = st.slider("Seat / Usage Expansion per Account (% / month)", 0.0, 10.0, 1.5, 0.5,
-                                         help="Grows contract value, seats and prompts of an existing account. Does NOT add accounts.") / 100
+                                         help="Grows contract value, seats and prompts of an existing account. Does NOT add accounts. Timing assumption: expansion starts immediately and compounds monthly; real expansion usually arrives through contract amendments or seat ramps.") / 100
         cfg["ent_seats"] = int(st.number_input("Contracted Seats per Account (at signing)", min_value=1, value=20, step=5))
         cfg["ent_prompts"] = int(st.number_input("Enterprise Prompts per Account / Month (at signing)", min_value=0, value=3000, step=500))
         cfg["impl_fee"] = st.number_input("Implementation Fee per New Deal ($)", min_value=0.0, value=0.0, step=500.0)
@@ -381,8 +385,10 @@ def simulate(p):
         beg_equiv = sum(c["acc"] * c["idx"] for c in cohorts)
         due = 0.0
         non_renewed = 0.0
+        renewed_ids = set()  # cohorts that reached term end this month: exempt from in-term churn this month
         for c in cohorts:
             if c["end"] == i:
+                renewed_ids.add(id(c))
                 due += c["acc"]
                 lost = c["acc"] * (1.0 - p["ent_renewal_rate"])
                 non_renewed += lost
@@ -391,6 +397,8 @@ def simulate(p):
         intrm = 0.0
         if p["ent_in_term_churn"] > 0:
             for c in cohorts:
+                if id(c) in renewed_ids:
+                    continue  # renewal-month exemption: their only exit this month is the renewal decision
                 lost = c["acc"] * p["ent_in_term_churn"]
                 c["acc"] -= lost
                 intrm += lost
@@ -562,7 +570,9 @@ def simulate(p):
         vendor_paid = vendor[i - lag] if i >= lag else 0.0
         r["Estimated Cash Paid This Month ($)"] = vendor_paid + r["Payment Processing ($)"] + r["Implementation Cost ($)"]
         r["Vendor Invoices Outstanding ($)"] = sum(vendor[max(0, i - lag + 1):i + 1]) if lag > 0 else 0.0
-        r["Cash Gross Profit After Credits ($)"] = r["Recognized Revenue ($)"] - r["Estimated Cash Payable ($)"]
+        # Accrual revenue less vendor invoices (net of credits, as incurred) and immediate costs. NOT cash profit:
+        # it ignores invoice lag timing and revenue collections.
+        r["Revenue Less Net Vendor Payables & Immediate Costs ($)"] = r["Recognized Revenue ($)"] - r["Estimated Cash Payable ($)"]
         r["Deferred Implementation Revenue ($)"] = float(np.sum([x["Implementation Fees Billed ($)"] for x in rows[:i + 1]])
                                                          - np.sum([x["Implementation Revenue ($)"] for x in rows[:i + 1]]))
     return pd.DataFrame(rows)
@@ -684,20 +694,24 @@ def compare_pricing(df, p, r):
                 + overage(ent_p, ent_acc, ent_allow, ovg))
         return base + over
 
+    basis_per_prompt = "Per paid prompt (Pro + Enterprise); no seat, account or expansion revenue"
+    basis_fee = "Fixed fee per average contracted account + overage per prompt; excludes the expansion uplift"
     revenues = [
-        ("1. Pay-as-you-go", float(paid_p.sum() * r["payg_rate"]), "Low (usage-driven)", "Low commitment; revenue volatility"),
+        ("1. Pay-as-you-go", float(paid_p.sum() * r["payg_rate"]), "Low (usage-driven)", "Low commitment; revenue volatility", basis_per_prompt),
         ("2. Subscription + allowance", sub_like(r["sub_pro_fee"], r["sub_pro_allow"], r["sub_ent_fee"], r["sub_ent_allow"], r["sub_over"]),
-         "High (base fee)", "Allowance / overage boundary friction"),
+         "High (base fee)", "Allowance / overage boundary friction", basis_fee),
         ("3. Hybrid base + overage", sub_like(r["hyb_pro_fee"], r["hyb_pro_allow"], r["hyb_ent_fee"], r["hyb_ent_allow"], r["hyb_over"]),
-         "High (base + usage)", "Requires clear meter and overage UX"),
+         "High (base + usage)", "Requires clear meter and overage UX", basis_fee),
         ("4. Prepaid credit burndown",
          float(paid_p.sum() / r["prepaid_ppc"] * r["prepaid_price"] / max(1e-9, 1.0 - r["prepaid_breakage"])) if r["prepaid_ppc"] > 0 else 0.0,
-         "Upfront cash; recognition varies", "Breakage, expiry and replenishment risk"),
+         "Upfront cash; recognition varies", "Breakage, expiry and replenishment risk",
+         "Prepaid price per credit pack, grossed up for breakage; no seat, account or expansion revenue"),
         ("0. Current model (subscriptions, ex-implementation)", float(df["Subscription Revenue ($)"].sum()),
-         "High (contracted + subscription)", "Reference row: the revenue model driving the rest of the dashboard"),
+         "High (contracted + subscription)", "Reference row: the revenue model driving the rest of the dashboard",
+         "ARPU per average Pro sub and per expansion-weighted enterprise account; INCLUDES the Pro overage/expansion uplift and the enterprise expansion index"),
     ]
     out = []
-    for label, rev, pred, risk in revenues:
+    for label, rev, pred, risk, basis in revenues:
         fees = rev * p["fee_pct"]
         contrib = rev - paid_cost - fees
         after = contrib - free_cost
@@ -712,6 +726,7 @@ def compare_pricing(df, p, r):
             "Gross Profit After Free-Tier Cost ($)": after,
             "Gross Margin After Free-Tier Cost (%)": after / rev * 100 if rev > 0 else np.nan,
             "Revenue / Account-Month ($)": rev / account_months if account_months > 0 else np.nan,
+            "Billing Basis": basis,
             "Revenue Predictability": pred,
             "Key Risk": risk,
         })
@@ -723,8 +738,9 @@ def compare_pricing(df, p, r):
 def run_integrity_checks(df, p, base_totals=None, pricing_df=None):
     checks = []
 
-    def add(name, ok, detail=""):
-        checks.append({"Check": name, "Result": "PASS" if ok else "FAIL", "Detail": detail})
+    def add(name, ok, detail="", applicable=True):
+        result = ("PASS" if ok else "FAIL") if applicable else "N/A"
+        checks.append({"Check": name, "Result": result, "Detail": detail})
 
     def close(a, b):
         return bool(np.allclose(np.asarray(a, dtype=float), np.asarray(b, dtype=float), rtol=1e-9, atol=1e-6))
@@ -762,10 +778,18 @@ def run_integrity_checks(df, p, base_totals=None, pricing_df=None):
                       "Total Modeled COGS ($)", "Remaining AI Credits ($)", "Remaining Cloud Credits ($)", "Estimated Cash Payable ($)",
                       "Estimated Cash Paid This Month ($)", "Vendor Invoices Outstanding ($)", "Deferred Implementation Revenue ($)"]
     add("No negative balances, counts, prompts, costs or revenues", bool((df[must_be_nonneg] >= -1e-9).all().all()))
-    uc = usage_ceiling(df, p, 60.0)
-    if math.isfinite(uc["var"]) and not uc["no_headroom"] and uc["var_cost"] > 0:
-        implied = (uc["rev"] * (1 - p["fee_pct"]) - uc["var"] * uc["var_cost"]) / uc["rev"] * 100
-        add("Usage ceiling solver: margin at ceiling equals target (60% test)", abs(implied - 60.0) < 1e-6, f"implied {implied:.6f}%")
+    # Usage ceiling: at the ceiling, per-account margin must equal the target. Always listed; N/A (never silently skipped)
+    # when no finite ceiling exists for these inputs (e.g. zero traffic, or fees leave no headroom at any tested target).
+    tested, worst = [], 0.0
+    for tgt in (40.0, 60.0, 80.0):
+        uc = usage_ceiling(df, p, tgt)
+        if math.isfinite(uc["var"]) and not uc["no_headroom"] and uc["var_cost"] > 0:
+            implied = (uc["rev"] * (1 - p["fee_pct"]) - uc["var"] * uc["var_cost"]) / uc["rev"] * 100
+            tested.append(tgt)
+            worst = max(worst, abs(implied - tgt))
+    add("Usage ceiling solver: per-account margin at the ceiling equals the target",
+        worst < 1e-6, f"tested at targets {tested}; worst gap {worst:.2e}pp" if tested else "no finite ceiling for these inputs",
+        applicable=bool(tested))
     if base_totals is not None:
         t = totals(df)
         add("Scenario base case reconciles to monthly detail (revenue, COGS, ARR, cash)",
@@ -780,8 +804,12 @@ def run_integrity_checks(df, p, base_totals=None, pricing_df=None):
 # ==========================================
 # 3. RUN, GUARDS, KPIs & BRIEFING
 # ==========================================
-if starting_pro_subs + starting_ent_accounts > starting_dau:
-    st.warning("Starting paid accounts exceed DAU. Enterprise accounts are not users: confirm DAU, Pro subscribers and enterprise seats share one definition.")
+_act = P["paid_dau_factor"]
+_start_active_paid = starting_pro_subs * _act + starting_ent_accounts * P["ent_seats"] * _act
+if _start_active_paid > starting_dau:
+    st.warning(f"Active paid users implied by your inputs (about {_start_active_paid:,.0f}: Pro subscribers plus enterprise seats, "
+               f"each x {_act * 100:.0f}% daily activity) exceed month-1 DAU ({starting_dau:,.0f}). "
+               "Confirm that DAU, Pro subscribers and enterprise seats share one definition; the free pool is floored at zero.")
 if starting_dau == 0 and starting_pro_subs + starting_ent_accounts > 0:
     st.warning("You have paid accounts but zero DAU. Confirm that DAU and paid-account counts use compatible definitions.")
 if advanced_mode and (cfg["p1_vol"] < baseline_prompts or cfg["p2_vol"] < baseline_prompts):
@@ -823,9 +851,10 @@ c1, c2, c3, c4 = st.columns(4)
 c1.metric(f"Ending ARR Run-Rate (M{H})", f"${last_arr:,.0f} ARR", f"Forecast-period revenue: ${tot['rev']:,.0f}")
 c2.metric("Forecast-Period Gross Margin", "n/a (no revenue)" if pd.isna(period_gm) else f"{period_gm:.1f}%",
           f"Target: {margin_target}%" if pd.isna(period_gm) else f"{period_gm - margin_target:+.1f}pp vs {margin_target}% target")
-c3.metric(f"Pro Usage Ceiling @ {margin_target}% GM (M{H})",
+c3.metric(f"Est. Pro Usage Ceiling @ {margin_target}% GM (M{H})",
           "No headroom" if ceil["no_headroom"] else fmt_prompts(ceil["var"]),
-          "Variable-cost basis" if ceil["no_headroom"] else f"Fully loaded: {fmt_prompts(ceil['loaded'])}")
+          "Estimate, not a safe limit" if ceil["no_headroom"] else f"Fully loaded: {fmt_prompts(ceil['loaded'])} (estimate)",
+          help="Estimated from the ending month's company-wide cost per prompt. Capacity steps, customer mix and real routing can move marginal cost; do not treat it as a guaranteed safe usage limit.")
 c4.metric("Heavy-User Cohort", f"{P['heavy_share'] * 100:.0f}% of Pro users", f"{h_mult_used:.1f}x typical prompts")
 
 bullets = []
@@ -947,7 +976,9 @@ with tab2:
     m1.metric("AI Credits", ai_stat)
     m2.metric("Cloud Credits", cloud_stat)
     m3.metric("Vendor Invoices Outstanding at Horizon", f"${float(m_last['Vendor Invoices Outstanding ($)']):,.0f}")
-    m4.metric("Cash Gross Profit After Credits (horizon)", f"${float(df['Cash Gross Profit After Credits ($)'].sum()):,.0f}")
+    m4.metric("Revenue Less Net Vendor Payables & Immediate Costs (horizon)",
+              f"${float(df['Revenue Less Net Vendor Payables & Immediate Costs ($)'].sum()):,.0f}",
+              help="Recognized revenue minus estimated cash payable (vendor invoices net of credits, plus payment fees and implementation costs). Not cash flow: invoice timing and customer collections are not modeled.")
 
 with tab3:
     st.subheader("Monthly Roll-Forward Detail")
@@ -1006,6 +1037,7 @@ with tab5:
         ("Pro ARPU / overage-expansion", f"${P['arpu_pro']:,.2f} / +{P['pro_expansion_pct'] * 100:.0f}%", "Price book / metered billing invoices", ASSUME),
         ("Enterprise contract value / account / month", f"${P['arpu_ent']:,.2f}", "Signed order forms", ASSUME),
         ("Enterprise term / renewal rate / in-term churn", f"{P['ent_term']} mo / {P['ent_renewal_rate'] * 100:.0f}% / {P['ent_in_term_churn'] * 100:.1f}%", "Contract register; historical renewals", ASSUME),
+        ("Enterprise renewal-month exemption", "Cohorts at term end face the renewal decision only; in-term churn is not also applied to them that month", "Contract terms (termination for cause, insolvency)", ASSUME),
         ("Enterprise expansion / seats / prompts per account", f"{P['ent_expansion'] * 100:.1f}% mo / {P['ent_seats']} seats / {P['ent_prompts']:,} prompts", "Account usage telemetry", ASSUME),
         ("Implementation fee / recognition / delivery cost", f"${P['impl_fee']:,.0f} / {P['impl_rec_months']} mo / ${P['impl_cost']:,.0f}", "Order forms; revenue-recognition policy; PS cost model", ASSUME),
         ("Payment processing fee", f"{P['fee_pct'] * 100:.1f}%", "Processor merchant statement", ASSUME),
@@ -1033,7 +1065,13 @@ with tab5:
                       "prepaid_price": 1.0, "prepaid_ppc": 100.0, "prepaid_breakage": 0.10}
     checks_df = run_integrity_checks(df, P, base_totals=base_t, pricing_df=compare_pricing(df, P, _default_rules))
     n_fail = int((checks_df["Result"] == "FAIL").sum())
-    (st.success if n_fail == 0 else st.error)(f"{len(checks_df) - n_fail} of {len(checks_df)} integrity checks passed." if n_fail == 0 else f"{n_fail} integrity check(s) FAILED.")
+    n_na = int((checks_df["Result"] == "N/A").sum())
+    n_pass = int((checks_df["Result"] == "PASS").sum())
+    _na_txt = f" ({n_na} not applicable to these inputs)" if n_na else ""
+    (st.success if n_fail == 0 else st.error)(
+        f"{n_pass} of {n_pass + n_fail} applicable integrity checks passed{_na_txt}." if n_fail == 0 else f"{n_fail} integrity check(s) FAILED{_na_txt}.")
+    st.caption("These checks confirm the arithmetic is internally consistent. They cannot prove an assumption is right: "
+               "a consistently wrong input passes every check. Known-answer tests (hand-calculated cases) live in tests/test_engine.py.")
     show_df(checks_df, hide_index=True)
 
 with tab6:
@@ -1058,17 +1096,18 @@ with tab6:
         st.info(f"💡 Economic value created: **${economic_value:,.0f} / user / month**")
         price_basis = st.selectbox("Price Basis", ["Pro (per user)", "Enterprise (per seat)"])
         price_charged = P["arpu_pro"] if price_basis.startswith("Pro") else P["arpu_ent"] / max(1, P["ent_seats"])
-        capture_ratio = (price_charged / economic_value * 100) if economic_value > 0 else 0.0
-        roi_multiple = (economic_value / price_charged) if price_charged > 0 else 0.0
+        capture_text = f"{price_charged / economic_value * 100:.1f}%" if economic_value > 0 else "N/A (no value created)"
+        roi_text = f"{economic_value / price_charged:.1f}x" if price_charged > 0 else "N/A (price is zero)"
         st.markdown(f"""
         * **Price charged ({price_basis}):** `${price_charged:,.2f} / user / mo`
-        * **Value capture ratio:** `{capture_ratio:.1f}%` of value created
-        * **Customer ROI multiple:** `{roi_multiple:.1f}x`
+        * **Value capture ratio:** `{capture_text}` of value created
+        * **Customer ROI multiple:** `{roi_text}`
         """)
 
     with col_v2:
-        st.markdown("#### 2. Like-for-Like Pricing Archetype Comparison")
-        st.caption("All archetypes are applied to the SAME simulated customers and usage, segment by segment (typical Pro, heavy Pro, enterprise). "
+        st.markdown("#### 2. Fixed-Usage Pricing Archetype Comparison")
+        st.caption("This is a sensitivity on constant customer behavior, not a forecast of what customers would buy: usage, plan mix and churn are held the same under every price. "
+                   "All archetypes are applied to the SAME simulated customers and usage, segment by segment (typical Pro, heavy Pro, enterprise). "
                    "Cost is the same API + vector + infrastructure pool allocated by prompt volume; payment fees are recomputed on each archetype's revenue. "
                    "Free-tier traffic (and any idle capacity in months with no traffic) earns no revenue, so its cost is shown separately.")
         with st.expander("Edit comparable pricing rules", expanded=False):
@@ -1090,20 +1129,24 @@ with tab6:
             }
         pricing_df = compare_pricing(df, P, rules)
         show_df(style_frame(pricing_df), hide_index=True)
-        st.caption("Prepaid revenue = value of credits purchased (consumed + expired breakage); cash timing and deferred-revenue treatment are not modeled. "
+        st.caption("Billing Basis shows what each row charges for. Rows 1-4 do not include the Pro overage/expansion uplift or the enterprise expansion index that the reference row 0 carries, so row 0 is not a like-for-like benchmark for revenue; compare margins and unit economics with that in mind. "
+                   "Prepaid revenue = value of credits purchased (consumed + expired breakage); cash timing and deferred-revenue treatment are not modeled. "
                    "Contribution margin is before free-tier and idle cost; gross margin after free-tier cost is the comparable company-level figure.")
-        st.markdown(f"**Pro usage ceiling at {margin_target}% target margin (month {H}):** "
+        st.markdown(f"**Estimated Pro usage ceiling at {margin_target}% target margin (month {H}):** "
                     + ("no headroom at this target and fee rate." if ceil["no_headroom"]
                        else f"{fmt_prompts(ceil['var'])} on variable cost (API + vector); {fmt_prompts(ceil['loaded'])} fully loaded with allocated infrastructure. "
                             f"Current average Pro usage that month: "
                             f"{(float(m_last['Typical Pro Prompts'] + m_last['Heavy Pro Prompts']) / max(1e-9, float(m_last['Average Pro Subs']))):,.0f} prompts per subscriber."))
+        st.caption("An estimate from company-wide cost per prompt, not a guaranteed safe limit. Capacity steps, customer mix and real routing can move marginal cost.")
 
 # ==========================================
 # 5. FOOTER, CHANGE LOG & LIMITATIONS
 # ==========================================
 st.markdown("---")
-with st.expander("Change log & limitations (v2)"):
-    st.markdown("""
+# Change log & limitations are part of the page but not shown on screen: they sit in a display:none block (still in the
+# page's DOM, so it can be inspected or flipped on by changing SHOW_CHANGE_LOG). Set True to show them in an expander.
+SHOW_CHANGE_LOG = False
+CHANGE_LOG_MD = """
 **Material changes from v1**
 1. **Enterprise engine rebuilt as cohorts.** Accounts, renewals, non-renewals, in-term churn and expansion are tracked per cohort and reconcile to the account roll-forward. The starting book is a *staggered* book (evenly spread over remaining terms), so renewals arrive monthly and there is no end-of-horizon cliff. Renewal rate and in-term churn are explicit inputs; the hidden "50% of Pro churn" rule is gone.
 2. **Expansion is no longer double counted.** Enterprise expansion grows contract value, seats and prompts of existing accounts. The 10% overage/expansion uplift applies to Pro revenue only.
@@ -1119,12 +1162,33 @@ with st.expander("Change log & limitations (v2)"):
 12. **Restored from the earlier version:** CSV download, margin-target and budget lines, unit-cost telemetry, per-month breach commentary, credit status KPIs, scenario deltas.
 13. **Audit register** is generated from live inputs with honest status labels; **integrity checks** run on every recalculation. Display no longer rounds model columns, so tables foot.
 
+**v2.1 (peer-review follow-ups)**
+14. **DAU convention made explicit.** The input is "Month-1 DAU", used exactly as entered; growth applies from month 2. Month 1 therefore has no new-user conversions, but free-pool conversions still occur.
+15. **Cash metric renamed** to "Revenue Less Net Vendor Payables & Immediate Costs". It is accrual revenue less estimated payables, not cash profit; invoice timing and collections are not modeled.
+16. **Pricing comparison relabeled** "Fixed-Usage": a sensitivity on constant customer behavior, not a forecast of what customers would buy.
+17. **Enterprise expansion timing documented** (starts immediately, compounds monthly). **Usage ceiling labeled an estimate** from company-wide cost per prompt.
+18. **Starting-accounts warning** now compares active paid users (Pro subscribers plus enterprise seats times daily activity) to month-1 DAU, not contract counts. **ROI and capture ratios** show N/A instead of 0 when undefined.
+19. **Integrity checks** now report N/A (not silent skips) when not applicable, test the usage ceiling at three targets, and point to known-answer tests in `tests/test_engine.py`.
+20. **Pricing comparison has a Billing Basis column** saying what each row charges for, and a caption that the reference row includes expansion revenue the alternatives do not. **Enterprise renewal-month exemption:** cohorts at term end are not also hit by in-term churn that month; it is listed in the assumptions register.
+
 **Simplifications that remain**
-- Net DAU growth is treated as new-user acquisition (gross sign-ups and DAU churn are not modeled); free-user conversion is a monthly rate on the free active pool, not a full cohort table.
+- Net DAU growth is treated as new-user acquisition (gross sign-ups and DAU churn are not modeled); free-user conversion is a monthly rate on the free active pool, not a full cohort table. Month-1 DAU is taken as entered; growth starts in month 2.
+- The pricing comparison holds usage, plan mix and churn constant under every price; it does not model demand response.
+- Enterprise expansion starts immediately and compounds monthly; real expansion arrives through amendments and seat ramps.
+- "Revenue Less Net Vendor Payables & Immediate Costs" is not cash flow: customer collections and invoice-lag timing on the revenue side are not modeled.
+- **Renewal-month exemption (model assumption).** A cohort that reaches term end in a month faces only the renewal decision that month; in-term churn is not also applied to it. Every other cohort, and the renewed cohort in later months, is exposed to in-term churn. In-term churn defaults to 0%, so this has no effect unless you set it above zero.
 - Enterprise accounts renew at one blended rate on one blended contract value; discounts, ramped usage, committed minimums, overage billing and account-level deals are not modeled.
 - Token mix, caching and batch shares are identical across customer segments; costs per prompt are therefore equal across segments.
 - Infrastructure steps use equal-size capacity blocks; real vendor pricing may be tiered or continuous.
 - Payment fees are applied to recognized revenue; promotional credits reduce cash payable but not gross profit. Accounting treatment depends on the vendor agreement and policy.
 - Presets, prices and rates are illustrative estimates until verified against billing exports and vendor portals.
-""")
+"""
+if SHOW_CHANGE_LOG:
+    with st.expander("Change log & limitations (v2.1)"):
+        st.markdown(CHANGE_LOG_MD)
+else:
+    # one line, escaped: a blank line would end the HTML block and leak the text onto the screen
+    _hidden = html.escape(CHANGE_LOG_MD.strip()).replace("\n\n", "<br>").replace("\n", "<br>")
+    st.markdown(f'<div id="change-log-and-limitations" aria-hidden="true" style="display:none">{_hidden}</div>', unsafe_allow_html=True)
+
 st.caption("© 2026. Institutional AI Deal Desk & Contract Pricing Simulator. All rights reserved.")
