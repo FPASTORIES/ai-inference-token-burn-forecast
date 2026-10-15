@@ -1120,7 +1120,7 @@ with tab6:
                 "sub_over": st.number_input("Subscription: overage price per prompt ($)", min_value=0.0, value=0.006, step=0.001, format="%.4f"),
                 "hyb_pro_fee": st.number_input("Hybrid: Pro base fee / account / month ($)", min_value=0.0, value=20.0, step=5.0),
                 "hyb_pro_allow": st.number_input("Hybrid: Pro included prompts / account / month", min_value=0, value=1000, step=250),
-                "hyb_ent_fee": st.number_input("Hybrid: Enterprise base fee / account / month ($)", min_value=0.0, value=150.0, step=25.0),
+                "hyb_ent_fee": st.number_input("Hybrid: Enterprise base fee / account / month ($)", min_value=0.0, value=250.0, step=25.0),
                 "hyb_ent_allow": st.number_input("Hybrid: Enterprise included prompts / account / month", min_value=0, value=2000, step=250),
                 "hyb_over": st.number_input("Hybrid: overage price per prompt ($)", min_value=0.0, value=0.008, step=0.001, format="%.4f"),
                 "prepaid_price": st.number_input("Prepaid price per credit ($)", min_value=0.0, value=1.0, step=0.25),
