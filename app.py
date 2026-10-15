@@ -152,7 +152,7 @@ advanced_mode = st.sidebar.toggle(
 # Engine defaults. Advanced widgets override these; simple mode uses them as-is.
 DEFAULTS = {
     # funnel & revenue
-    "paid_dau_factor": 0.70, "new_conv": 0.15, "base_conv": 0.005, "churn": 0.05,
+    "paid_dau_factor": 0.40, "new_conv": 0.04, "base_conv": 0.005, "churn": 0.05,
     "arpu_pro": 30.0, "arpu_ent": 250.0, "pro_expansion_pct": 0.10, "fee_pct": 0.029,
     # enterprise contracts
     "ent_term": 12, "ent_renewal_rate": 0.80, "ent_in_term_churn": 0.0, "ent_expansion": 0.015,
@@ -167,7 +167,7 @@ DEFAULTS = {
     # infrastructure & credits
     "base_infra": preset["infra"], "step_type": "DAU Threshold", "step_thresh": 20000.0, "step_cost": 1500.0,
     "vec_cost": 0.05, "ai_credits": preset["ai_credits"], "cloud_credits": preset["cloud_credits"],
-    "ai_expiry": 0, "cloud_expiry": 0, "invoice_lag": 0, "ai_elig": 1.0, "cloud_elig": 1.0,
+    "ai_expiry": 0, "cloud_expiry": 0, "invoice_lag": 1, "ai_elig": 1.0, "cloud_elig": 1.0,
     # scenario hooks (1.0 = unchanged)
     "usage_mult": 1.0, "price_mult": 1.0,
 }
@@ -179,13 +179,13 @@ starting_dau = st.sidebar.number_input(
     help="DAU in the FIRST forecast month, exactly as entered. DAU growth applies from month 2, so month 1 reconciles to your actual DAU.",
 )
 starting_pro_subs = st.sidebar.number_input("Starting Pro Subscribers", min_value=0, value=preset["pro"], step=50, key=f"pro_{founder_stage}")
-starting_ent_accounts = st.sidebar.number_input("Starting Enterprise Accounts (contracts)", min_value=0, value=preset["ent"], step=10, key=f"ent_{founder_stage}")
+starting_ent_accounts = st.sidebar.number_input("Starting Team / SMB Accounts (contracts)", min_value=0, value=preset["ent"], step=10, key=f"ent_{founder_stage}")
 dau_monthly_growth = st.sidebar.slider(
     "Total DAU Monthly Growth (%)", 0.0, 25.0, float(preset["growth"]), 0.5, key=f"growth_{founder_stage}",
     help="Growth of total daily active users (free + paid), applied from month 2 onward. Net new DAU feeds new-user conversion. Month 1 has no new-user conversions; free-pool conversions still occur.",
 ) / 100
 net_new_ent_contracts = st.sidebar.number_input(
-    "Net New Enterprise Deals / Month", min_value=0.0, value=float(preset["deals"]), step=0.5, key=f"deals_{founder_stage}",
+    "Net New Team / SMB Deals / Month", min_value=0.0, value=float(preset["deals"]), step=0.5, key=f"deals_{founder_stage}",
     help="Sales-led pipeline velocity, independent of PLG traffic. Fractional values allowed (e.g. 2.5 = 5 deals every 2 months).",
 )
 baseline_prompts = st.sidebar.slider("Baseline Prompts / Active Paid User / Day", 1, 20, int(preset["prompts"]), key=f"prompts_{founder_stage}")
@@ -196,8 +196,8 @@ budget_monthly = st.sidebar.number_input("Monthly COGS Budget Cap ($; 0 = none)"
 
 if advanced_mode:
     with st.sidebar.expander("📂 A. Subscriber Funnel & Revenue"):
-        cfg["paid_dau_factor"] = st.slider("Paid Subscribers Active Daily (%)", 0, 100, 70, 5) / 100
-        cfg["new_conv"] = st.slider("New-User Conversion to Pro (%)", 0.0, 50.0, 15.0, 0.5) / 100
+        cfg["paid_dau_factor"] = st.slider("Paid Subscribers Active Daily (%)", 0, 100, 40, 5) / 100
+        cfg["new_conv"] = st.slider("New-User Conversion to Pro (%)", 0.0, 50.0, 4.0, 0.5) / 100
         cfg["base_conv"] = st.slider("Existing Free-Pool Conversion (% / month)", 0.0, 10.0, 0.5, 0.1,
                                      help="Monthly probability that an existing free active user upgrades. Applied to the free pool net of paid actives.") / 100
         cfg["churn"] = st.slider("Monthly Pro Churn (%)", 0.0, 15.0, 5.0, 0.5) / 100
@@ -206,8 +206,14 @@ if advanced_mode:
                                              help="Applies to Pro revenue only. Enterprise expansion is modeled per account below, so it is not double counted.") / 100
         cfg["fee_pct"] = st.slider("Payment Processing Fee (% of Revenue)", 0.0, 30.0, 2.9, 0.1) / 100
 
-    with st.sidebar.expander("📂 B. Enterprise Contract Economics"):
-        cfg["arpu_ent"] = st.number_input("Enterprise Monthly Contract Value / Account ($)", min_value=0.0, value=250.0, step=25.0)
+    with st.sidebar.expander("📂 B. Team / SMB Contract Economics"):
+        cfg["arpu_ent"] = st.number_input(
+            "Team / Small Business Monthly Value / Account ($)", 
+            min_value=0.0, 
+            value=250.0, 
+            step=25.0,
+            help="Currently modeled as an accessible Team/SMB tier ($250/mo). If targeting true Fortune 500 Enterprise contracts, scale this up to $1,000+ to simulate heavy B2B ARPU."
+        )
         cfg["ent_term"] = int(st.number_input("Contract Term (months)", min_value=1, max_value=120, value=12, step=1))
         cfg["ent_renewal_rate"] = st.slider("Renewal Rate at Term End (%)", 0, 100, 80, 5,
                                             help="Share of accounts reaching term end that renew for another full term.") / 100
@@ -216,7 +222,7 @@ if advanced_mode:
         cfg["ent_expansion"] = st.slider("Seat / Usage Expansion per Account (% / month)", 0.0, 10.0, 1.5, 0.5,
                                          help="Grows contract value, seats and prompts of an existing account. Does NOT add accounts. Timing assumption: expansion starts immediately and compounds monthly; real expansion usually arrives through contract amendments or seat ramps.") / 100
         cfg["ent_seats"] = int(st.number_input("Contracted Seats per Account (at signing)", min_value=1, value=20, step=5))
-        cfg["ent_prompts"] = int(st.number_input("Enterprise Prompts per Account / Month (at signing)", min_value=0, value=3000, step=500))
+        cfg["ent_prompts"] = int(st.number_input("Team / SMB Prompts per Account / Month (at signing)", min_value=0, value=3000, step=500))
         cfg["impl_fee"] = st.number_input("Implementation Fee per New Deal ($)", min_value=0.0, value=0.0, step=500.0)
         cfg["impl_rec_months"] = int(st.number_input("Implementation Fee Recognition Period (months; 1 = upfront)", min_value=1, max_value=36, value=1, step=1))
         cfg["impl_cost"] = st.number_input("Implementation Delivery Cost per New Deal ($)", min_value=0.0, value=0.0, step=500.0)
@@ -261,7 +267,7 @@ if advanced_mode:
         if cfg["step_type"] == "DAU Threshold":
             cfg["step_thresh"] = float(st.number_input("DAU Capacity Block (Users)", min_value=1000, value=20000, step=5000))
         elif cfg["step_type"] == "Paid Subscribers Threshold":
-            cfg["step_thresh"] = float(st.number_input("Subscriber Capacity Block (Pro subs + enterprise accounts)", min_value=500, value=5000, step=1000))
+            cfg["step_thresh"] = float(st.number_input("Subscriber Capacity Block (Pro subs + team accounts)", min_value=500, value=5000, step=1000))
         else:
             cfg["step_thresh"] = float(st.number_input("Monthly Prompt Block (Millions)", min_value=1, value=20, step=5)) * 1_000_000
         cfg["step_cost"] = st.number_input("Infra Step-Up Cost ($ per block)", min_value=0.0, value=1500.0, step=250.0)
@@ -270,7 +276,7 @@ if advanced_mode:
         cfg["cloud_credits"] = st.number_input("Starting Cloud Hosting Credits ($)", min_value=0.0, value=float(preset["cloud_credits"]), step=5000.0, key=f"cloudcred_{founder_stage}")
         cfg["ai_expiry"] = int(st.number_input("AI Credits Usable Through Forecast Month (0 = no expiry)", min_value=0, max_value=36, value=0, step=1))
         cfg["cloud_expiry"] = int(st.number_input("Cloud Credits Usable Through Forecast Month (0 = no expiry)", min_value=0, max_value=36, value=0, step=1))
-        cfg["invoice_lag"] = int(st.selectbox("Vendor Invoice Payment Lag (months)", [0, 1, 2, 3], index=0,
+        cfg["invoice_lag"] = int(st.selectbox("Vendor Invoice Payment Lag (months)", [0, 1, 2, 3], index=1,
                                               help="Vendor invoices (API, vector, infra) are paid this many months late. Payment fees and implementation costs are paid immediately."))
         cfg["ai_elig"] = st.slider("AI Credit Eligible Share of API Cost (%)", 0, 100, 100) / 100
         cfg["cloud_elig"] = st.slider("Cloud Credit Eligible Share of Vector + Infra (%)", 0, 100, 100) / 100
@@ -303,9 +309,9 @@ def validate_params(p):
         if not (0.0 <= p[k] <= 1.0):
             errs.append(f"'{k}' must be between 0 and 1.")
     if int(p["ent_term"]) < 1:
-        errs.append("Enterprise contract term must be at least 1 month.")
+        errs.append("Team / SMB contract term must be at least 1 month.")
     if int(p["ent_seats"]) < 1:
-        errs.append("Enterprise seats per account must be at least 1.")
+        errs.append("Team / SMB seats per account must be at least 1.")
     if int(p["impl_rec_months"]) < 1:
         errs.append("Implementation recognition period must be at least 1 month.")
     if p["p1_width"] <= 0 or p["p2_width"] <= 0:
@@ -364,7 +370,7 @@ def simulate(p):
     pm = p["price_mult"]
     f_in, f_out, s_in, s_out = p["f_in"] * pm, p["f_out"] * pm, p["s_in"] * pm, p["s_out"] * pm
 
-    # Enterprise cohorts. Starting accounts are a STAGGERED book: evenly spread over remaining terms 1..term,
+    # Team / SMB cohorts. Starting accounts are a STAGGERED book: evenly spread over remaining terms 1..term,
     # so renewals arrive every month instead of one cliff. 'end' = month index at whose START the term ends.
     cohorts = []
     if p["ent"] > 0:
@@ -380,7 +386,7 @@ def simulate(p):
     rows = []
 
     for i in range(n):
-        # ---------- enterprise cohort roll-forward ----------
+        # ---------- team / SMB cohort roll-forward ----------
         beg_acc = sum(c["acc"] for c in cohorts)
         beg_equiv = sum(c["acc"] * c["idx"] for c in cohorts)
         due = 0.0
@@ -522,19 +528,19 @@ def simulate(p):
             "Free-Pool Conversions": conv_base,
             "Churned Pro Subs": churned_pro,
             "Ending Pro Subs": ending_pro,
-            "Beginning Ent Accounts": beg_acc,
-            "New Ent Deals": new_ent,
-            "Ent Accounts Up For Renewal": due,
-            "Ent Non-Renewals": non_renewed,
-            "Ent In-Term Churn": intrm,
-            "Ending Ent Accounts": end_acc,
-            "Ent Expansion Index": (end_equiv / end_acc) if end_acc > 0 else 1.0,
+            "Beginning Team Accounts": beg_acc,
+            "New Team Deals": new_ent,
+            "Team Accounts Up For Renewal": due,
+            "Team Non-Renewals": non_renewed,
+            "Team In-Term Churn": intrm,
+            "Ending Team Accounts": end_acc,
+            "Team Expansion Index": (end_equiv / end_acc) if end_acc > 0 else 1.0,
             "Ending Paid Accounts": ending_paid_accounts,
             "Average Pro Subs": avg_pro,
-            "Average Ent Accounts": avg_acc,
+            "Average Team Accounts": avg_acc,
             "Typical Pro Prompts": typ_prompts,
             "Heavy Pro Prompts": heavy_prompts,
-            "Enterprise Prompts": ent_prompts,
+            "Team / SMB Prompts": ent_prompts,
             "Free Prompts": free_prompts,
             "Monthly Prompts": prompts_total,
             "Ending MRR Run-Rate ($)": ending_mrr,
@@ -585,7 +591,7 @@ def cost_allocation(df):
     """Split API + vector + infra cost between paid and free traffic by prompt volume, month by month."""
     pool = df["API Cost ($)"] + df["Vector DB Cost ($)"] + df["Fixed Infrastructure ($)"]
     prompts = df["Monthly Prompts"].to_numpy()
-    paid_prompts = (df["Typical Pro Prompts"] + df["Heavy Pro Prompts"] + df["Enterprise Prompts"]).to_numpy()
+    paid_prompts = (df["Typical Pro Prompts"] + df["Heavy Pro Prompts"] + df["Team / SMB Prompts"]).to_numpy()
     # Share of the month's pool carried by paid traffic. Months with no traffic at all (idle capacity)
     # have no paid share, so their cost lands in the free-tier / idle bucket instead of vanishing.
     paid_share = np.divide(paid_prompts, prompts, out=np.zeros(len(df)), where=prompts > 0)
@@ -630,8 +636,8 @@ SCENARIOS = [
     ("1. Base Case", {}),
     ("2. PLG Growth High (1.25x DAU growth)", {"growth": 1.25}),
     ("3. PLG Growth Low (0.75x DAU growth)", {"growth": 0.75}),
-    ("4. Enterprise Deal Velocity High (1.25x)", {"deals": 1.25}),
-    ("5. Enterprise Deal Velocity Low (0.75x)", {"deals": 0.75}),
+    ("4. Team / SMB Deal Velocity High (1.25x)", {"deals": 1.25}),
+    ("5. Team / SMB Deal Velocity Low (0.75x)", {"deals": 0.75}),
     ("6. Prompt Intensity High (1.5x, all segments)", {"usage": 1.5}),
     ("7. Prompt Intensity Low (0.7x, all segments)", {"usage": 0.7}),
     ("8. API Price Inflation (+25%)", {"price": 1.25}),
@@ -646,7 +652,7 @@ def apply_scenario(p, s):
     q = dict(p)
     q["dau_growth"] = p["dau_growth"] * s.get("growth", 1.0)
     q["net_new_ent"] = p["net_new_ent"] * s.get("deals", 1.0)   # no rounding: fractional deals allowed
-    q["usage_mult"] = p["usage_mult"] * s.get("usage", 1.0)     # scales typical, heavy, free AND enterprise prompts
+    q["usage_mult"] = p["usage_mult"] * s.get("usage", 1.0)     # scales typical, heavy, free AND team/SMB prompts
     q["price_mult"] = p["price_mult"] * s.get("price", 1.0)
     q["new_conv"] = min(1.0, p["new_conv"] * s.get("conv", 1.0))
     q["base_conv"] = min(1.0, p["base_conv"] * s.get("conv", 1.0))
@@ -672,10 +678,10 @@ def compare_pricing(df, p, r):
     n = len(df)
     h = p["heavy_share"]
     pro_acc = df["Average Pro Subs"].to_numpy()
-    ent_acc = df["Average Ent Accounts"].to_numpy()
+    ent_acc = df["Average Team Accounts"].to_numpy()
     typ_p = df["Typical Pro Prompts"].to_numpy()
     hvy_p = df["Heavy Pro Prompts"].to_numpy()
-    ent_p = df["Enterprise Prompts"].to_numpy()
+    ent_p = df["Team / SMB Prompts"].to_numpy()
     paid_p = typ_p + hvy_p + ent_p
     paid_cost, free_cost = cost_allocation(df)
     account_months = float(pro_acc.sum() + ent_acc.sum())
@@ -687,14 +693,14 @@ def compare_pricing(df, p, r):
         use = per_acct(prompts, accts)
         return float((np.maximum(0.0, use - allowance) * accts).sum() * price)
 
-    # segment-level overage: typical, heavy and enterprise measured separately (no pooling)
+    # segment-level overage: typical, heavy and team measured separately (no pooling)
     def sub_like(pro_fee, pro_allow, ent_fee, ent_allow, ovg):
         base = float(pro_acc.sum() * pro_fee + ent_acc.sum() * ent_fee)
         over = (overage(typ_p, pro_acc * (1 - h), pro_allow, ovg) + overage(hvy_p, pro_acc * h, pro_allow, ovg)
                 + overage(ent_p, ent_acc, ent_allow, ovg))
         return base + over
 
-    basis_per_prompt = "Per paid prompt (Pro + Enterprise); no seat, account or expansion revenue"
+    basis_per_prompt = "Per paid prompt (Pro + Team / SMB); no seat, account or expansion revenue"
     basis_fee = "Fixed fee per average contracted account + overage per prompt; excludes the expansion uplift"
     revenues = [
         ("1. Pay-as-you-go", float(paid_p.sum() * r["payg_rate"]), "Low (usage-driven)", "Low commitment; revenue volatility", basis_per_prompt),
@@ -708,7 +714,7 @@ def compare_pricing(df, p, r):
          "Prepaid price per credit pack, grossed up for breakage; no seat, account or expansion revenue"),
         ("0. Current model (subscriptions, ex-implementation)", float(df["Subscription Revenue ($)"].sum()),
          "High (contracted + subscription)", "Reference row: the revenue model driving the rest of the dashboard",
-         "ARPU per average Pro sub and per expansion-weighted enterprise account; INCLUDES the Pro overage/expansion uplift and the enterprise expansion index"),
+         "ARPU per average Pro sub and per expansion-weighted team account; INCLUDES the Pro overage/expansion uplift and the team expansion index"),
     ]
     out = []
     for label, rev, pred, risk, basis in revenues:
@@ -752,11 +758,11 @@ def run_integrity_checks(df, p, base_totals=None, pricing_df=None):
     add("Pro roll-forward: beginning + conversions - churn = ending",
         close(df["Beginning Pro Subs"] + df["New-User Conversions"] + df["Free-Pool Conversions"] - df["Churned Pro Subs"], df["Ending Pro Subs"]))
     add("Pro continuity: beginning(t) = ending(t-1)", close(df["Beginning Pro Subs"].iloc[1:], df["Ending Pro Subs"].iloc[:-1]))
-    add("Enterprise roll-forward: beginning + new - non-renewals - in-term churn = ending",
-        close(df["Beginning Ent Accounts"] + df["New Ent Deals"] - df["Ent Non-Renewals"] - df["Ent In-Term Churn"], df["Ending Ent Accounts"]))
-    add("Enterprise continuity: beginning(t) = ending(t-1)", close(df["Beginning Ent Accounts"].iloc[1:], df["Ending Ent Accounts"].iloc[:-1]))
-    add("Starting enterprise accounts tie to input", abs(float(df["Beginning Ent Accounts"].iloc[0]) - p["ent"]) < 1e-6)
-    add("Prompt segments sum to total", close(df["Typical Pro Prompts"] + df["Heavy Pro Prompts"] + df["Enterprise Prompts"] + df["Free Prompts"], df["Monthly Prompts"]))
+    add("Team roll-forward: beginning + new - non-renewals - in-term churn = ending",
+        close(df["Beginning Team Accounts"] + df["New Team Deals"] - df["Team Non-Renewals"] - df["Team In-Term Churn"], df["Ending Team Accounts"]))
+    add("Team continuity: beginning(t) = ending(t-1)", close(df["Beginning Team Accounts"].iloc[1:], df["Ending Team Accounts"].iloc[:-1]))
+    add("Starting team accounts tie to input", abs(float(df["Beginning Team Accounts"].iloc[0]) - p["ent"]) < 1e-6)
+    add("Prompt segments sum to total", close(df["Typical Pro Prompts"] + df["Heavy Pro Prompts"] + df["Team / SMB Prompts"] + df["Free Prompts"], df["Monthly Prompts"]))
     for tag, start, o, a, e, rem in [("AI", p["ai_credits"], "Opening AI Credits ($)", "AI Credits Applied ($)", "AI Credits Expired ($)", "Remaining AI Credits ($)"),
                                      ("Cloud", p["cloud_credits"], "Opening Cloud Credits ($)", "Cloud Credits Applied ($)", "Cloud Credits Expired ($)", "Remaining Cloud Credits ($)")]:
         add(f"{tag} credits: opening - expired - applied = remaining", close(df[o] - df[e] - df[a], df[rem]))
@@ -773,7 +779,7 @@ def run_integrity_checks(df, p, base_totals=None, pricing_df=None):
     paid_cost, free_cost = cost_allocation(df)
     pool = float((df["API Cost ($)"] + df["Vector DB Cost ($)"] + df["Fixed Infrastructure ($)"]).sum())
     add("Cost allocation: paid + free traffic cost = API + vector + infra", abs(paid_cost + free_cost - pool) < 1e-4 * max(1.0, pool))
-    must_be_nonneg = ["DAU", "Beginning Pro Subs", "Ending Pro Subs", "Ending Ent Accounts", "Ending Paid Accounts", "Monthly Prompts",
+    must_be_nonneg = ["DAU", "Beginning Pro Subs", "Ending Pro Subs", "Ending Team Accounts", "Ending Paid Accounts", "Monthly Prompts",
                       "Free Prompts", "Recognized Revenue ($)", "API Cost ($)", "Vector DB Cost ($)", "Fixed Infrastructure ($)",
                       "Total Modeled COGS ($)", "Remaining AI Credits ($)", "Remaining Cloud Credits ($)", "Estimated Cash Payable ($)",
                       "Estimated Cash Paid This Month ($)", "Vendor Invoices Outstanding ($)", "Deferred Implementation Revenue ($)"]
@@ -807,9 +813,9 @@ def run_integrity_checks(df, p, base_totals=None, pricing_df=None):
 _act = P["paid_dau_factor"]
 _start_active_paid = starting_pro_subs * _act + starting_ent_accounts * P["ent_seats"] * _act
 if _start_active_paid > starting_dau:
-    st.warning(f"Active paid users implied by your inputs (about {_start_active_paid:,.0f}: Pro subscribers plus enterprise seats, "
+    st.warning(f"Active paid users implied by your inputs (about {_start_active_paid:,.0f}: Pro subscribers plus team seats, "
                f"each x {_act * 100:.0f}% daily activity) exceed month-1 DAU ({starting_dau:,.0f}). "
-               "Confirm that DAU, Pro subscribers and enterprise seats share one definition; the free pool is floored at zero.")
+               "Confirm that DAU, Pro subscribers and team accounts share one definition; the free pool is floored at zero.")
 if starting_dau == 0 and starting_pro_subs + starting_ent_accounts > 0:
     st.warning("You have paid accounts but zero DAU. Confirm that DAU and paid-account counts use compatible definitions.")
 if advanced_mode and (cfg["p1_vol"] < baseline_prompts or cfg["p2_vol"] < baseline_prompts):
@@ -865,7 +871,7 @@ elif period_gm < margin_target:
                    f"{'n/a' if pd.isna(last_margin) else f'{last_margin:.1f}%'}). <b>Action:</b> test a usage cap, overage price or lower-cost routing.")
 else:
     bullets.append(f"<b>Margin Compliant:</b> Forecast-period gross margin <b>{period_gm:.1f}%</b> meets the <b>{margin_target}%</b> target "
-                   f"(ending month: {'n/a' if pd.isna(last_margin) else f'{last_margin:.1f}%'}).")
+                   f"(ending month: {'n/a' if pd.isna(last_margin) else f'{last_margin:.1f}%' }).")
 breach = df.loc[df["Modeled Gross Margin (%)"] < margin_target, "Month"]
 if len(breach):
     bullets.append(f"<b>First Monthly Breach:</b> Monthly margin first falls below target in <b>{breach.iloc[0]}</b> ({len(breach)} of {H} months below target).")
@@ -878,10 +884,10 @@ if budget_monthly > 0:
 ai_stat = credit_status(df, P["ai_credits"], "Opening AI Credits ($)", "AI Credits Expired ($)", "Remaining AI Credits ($)")
 cloud_stat = credit_status(df, P["cloud_credits"], "Opening Cloud Credits ($)", "Cloud Credits Expired ($)", "Remaining Cloud Credits ($)")
 bullets.append(f"<b>Credit Runway:</b> AI credits: {ai_stat}. Cloud credits: {cloud_stat}.")
-due_total = float(df["Ent Accounts Up For Renewal"].sum())
+due_total = float(df["Team Accounts Up For Renewal"].sum())
 if due_total > 0:
-    bullets.append(f"<b>Enterprise Renewals:</b> {due_total:,.1f} account-renewals fall due in the horizon; at {P['ent_renewal_rate'] * 100:.0f}% renewal about "
-                   f"{df['Ent Non-Renewals'].sum():,.1f} accounts are lost.")
+    bullets.append(f"<b>Team / SMB Renewals:</b> {due_total:,.1f} account-renewals fall due in the horizon; at {P['ent_renewal_rate'] * 100:.0f}% renewal about "
+                   f"{df['Team Non-Renewals'].sum():,.1f} accounts are lost.")
 if df["Monthly Prompts"].sum() > 0:
     bullets.append(f"<b>Free-Tier Cost-to-Serve:</b> Free users generate {free_share * 100:.0f}% of prompts and ≈${free_cost_alloc:,.0f} of API + vector + infrastructure cost "
                    f"({free_cost_alloc / max(1.0, paid_cost_alloc + free_cost_alloc) * 100:.0f}% of the pool), carried by paid revenue.")
@@ -925,7 +931,7 @@ with tab1:
     k2.metric("Revenue / paid account", f"${rev_pp:,.2f}")
     k3.metric("Gross profit / paid account", f"${rev_pp - cogs_pp:,.2f}")
     k4.metric("Modeled COGS", f"${float(m_last['Total Modeled COGS ($)']):,.0f}")
-    st.caption("Blended company-level averages across Pro subscribers and enterprise accounts (an enterprise account is a contract, not a user).")
+    st.caption("Blended company-level averages across Pro subscribers and team/SMB accounts (a team account is a contract, not a user).")
 
     st.markdown("#### Inference Unit Cost Telemetry")
     cu1, cu2 = st.columns(2)
@@ -950,11 +956,11 @@ with tab1:
     cogs_fig.update_layout(template="plotly_white", barmode="stack", height=320, margin=dict(l=30, r=30, t=20, b=20), legend=dict(orientation="h", y=1.12))
     show_chart(cogs_fig)
 
-    st.markdown("#### Enterprise Account Roll-Forward")
+    st.markdown("#### Team / SMB Account Roll-Forward")
     fe = make_subplots(specs=[[{"secondary_y": True}]])
-    fe.add_trace(go.Bar(x=df["Month"], y=df["Ending Ent Accounts"], name="Ending Accounts", marker_color="#3182ce"), secondary_y=False)
-    fe.add_trace(go.Bar(x=df["Month"], y=-df["Ent Non-Renewals"], name="Non-Renewals", marker_color="#e53e3e"), secondary_y=False)
-    fe.add_trace(go.Scatter(x=df["Month"], y=df["Ent Expansion Index"], name="Expansion Index (x)", mode="lines+markers", line=dict(color="#27965a", width=2)), secondary_y=True)
+    fe.add_trace(go.Bar(x=df["Month"], y=df["Ending Team Accounts"], name="Ending Accounts", marker_color="#3182ce"), secondary_y=False)
+    fe.add_trace(go.Bar(x=df["Month"], y=-df["Team Non-Renewals"], name="Non-Renewals", marker_color="#e53e3e"), secondary_y=False)
+    fe.add_trace(go.Scatter(x=df["Month"], y=df["Team Expansion Index"], name="Expansion Index (x)", mode="lines+markers", line=dict(color="#27965a", width=2)), secondary_y=True)
     fe.update_layout(template="plotly_white", barmode="relative", height=300, margin=dict(l=30, r=40, t=10, b=20), legend=dict(orientation="h", y=1.15))
     show_chart(fe)
 
@@ -988,7 +994,7 @@ with tab3:
 
 with tab4:
     st.subheader("📈 Multi-Scenario Comparative Analysis Matrix")
-    st.caption("Each scenario moves one driver family unless labeled combined. Prompt intensity scales ALL segments, including enterprise. Deal counts are not rounded. "
+    st.caption("Each scenario moves one driver family unless labeled combined. Prompt intensity scales ALL segments, including team/SMB. Deal counts are not rounded. "
                "These are simplified sensitivities on one operating plan, not independent plans.")
     scen_rows = []
     scen_totals = {}
@@ -1025,9 +1031,9 @@ with tab5:
         ("Forecast start / horizon", f"{pd.Period(freq='M', year=start_year, month=start_month).strftime('%b %Y')} / {H} months", "FP&A planning calendar", "Planning choice"),
         ("Starting DAU", f"{starting_dau:,.0f}", "Mixpanel / Segment / PostHog (define DAU consistently)", PRESET_EST),
         ("Starting Pro subscribers", f"{starting_pro_subs:,.0f}", "Billing system (Stripe) active subscriptions", PRESET_EST),
-        ("Starting enterprise accounts", f"{starting_ent_accounts:,.0f}", "Contract register / CRM", PRESET_EST),
+        ("Starting team / SMB accounts", f"{starting_ent_accounts:,.0f}", "Contract register / CRM", PRESET_EST),
         ("Total DAU monthly growth", f"{dau_monthly_growth * 100:.1f}%", "Acquisition model / analytics trend", PRESET_EST),
-        ("Net new enterprise deals / month", f"{net_new_ent_contracts:,.2f}", "Sales pipeline (CRM) weighted forecast", PRESET_EST),
+        ("Net new team / SMB deals / month", f"{net_new_ent_contracts:,.2f}", "Sales pipeline (CRM) weighted forecast", PRESET_EST),
         ("Baseline prompts / active paid user / day", f"{baseline_prompts}", "LLM gateway logs (Helicone / Langfuse)", PRESET_EST),
         ("Target gross margin / COGS budget cap", f"{margin_target}% / " + (f"${budget_monthly:,.0f}" if budget_monthly > 0 else "none"), "Board / finance policy", "Policy input"),
         ("Paid-user daily activity factor", f"{P['paid_dau_factor'] * 100:.0f}%", "Product analytics (paid DAU / paid subs)", ASSUME),
@@ -1035,10 +1041,10 @@ with tab5:
         ("Existing free-pool conversion / month", f"{P['base_conv'] * 100:.1f}%", "Funnel analytics, cohort-based", ASSUME),
         ("Pro monthly churn", f"{P['churn'] * 100:.1f}%", "Billing cohort retention", ASSUME),
         ("Pro ARPU / overage-expansion", f"${P['arpu_pro']:,.2f} / +{P['pro_expansion_pct'] * 100:.0f}%", "Price book / metered billing invoices", ASSUME),
-        ("Enterprise contract value / account / month", f"${P['arpu_ent']:,.2f}", "Signed order forms", ASSUME),
-        ("Enterprise term / renewal rate / in-term churn", f"{P['ent_term']} mo / {P['ent_renewal_rate'] * 100:.0f}% / {P['ent_in_term_churn'] * 100:.1f}%", "Contract register; historical renewals", ASSUME),
-        ("Enterprise renewal-month exemption", "Cohorts at term end face the renewal decision only; in-term churn is not also applied to them that month", "Contract terms (termination for cause, insolvency)", ASSUME),
-        ("Enterprise expansion / seats / prompts per account", f"{P['ent_expansion'] * 100:.1f}% mo / {P['ent_seats']} seats / {P['ent_prompts']:,} prompts", "Account usage telemetry", ASSUME),
+        ("Team / SMB monthly value / account", f"${P['arpu_ent']:,.2f}", "Signed order forms", ASSUME),
+        ("Team / SMB term / renewal rate / in-term churn", f"{P['ent_term']} mo / {P['ent_renewal_rate'] * 100:.0f}% / {P['ent_in_term_churn'] * 100:.1f}%", "Contract register; historical renewals", ASSUME),
+        ("Team / SMB renewal-month exemption", "Cohorts at term end face the renewal decision only; in-term churn is not also applied to them that month", "Contract terms (termination for cause, insolvency)", ASSUME),
+        ("Team / SMB expansion / seats / prompts per account", f"{P['ent_expansion'] * 100:.1f}% mo / {P['ent_seats']} seats / {P['ent_prompts']:,} prompts", "Account usage telemetry", ASSUME),
         ("Implementation fee / recognition / delivery cost", f"${P['impl_fee']:,.0f} / {P['impl_rec_months']} mo / ${P['impl_cost']:,.0f}", "Order forms; revenue-recognition policy; PS cost model", ASSUME),
         ("Payment processing fee", f"{P['fee_pct'] * 100:.1f}%", "Processor merchant statement", ASSUME),
         ("Usage peaks (calendar months)", f"{calendar.month_name[P['p1_month']]} @ {P['p1_vol']} / {calendar.month_name[P['p2_month']]} @ {P['p2_vol']}; σ {P['p1_width']} / {P['p2_width']}", "Seasonality in gateway logs", ASSUME),
@@ -1094,7 +1100,7 @@ with tab6:
         attribution = st.slider("Share of Value Attributable to the AI Product (%)", 0, 100, 100) / 100
         economic_value = raw_value * attribution
         st.info(f"💡 Economic value created: **${economic_value:,.0f} / user / month**")
-        price_basis = st.selectbox("Price Basis", ["Pro (per user)", "Enterprise (per seat)"])
+        price_basis = st.selectbox("Price Basis", ["Pro (per user)", "Team / SMB (per seat)"])
         price_charged = P["arpu_pro"] if price_basis.startswith("Pro") else P["arpu_ent"] / max(1, P["ent_seats"])
         capture_text = f"{price_charged / economic_value * 100:.1f}%" if economic_value > 0 else "N/A (no value created)"
         roi_text = f"{economic_value / price_charged:.1f}x" if price_charged > 0 else "N/A (price is zero)"
@@ -1107,7 +1113,7 @@ with tab6:
     with col_v2:
         st.markdown("#### 2. Fixed-Usage Pricing Archetype Comparison")
         st.caption("This is a sensitivity on constant customer behavior, not a forecast of what customers would buy: usage, plan mix and churn are held the same under every price. "
-                   "All archetypes are applied to the SAME simulated customers and usage, segment by segment (typical Pro, heavy Pro, enterprise). "
+                   "All archetypes are applied to the SAME simulated customers and usage, segment by segment (typical Pro, heavy Pro, team / SMB). "
                    "Cost is the same API + vector + infrastructure pool allocated by prompt volume; payment fees are recomputed on each archetype's revenue. "
                    "Free-tier traffic (and any idle capacity in months with no traffic) earns no revenue, so its cost is shown separately.")
         with st.expander("Edit comparable pricing rules", expanded=False):
@@ -1115,13 +1121,13 @@ with tab6:
                 "payg_rate": st.number_input("Pay-as-you-go price per prompt ($)", min_value=0.0, value=0.008, step=0.001, format="%.4f"),
                 "sub_pro_fee": st.number_input("Subscription: Pro base fee / account / month ($)", min_value=0.0, value=30.0, step=5.0),
                 "sub_pro_allow": st.number_input("Subscription: Pro included prompts / account / month", min_value=0, value=1500, step=250),
-                "sub_ent_fee": st.number_input("Subscription: Enterprise base fee / account / month ($)", min_value=0.0, value=250.0, step=25.0),
-                "sub_ent_allow": st.number_input("Subscription: Enterprise included prompts / account / month", min_value=0, value=3000, step=250),
+                "sub_ent_fee": st.number_input("Subscription: Team / SMB base fee / account / month ($)", min_value=0.0, value=250.0, step=25.0),
+                "sub_ent_allow": st.number_input("Subscription: Team / SMB included prompts / account / month", min_value=0, value=3000, step=250),
                 "sub_over": st.number_input("Subscription: overage price per prompt ($)", min_value=0.0, value=0.006, step=0.001, format="%.4f"),
                 "hyb_pro_fee": st.number_input("Hybrid: Pro base fee / account / month ($)", min_value=0.0, value=20.0, step=5.0),
                 "hyb_pro_allow": st.number_input("Hybrid: Pro included prompts / account / month", min_value=0, value=1000, step=250),
-                "hyb_ent_fee": st.number_input("Hybrid: Enterprise base fee / account / month ($)", min_value=0.0, value=250.0, step=25.0),
-                "hyb_ent_allow": st.number_input("Hybrid: Enterprise included prompts / account / month", min_value=0, value=2000, step=250),
+                "hyb_ent_fee": st.number_input("Hybrid: Team / SMB base fee / account / month ($)", min_value=0.0, value=250.0, step=25.0),
+                "hyb_ent_allow": st.number_input("Hybrid: Team / SMB included prompts / account / month", min_value=0, value=2000, step=250),
                 "hyb_over": st.number_input("Hybrid: overage price per prompt ($)", min_value=0.0, value=0.008, step=0.001, format="%.4f"),
                 "prepaid_price": st.number_input("Prepaid price per credit ($)", min_value=0.0, value=1.0, step=0.25),
                 "prepaid_ppc": st.number_input("Prompts covered per credit", min_value=0.01, value=100.0, step=10.0),
@@ -1129,7 +1135,7 @@ with tab6:
             }
         pricing_df = compare_pricing(df, P, rules)
         show_df(style_frame(pricing_df), hide_index=True)
-        st.caption("Billing Basis shows what each row charges for. Rows 1-4 do not include the Pro overage/expansion uplift or the enterprise expansion index that the reference row 0 carries, so row 0 is not a like-for-like benchmark for revenue; compare margins and unit economics with that in mind. "
+        st.caption("Billing Basis shows what each row charges for. Rows 1-4 do not include the Pro overage/expansion uplift or the team expansion index that the reference row 0 carries, so row 0 is not a like-for-like benchmark for revenue; compare margins and unit economics with that in mind. "
                    "Prepaid revenue = value of credits purchased (consumed + expired breakage); cash timing and deferred-revenue treatment are not modeled. "
                    "Contribution margin is before free-tier and idle cost; gross margin after free-tier cost is the comparable company-level figure.")
         st.markdown(f"**Estimated Pro usage ceiling at {margin_target}% target margin (month {H}):** "
@@ -1148,11 +1154,11 @@ st.markdown("---")
 SHOW_CHANGE_LOG = False
 CHANGE_LOG_MD = """
 **Material changes from v1**
-1. **Enterprise engine rebuilt as cohorts.** Accounts, renewals, non-renewals, in-term churn and expansion are tracked per cohort and reconcile to the account roll-forward. The starting book is a *staggered* book (evenly spread over remaining terms), so renewals arrive monthly and there is no end-of-horizon cliff. Renewal rate and in-term churn are explicit inputs; the hidden "50% of Pro churn" rule is gone.
-2. **Expansion is no longer double counted.** Enterprise expansion grows contract value, seats and prompts of existing accounts. The 10% overage/expansion uplift applies to Pro revenue only.
-3. **Accounts are not users.** Enterprise accounts carry contracted seats; only active seats count toward DAU and the free pool. Free-pool conversion is capped at the pool and measured against paid *active* users.
+1. **Team / SMB engine rebuilt as cohorts.** Accounts, renewals, non-renewals, in-term churn and expansion are tracked per cohort and reconcile to the account roll-forward. The starting book is a *staggered* book (evenly spread over remaining terms), so renewals arrive monthly and there is no end-of-horizon cliff. Renewal rate and in-term churn are explicit inputs; the hidden "50% of Pro churn" rule is gone.
+2. **Expansion is no longer double counted.** Team / SMB expansion grows contract value, seats and prompts of existing accounts. The 10% overage/expansion uplift applies to Pro revenue only.
+3. **Accounts are not users.** Team / SMB accounts carry contracted seats; only active seats count toward DAU and the free pool. Free-pool conversion is capped at the pool and measured against paid *active* users.
 4. **Seasonality uses calendar months** (wrapping around the year), not forecast-month index. Peaks are floored at baseline. The peak controls no longer depend on the horizon, which removes the 1-month-horizon crash.
-5. **Like-for-like pricing comparison.** Same customers, per-segment allowances (no pooling), enterprise priced on enterprise fees, one shared cost pool, fees recomputed per archetype, free-tier and idle-capacity cost shown separately, prepaid breakage, and a reference row for the current model.
+5. **Like-for-like pricing comparison.** Same customers, per-segment allowances (no pooling), team / SMB accounts priced on respective fees, one shared cost pool, fees recomputed per archetype, free-tier and idle-capacity cost shown separately, prepaid breakage, and a reference row for the current model.
 6. **Usage-ceiling solver rebuilt.** Uses the ending month's own marginal cost per prompt and per-account Pro revenue; reports variable-cost and fully-loaded ceilings.
 7. **Margin states.** No-revenue is "n/a", never "healthy". The advisory states which margin it tests (forecast-period) and also shows ending-month margin.
 8. **Scenarios** move one driver family each, scale all prompt segments, do not round deals, include conversion and churn/renewal shocks, and report cash paid and outstanding invoices.
@@ -1166,18 +1172,18 @@ CHANGE_LOG_MD = """
 14. **DAU convention made explicit.** The input is "Month-1 DAU", used exactly as entered; growth applies from month 2. Month 1 therefore has no new-user conversions, but free-pool conversions still occur.
 15. **Cash metric renamed** to "Revenue Less Net Vendor Payables & Immediate Costs". It is accrual revenue less estimated payables, not cash profit; invoice timing and collections are not modeled.
 16. **Pricing comparison relabeled** "Fixed-Usage": a sensitivity on constant customer behavior, not a forecast of what customers would buy.
-17. **Enterprise expansion timing documented** (starts immediately, compounds monthly). **Usage ceiling labeled an estimate** from company-wide cost per prompt.
-18. **Starting-accounts warning** now compares active paid users (Pro subscribers plus enterprise seats times daily activity) to month-1 DAU, not contract counts. **ROI and capture ratios** show N/A instead of 0 when undefined.
+17. **Team / SMB expansion timing documented** (starts immediately, compounds monthly). **Usage ceiling labeled an estimate** from company-wide cost per prompt.
+18. **Starting-accounts warning** now compares active paid users (Pro subscribers plus team seats times daily activity) to month-1 DAU, not contract counts. **ROI and capture ratios** show N/A instead of 0 when undefined.
 19. **Integrity checks** now report N/A (not silent skips) when not applicable, test the usage ceiling at three targets, and point to known-answer tests in `tests/test_engine.py`.
-20. **Pricing comparison has a Billing Basis column** saying what each row charges for, and a caption that the reference row includes expansion revenue the alternatives do not. **Enterprise renewal-month exemption:** cohorts at term end are not also hit by in-term churn that month; it is listed in the assumptions register.
+20. **Pricing comparison has a Billing Basis column** saying what each row charges for, and a caption that the reference row includes expansion revenue the alternatives do not. **Renewal-month exemption:** cohorts at term end are not also hit by in-term churn that month; it is listed in the assumptions register.
 
 **Simplifications that remain**
 - Net DAU growth is treated as new-user acquisition (gross sign-ups and DAU churn are not modeled); free-user conversion is a monthly rate on the free active pool, not a full cohort table. Month-1 DAU is taken as entered; growth starts in month 2.
 - The pricing comparison holds usage, plan mix and churn constant under every price; it does not model demand response.
-- Enterprise expansion starts immediately and compounds monthly; real expansion arrives through amendments and seat ramps.
+- Team / SMB expansion starts immediately and compounds monthly; real expansion arrives through amendments and seat ramps.
 - "Revenue Less Net Vendor Payables & Immediate Costs" is not cash flow: customer collections and invoice-lag timing on the revenue side are not modeled.
 - **Renewal-month exemption (model assumption).** A cohort that reaches term end in a month faces only the renewal decision that month; in-term churn is not also applied to it. Every other cohort, and the renewed cohort in later months, is exposed to in-term churn. In-term churn defaults to 0%, so this has no effect unless you set it above zero.
-- Enterprise accounts renew at one blended rate on one blended contract value; discounts, ramped usage, committed minimums, overage billing and account-level deals are not modeled.
+- Team / SMB accounts renew at one blended rate on one blended contract value; discounts, ramped usage, committed minimums, overage billing and account-level deals are not modeled.
 - Token mix, caching and batch shares are identical across customer segments; costs per prompt are therefore equal across segments.
 - Infrastructure steps use equal-size capacity blocks; real vendor pricing may be tiered or continuous.
 - Payment fees are applied to recognized revenue; promotional credits reduce cash payable but not gross profit. Accounting treatment depends on the vendor agreement and policy.
