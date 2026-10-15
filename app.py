@@ -1,5 +1,5 @@
 """
-The AI Unit Economics Deal Desk  (v2.4 - scaled down scaling ARR & optimized margins)
+The AI Unit Economics Deal Desk  (v2.5 - preset-specific usage peaks, rebuilt Scaling preset, token-price disclaimers)
 ------------------------------------------------------------------------------------------
 FP&A planning model for direct AI inference, vector storage, infrastructure step-costs,
 enterprise contract cohorts (term / renewal / expansion), promotional-credit drawdown,
@@ -7,7 +7,10 @@ invoice-lag cash timing, scenario sensitivities and a like-for-like pricing comp
 
 All prices, rates and presets are user-editable ESTIMATES. Verify against vendor billing
 portals, billing-system exports and accounting policy before using for decisions.
-See the "Change log & limitations" section at the bottom of the page.
+
+TOKEN PRICES: model prices per 1M tokens are illustrative placeholders (not live vendor quotes)
+and are held FLAT for the whole horizon; no price decline is modeled. COGS covers AI inference,
+vector DB, hosting and payment fees only. See the disclaimers at the bottom of the page.
 """
 import calendar
 import datetime
@@ -58,6 +61,13 @@ div[data-testid="stMetric"] div[data-testid="stMetricValue"] {font-size:1.1rem !
 .cfo-commentary h4 {margin:0 0 4px 0; font-size:0.9rem; color:#2b6cb0; font-weight:700;}
 .cfo-commentary ul {margin:0; padding-left:16px; font-size:0.82rem; color:#4a5568;}
 .cfo-commentary li {margin-bottom:2px;}
+.assumption-flag {
+    background: #fffaf0; border: 1px solid #f6d6a8; border-left: 4px solid #dd6b20;
+    padding: 8px 12px; border-radius: 6px; margin-bottom: 12px; font-size: 0.8rem; color: #4a5568;
+}
+.assumption-flag b {color: #c05621;}
+.assumption-flag ul {margin: 4px 0 0 0; padding-left: 16px;}
+.assumption-flag li {margin-bottom: 2px;}
 </style>
 """, unsafe_allow_html=True)
 
@@ -67,6 +77,15 @@ st.markdown("""
     <p>Founder presets, team contract cohorts, typical/heavy-user costs, like-for-like pricing simulation, credit runway and cash timing.</p>
 </div>
 """, unsafe_allow_html=True)
+
+
+def token_price_note(p):
+    """One-line token-price disclaimer built from the LIVE inputs, so it can never quote stale prices."""
+    return (f"<b>Token-price assumption:</b> frontier ${p['f_in']:.2f} in / ${p['f_out']:.2f} out and standard ${p['s_in']:.4f} in / ${p['s_out']:.4f} out "
+            "per 1M tokens are illustrative, user-editable placeholders, not live vendor quotes, and are held <b>flat for the entire horizon</b> "
+            "(no price decline or increase is modeled) while tokens per prompt grow. Verify against current vendor rate cards. "
+            "COGS covers AI inference, vector DB, hosting and payment fees only; support, observability, compliance and other COGS are not included. "
+            "Flat prices tend to overstate future inference cost while omitted costs understate total COGS, so read margins as a planning range, not a forecast.")
 
 
 def _supports_stretch(fn):
@@ -127,20 +146,25 @@ def style_frame(df):
 # 1. SIDEBAR ASSUMPTIONS
 # ==========================================
 FOUNDER_PRESETS = {
+    # p1_vol / p2_vol: seasonal peak prompts / user / day. Calibrated at ~1.7x and ~2.1x each preset's own
+    # baseline (previously a fixed 35 / 45 for every preset, which made the baseline slider irrelevant).
     "Pre-launch": {
-        "dau": 100, "pro": 0, "ent": 0, "growth": 5.0, "deals": 0.0, 
+        "dau": 100, "pro": 0, "ent": 0, "growth": 5.0, "deals": 0.0,
         "prompts": 3, "infra": 500.0, "ai_credits": 0.0, "cloud_credits": 0.0,
-        "front_mix": 0.70, "cache_rate": 0.10, "free_mult": 0.50
+        "front_mix": 0.70, "cache_rate": 0.10, "free_mult": 0.50,
+        "p1_vol": 5, "p2_vol": 6,
     },
     "Early traction": {
-        "dau": 5000, "pro": 150, "ent": 2, "growth": 4.0, "deals": 0.5, 
+        "dau": 5000, "pro": 150, "ent": 2, "growth": 4.0, "deals": 0.5,
         "prompts": 12, "infra": 2500.0, "ai_credits": 10000.0, "cloud_credits": 15000.0,
-        "front_mix": 0.50, "cache_rate": 0.20, "free_mult": 0.40
+        "front_mix": 0.50, "cache_rate": 0.20, "free_mult": 0.40,
+        "p1_vol": 20, "p2_vol": 25,
     },
     "Scaling": {
-        "dau": 3000, "pro": 300, "ent": 5, "growth": 5.0, "deals": 1.0, 
-        "prompts": 8, "infra": 3000.0, "ai_credits": 15000.0, "cloud_credits": 25000.0,
-        "front_mix": 0.20, "cache_rate": 0.55, "free_mult": 0.20
+        "dau": 12000, "pro": 600, "ent": 10, "growth": 5.0, "deals": 2.0,
+        "prompts": 10, "infra": 6000.0, "ai_credits": 25000.0, "cloud_credits": 40000.0,
+        "front_mix": 0.30, "cache_rate": 0.45, "free_mult": 0.20,
+        "p1_vol": 17, "p2_vol": 21,
     },
 }
 
@@ -170,7 +194,7 @@ DEFAULTS = {
     "ent_term": 12, "ent_renewal_rate": 0.80, "ent_in_term_churn": 0.0, "ent_expansion": 0.015,
     "ent_seats": 20, "ent_prompts": 3000, "impl_fee": 0.0, "impl_cost": 0.0, "impl_rec_months": 1,
     # usage
-    "p1_vol": 35, "p1_month": 3, "p1_width": 1.5, "p2_vol": 45, "p2_month": 11, "p2_width": 2.0,
+    "p1_vol": preset["p1_vol"], "p1_month": 3, "p1_width": 1.5, "p2_vol": preset["p2_vol"], "p2_month": 11, "p2_width": 2.0,
     "heavy_share": 0.20, "heavy_mode": "Multiplier", "heavy_mult": 4.0, "pareto_share": 0.80,
     "free_mult": preset["free_mult"], "in_tok": 1000, "out_tok": 400, "in_grow": 0.03, "out_grow": 0.0,
     # routing & token pricing
@@ -241,11 +265,12 @@ if advanced_mode:
 
     with st.sidebar.expander("📂 C. Usage Peaks & Heavy-User Skew"):
         st.markdown("**Peak 1 (calendar month)**")
-        cfg["p1_vol"] = st.slider("Peak 1 Prompts / User / Day", 1, 100, 35)
+        cfg["p1_vol"] = st.slider("Peak 1 Prompts / User / Day", 1, 100, int(preset["p1_vol"]), key=f"p1_{founder_stage}",
+                                  help="Absolute prompts per active user per day at the peak (not a multiplier). Presets use ~1.7x / ~2.1x their own baseline; keep peaks in proportion to the baseline or free-tier usage will dominate cost.")
         cfg["p1_month"] = st.selectbox("Peak 1 Month", list(range(1, 13)), index=2, format_func=lambda m: calendar.month_name[m])
         cfg["p1_width"] = st.slider("Peak 1 Spread (σ, months)", 0.5, 4.0, 1.5, 0.5)
         st.markdown("**Peak 2 (calendar month)**")
-        cfg["p2_vol"] = st.slider("Peak 2 Prompts / User / Day", 1, 100, 45)
+        cfg["p2_vol"] = st.slider("Peak 2 Prompts / User / Day", 1, 100, int(preset["p2_vol"]), key=f"p2_{founder_stage}")
         cfg["p2_month"] = st.selectbox("Peak 2 Month", list(range(1, 13)), index=10, format_func=lambda m: calendar.month_name[m])
         cfg["p2_width"] = st.slider("Peak 2 Spread (σ, months)", 0.5, 4.0, 2.0, 0.5)
         cfg["heavy_share"] = st.slider("Heavy Users as Share of Pro Users (%)", 0, 50, 20, 5) / 100
@@ -258,15 +283,18 @@ if advanced_mode:
         cfg["free_mult"] = st.slider("Free Tier Usage Multiplier (%)", 0, 100, int(preset["free_mult"] * 100)) / 100
         cfg["in_tok"] = st.number_input("Initial Input Tokens / Prompt", min_value=0, value=1000, step=100)
         cfg["out_tok"] = st.number_input("Initial Output Tokens / Prompt", min_value=0, value=400, step=50)
-        cfg["in_grow"] = st.slider("MoM Input Token Growth (%)", 0.0, 20.0, 3.0, 0.5) / 100
+        cfg["in_grow"] = st.slider("MoM Input Token Growth (%)", 0.0, 20.0, 3.0, 0.5,
+                                   help="Compounds monthly for the whole horizon. Token PRICES are held flat, so cost per prompt rises with this setting.") / 100
         cfg["out_grow"] = st.slider("MoM Output Token Growth (%)", 0.0, 20.0, 0.0, 0.5) / 100
 
     with st.sidebar.expander("📂 D. Token Routing & Pricing Rules"):
+        st.caption("⚠️ Token prices below are illustrative placeholders, not live vendor quotes, and are held flat for the whole forecast (no price decline modeled). Replace with your vendor's current rate card.")
+        _price_help = "Illustrative placeholder, not a live vendor quote. Held flat across the horizon; scenarios 8-9 apply a flat % change to every month."
         cfg["front_mix"] = st.slider("Frontier Model Traffic Share (%)", 0, 100, int(preset["front_mix"] * 100)) / 100
-        cfg["f_in"] = st.number_input("Frontier Input Price ($ / 1M)", min_value=0.0, value=2.50, step=0.25)
-        cfg["f_out"] = st.number_input("Frontier Output Price ($ / 1M)", min_value=0.0, value=10.00, step=0.50)
-        cfg["s_in"] = st.number_input("Standard Input Price ($ / 1M)", min_value=0.0, value=0.15, step=0.05, format="%.4f")
-        cfg["s_out"] = st.number_input("Standard Output Price ($ / 1M)", min_value=0.0, value=0.60, step=0.05, format="%.4f")
+        cfg["f_in"] = st.number_input("Frontier Input Price ($ / 1M)", min_value=0.0, value=2.50, step=0.25, help=_price_help)
+        cfg["f_out"] = st.number_input("Frontier Output Price ($ / 1M)", min_value=0.0, value=10.00, step=0.50, help=_price_help)
+        cfg["s_in"] = st.number_input("Standard Input Price ($ / 1M)", min_value=0.0, value=0.15, step=0.05, format="%.4f", help=_price_help)
+        cfg["s_out"] = st.number_input("Standard Output Price ($ / 1M)", min_value=0.0, value=0.60, step=0.05, format="%.4f", help=_price_help)
         cfg["cache_rate"] = st.slider("Eligible Input Tokens Cached (%)", 0, 90, int(preset["cache_rate"] * 100)) / 100
         cfg["cache_ratio"] = st.slider("Cached Price Ratio (% of regular)", 0, 100, 20) / 100
         cfg["batch_share"] = st.slider("Traffic Using Batch Pricing (%)", 0, 80, 20) / 100
@@ -909,6 +937,7 @@ st.markdown(f"""
     <ul>{"".join(f"<li>{b}</li>" for b in bullets)}</ul>
 </div>
 """, unsafe_allow_html=True)
+st.markdown(f'<div class="assumption-flag">⚠️ {token_price_note(P)}</div>', unsafe_allow_html=True)
 
 
 # ==========================================
@@ -932,7 +961,9 @@ with tab1:
     fig.update_yaxes(title_text="USD ($ / Month)", secondary_y=False, rangemode="tozero")
     fig.update_yaxes(title_text="Gross Margin (%)", secondary_y=True)
     show_chart(fig)
-    st.caption("Gross margin here is a management metric: payment processing fees and implementation delivery cost are included in COGS.")
+    st.caption("Gross margin here is a management metric: payment processing fees and implementation delivery cost are included in COGS. "
+               "API cost uses the illustrative token prices in the sidebar, held flat for the whole horizon (no price decline modeled), while input tokens per prompt grow; "
+               "support, observability, compliance and other COGS are not included.")
 
     st.markdown("#### Founder Unit-Economics Snapshot (ending month)")
     k1, k2, k3, k4 = st.columns(4)
@@ -1007,7 +1038,8 @@ with tab3:
 with tab4:
     st.subheader("📈 Multi-Scenario Comparative Analysis Matrix")
     st.caption("Each scenario moves one driver family unless labeled combined. Prompt intensity scales ALL segments, including team/SMB. Deal counts are not rounded. "
-               "These are simplified sensitivities on one operating plan, not independent plans.")
+               "These are simplified sensitivities on one operating plan, not independent plans. "
+               "Scenarios 8-9 apply a flat price change to every month of the horizon; they are not a price-decline trajectory.")
     scen_rows = []
     scen_totals = {}
     for name, spec in SCENARIOS:
@@ -1039,6 +1071,7 @@ with tab5:
     st.caption("Generated from the live inputs, so values cannot drift from the model. 'Status' is an honest label: nothing here has been verified against actuals by this tool.")
     PRESET_EST = "Founder-profile preset (estimate) — replace with actuals"
     ASSUME = "Model assumption — verify"
+    TOKEN_FLAG = "KEY ASSUMPTION — illustrative price, held flat for the horizon; verify against vendor rate card"
     audit = [
         ("Forecast start / horizon", f"{pd.Period(freq='M', year=start_year, month=start_month).strftime('%b %Y')} / {H} months", "FP&A planning calendar", "Planning choice"),
         ("Starting DAU", f"{starting_dau:,.0f}", "Mixpanel / Segment / PostHog (define DAU consistently)", PRESET_EST),
@@ -1062,9 +1095,12 @@ with tab5:
         ("Usage peaks (calendar months)", f"{calendar.month_name[P['p1_month']]} @ {P['p1_vol']} / {calendar.month_name[P['p2_month']]} @ {P['p2_vol']}; σ {P['p1_width']} / {P['p2_width']}", "Seasonality in gateway logs", ASSUME),
         ("Heavy-user share / calibration", f"{P['heavy_share'] * 100:.0f}% / " + (f"{P['heavy_mult']:.1f}x multiplier" if P["heavy_mode"] == "Multiplier" else f"Pareto {P['pareto_share'] * 100:.0f}% of prompts (derived {h_mult_used:.1f}x)"), "Per-user prompt distribution", ASSUME),
         ("Free-tier usage multiplier", f"{P['free_mult'] * 100:.0f}% of typical", "Gateway logs by plan", ASSUME),
-        ("Tokens / prompt (in / out) and MoM growth", f"{P['in_tok']:,} / {P['out_tok']:,}; +{P['in_grow'] * 100:.1f}% / +{P['out_grow'] * 100:.1f}%", "LLM provider logs", ASSUME),
-        ("Frontier routing share and prices", f"{P['front_mix'] * 100:.0f}%; ${P['f_in']:.2f} in / ${P['f_out']:.2f} out per 1M", "Vendor rate card (public, unverified)", ASSUME),
-        ("Standard model prices", f"${P['s_in']:.4f} in / ${P['s_out']:.4f} out per 1M", "Vendor rate card (public, unverified)", ASSUME),
+        ("Tokens / prompt (in / out) and MoM growth", f"{P['in_tok']:,} / {P['out_tok']:,}; +{P['in_grow'] * 100:.1f}% / +{P['out_grow'] * 100:.1f}% "
+                                                      f"(input tokens x{(1 + P['in_grow']) ** max(0, H - 1):.2f} by month {H})", "LLM provider logs", ASSUME),
+        ("Frontier routing share and prices", f"{P['front_mix'] * 100:.0f}%; ${P['f_in']:.2f} in / ${P['f_out']:.2f} out per 1M", "Vendor rate card (public, unverified)", TOKEN_FLAG),
+        ("Standard model prices", f"${P['s_in']:.4f} in / ${P['s_out']:.4f} out per 1M", "Vendor rate card (public, unverified)", TOKEN_FLAG),
+        ("Token price trajectory over the horizon", "Flat: no price decline or increase is modeled. Scenarios 8-9 apply one flat % change to every month", "Vendor price history; contract and commit terms", TOKEN_FLAG),
+        ("Modeled COGS scope", "API inference, vector DB, fixed infrastructure, payment fees, implementation delivery. Excludes support, observability, compliance and other COGS", "Chart of accounts / COGS policy", "Known limitation — modeled margin is higher than a fully loaded margin"),
         ("Prompt caching", f"{P['cache_rate'] * 100:.0f}% hit / {P['cache_ratio'] * 100:.0f}% price", "Gateway cache logs; vendor terms", ASSUME),
         ("Batch routing / inference overhead", f"{P['batch_share'] * 100:.0f}% at {P['batch_ratio'] * 100:.0f}% price / +{P['overhead'] * 100:.0f}%", "Batch API telemetry", ASSUME),
         ("Base infrastructure / step block / step cost", f"${P['base_infra']:,.0f} / {P['step_thresh']:,.0f} ({P['step_type']}) / ${P['step_cost']:,.0f}", "Cloud invoices; capacity plan", PRESET_EST),
@@ -1155,7 +1191,8 @@ with tab6:
                        else f"{fmt_prompts(ceil['var'])} on variable cost (API + vector); {fmt_prompts(ceil['loaded'])} fully loaded with allocated infrastructure. "
                             f"Current average Pro usage that month: "
                             f"{(float(m_last['Typical Pro Prompts'] + m_last['Heavy Pro Prompts']) / max(1e-9, float(m_last['Average Pro Subs']))):,.0f} prompts per subscriber."))
-        st.caption("An estimate from company-wide cost per prompt, not a guaranteed safe limit. Capacity steps, customer mix and real routing can move marginal cost.")
+        st.caption("An estimate from company-wide cost per prompt, not a guaranteed safe limit. Capacity steps, customer mix and real routing can move marginal cost. "
+                   "Cost per prompt reflects illustrative token prices held flat for the whole horizon, so the ceiling moves one-for-one with the price inputs.")
 
 # ==========================================
 # 5. FOOTER, CHANGE LOG & LIMITATIONS
@@ -1163,16 +1200,42 @@ with tab6:
 st.markdown("---")
 SHOW_CHANGE_LOG = False
 CHANGE_LOG_MD = """
+**v2.5 changes**
+1. **Seasonal usage peaks are now preset-specific and sized to each preset's baseline.** Peaks were a fixed 35 / 45 prompts per user per day for every preset, so the baseline slider had almost no effect and inference cost was inflated (Early traction 36-month COGS falls about 32% with no other change). Peaks are now 5 / 6 (Pre-launch), 20 / 25 (Early traction) and 17 / 21 (Scaling), about 1.7x and 2.1x each baseline. Editable under Advanced > C.
+2. **Scaling preset rebuilt so it reads as a larger business than Early traction.** Starting DAU 12,000 (was 3,000, below Early traction), 600 Pro subscribers, 10 team accounts, 2 deals per month, 10 baseline prompts, $6,000 base infra, 30% frontier routing, 45% caching, $25k AI and $40k cloud credits.
+3. **Pre-launch and Early traction are otherwise unchanged.**
+4. **Indicative 36-month results (start Oct 2026, default assumptions):** Pre-launch ending gross margin moves from about -85% to about +31%; Early traction ending margin moves from 33.8% to 56.2% with ARR unchanged at about $0.79M, still below the 60% target; Scaling ending ARR moves from about $0.95M to about $2.78M at roughly 83% modeled margin.
+5. **Token-price disclaimers added** to the briefing, Revenue & Margin tab, Scenario tab, Value & Pricing tab, sidebar price inputs, audit register and footer.
+6. **Removed the v2.4 note** claiming Scaling reaches "~$1.2M ARR with built-in positive margins via model optimization"; it did not match the preset's actual output.
+
+**Known limitations**
+- **Token prices are illustrative placeholders held flat for the whole horizon.** No price decline or increase is modeled. Scenarios 8-9 apply one flat % change to every month.
+- **Input tokens per prompt grow monthly while prices stay flat,** which pushes cost per prompt up over time.
+- **Cache and batch discounts** are vendor-dependent and assumed to stay available at the configured levels.
+- **Modeled COGS excludes** support, observability, compliance and other costs, so modeled margin is higher than a fully loaded margin.
+
 **Material changes from v1**
 1. **Team / SMB engine rebuilt as cohorts.** Accounts, renewals, non-renewals, in-term churn and expansion are tracked per cohort.
 2. **Expansion is no longer double counted.** Team / SMB expansion grows contract value, seats and prompts of existing accounts.
-3. **Scaling preset adjusted to realistic ARR (~$1.2M ARR)** with built-in positive margins via model optimization.
 """
 if SHOW_CHANGE_LOG:
-    with st.expander("Change log & limitations (v2.4)"):
+    with st.expander("Change log & limitations (v2.5)"):
         st.markdown(CHANGE_LOG_MD)
 else:
     _hidden = html.escape(CHANGE_LOG_MD.strip()).replace("\n\n", "<br>").replace("\n", "<br>")
     st.markdown(f'<div id="change-log-and-limitations" aria-hidden="true" style="display:none">{_hidden}</div>', unsafe_allow_html=True)
+
+# Always-visible disclaimers (independent of SHOW_CHANGE_LOG). Built from live inputs so they cannot quote stale values.
+_in_mult = (1 + P["in_grow"]) ** max(0, H - 1)
+st.markdown(f"""
+<div class="assumption-flag"><b>Key assumptions & limitations</b>
+<ul>
+<li>{token_price_note(P)}</li>
+<li><b>Token volume:</b> input tokens per prompt grow {P['in_grow'] * 100:.1f}% per month (x{_in_mult:.2f} by month {H}) and output tokens {P['out_grow'] * 100:.1f}% per month, against flat prices, so cost per prompt rises over the horizon.</li>
+<li><b>Discounts:</b> caching ({P['cache_rate'] * 100:.0f}% of eligible input at {P['cache_ratio'] * 100:.0f}% of list price) and batch routing ({P['batch_share'] * 100:.0f}% of traffic at {P['batch_ratio'] * 100:.0f}% of list price) depend on vendor terms and are assumed to stay available throughout.</li>
+<li><b>Price scenarios:</b> scenarios 8-9 apply one flat % price change to every month; they are not a price-decline trajectory.</li>
+<li><b>Presets:</b> founder presets are planning estimates, not benchmarks. Replace them with actuals from your billing system and LLM gateway logs.</li>
+</ul></div>
+""", unsafe_allow_html=True)
 
 st.caption("© 2026. The AI Unit Economics Deal Desk. All rights reserved.")
