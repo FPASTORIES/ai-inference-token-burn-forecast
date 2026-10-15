@@ -127,11 +127,19 @@ def style_frame(df):
 # 1. SIDEBAR ASSUMPTIONS
 # ==========================================
 FOUNDER_PRESETS = {
-    "Pre-launch": {"dau": 100, "pro": 0, "ent": 0, "growth": 5.0, "deals": 0.0, "prompts": 3, "infra": 500.0, "ai_credits": 0.0, "cloud_credits": 0.0},
-    "Early traction": {"dau": 2500, "pro": 100, "ent": 5, "growth": 1.5, "deals": 1.0, "prompts": 5, "infra": 2500.0, "ai_credits": 20000.0, "cloud_credits": 30000.0},
-    "Scaling": {"dau": 10000, "pro": 800, "ent": 40, "growth": 8.0, "deals": 3.0, "prompts": 8, "infra": 5000.0, "ai_credits": 30000.0, "cloud_credits": 50000.0},
+    "Pre-launch": {
+        "dau": 100, "pro": 0, "ent": 0, "growth": 5.0, "deals": 0.0, 
+        "prompts": 3, "infra": 500.0, "ai_credits": 0.0, "cloud_credits": 0.0
+    },
+    "Early traction": {
+        "dau": 5000, "pro": 150, "ent": 2, "growth": 4.0, "deals": 0.5, 
+        "prompts": 12, "infra": 2500.0, "ai_credits": 10000.0, "cloud_credits": 15000.0
+    },
+    "Scaling": {
+        "dau": 25000, "pro": 1200, "ent": 25, "growth": 8.0, "deals": 3.0, 
+        "prompts": 8, "infra": 5000.0, "ai_credits": 30000.0, "cloud_credits": 50000.0
+    },
 }
-
 st.sidebar.header("0. Founder Onboarding")
 founder_stage = st.sidebar.selectbox(
     "Choose a starting profile", ["Early traction", "Pre-launch", "Scaling"], index=0,
