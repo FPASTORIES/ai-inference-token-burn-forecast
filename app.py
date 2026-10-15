@@ -1,5 +1,5 @@
 """
-The AI Unit Economics Deal Desk  (v2.3 - fixed free_mult scale bug)
+The AI Unit Economics Deal Desk  (v2.4 - scaled down scaling ARR & optimized margins)
 ------------------------------------------------------------------------------------------
 FP&A planning model for direct AI inference, vector storage, infrastructure step-costs,
 enterprise contract cohorts (term / renewal / expansion), promotional-credit drawdown,
@@ -138,7 +138,7 @@ FOUNDER_PRESETS = {
         "front_mix": 0.50, "cache_rate": 0.20, "free_mult": 0.40
     },
     "Scaling": {
-        "dau": 8000, "pro": 450, "ent": 8, "growth": 5.0, "deals": 1.0, 
+        "dau": 3000, "pro": 300, "ent": 5, "growth": 5.0, "deals": 1.0, 
         "prompts": 8, "infra": 3000.0, "ai_credits": 15000.0, "cloud_credits": 25000.0,
         "front_mix": 0.20, "cache_rate": 0.55, "free_mult": 0.20
     },
@@ -1166,11 +1166,10 @@ CHANGE_LOG_MD = """
 **Material changes from v1**
 1. **Team / SMB engine rebuilt as cohorts.** Accounts, renewals, non-renewals, in-term churn and expansion are tracked per cohort.
 2. **Expansion is no longer double counted.** Team / SMB expansion grows contract value, seats and prompts of existing accounts.
-3. **Scaling preset adjusted to realistic ARR (~$450k ARR)** for clean Series A/growth narrative staging.
-4. **Fixed free_mult scaling bug** in sidebar advanced view.
+3. **Scaling preset adjusted to realistic ARR (~$1.2M ARR)** with built-in positive margins via model optimization.
 """
 if SHOW_CHANGE_LOG:
-    with st.expander("Change log & limitations (v2.3)"):
+    with st.expander("Change log & limitations (v2.4)"):
         st.markdown(CHANGE_LOG_MD)
 else:
     _hidden = html.escape(CHANGE_LOG_MD.strip()).replace("\n\n", "<br>").replace("\n", "<br>")
