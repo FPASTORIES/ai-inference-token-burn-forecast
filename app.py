@@ -1,5 +1,5 @@
 """
-The AI Unit Economics Deal Desk  (v2.5 - preset-specific usage peaks, rebuilt Scaling preset, token-price disclaimers)
+The AI Unit Economics Deal Desk  (v2.7 - levers & goal-seek, traffic mix, CAC/LTV, scenario compare & export, feedback form)
 ------------------------------------------------------------------------------------------
 FP&A planning model for direct AI inference, vector storage, infrastructure step-costs,
 enterprise contract cohorts (term / renewal / expansion), promotional-credit drawdown,
@@ -8,21 +8,31 @@ invoice-lag cash timing, scenario sensitivities and a like-for-like pricing comp
 All prices, rates and presets are user-editable ESTIMATES. Verify against vendor billing
 portals, billing-system exports and accounting policy before using for decisions.
 
-TOKEN PRICES: model prices per 1M tokens are illustrative placeholders (not live vendor quotes)
-and are held FLAT for the whole horizon; no price decline is modeled. COGS covers AI inference,
-vector DB, hosting and payment fees only. See the disclaimers at the bottom of the page.
+TOKEN PRICES: model prices per 1M tokens are illustrative placeholders (not live vendor quotes).
+They are held FLAT unless the user turns on the "AI cost path" (efficiency / vendor price change).
+Free-tier inference can be booked to COGS or to sales & marketing; extra COGS lines can be added
+to reach a fully loaded margin. See the disclaimers at the bottom of the page.
 """
 import calendar
 import datetime
 import html
 import inspect
+import io
+import json
 import math
+import re
+import time
+import urllib.error
+import urllib.request
 
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import streamlit as st
+
+APP_NAME = "The AI Unit Economics Deal Desk"
+APP_VERSION = "v2.7"
 
 st.set_page_config(
     page_title="The AI Unit Economics Deal Desk",
@@ -33,43 +43,94 @@ st.set_page_config(
 # ==========================================
 # 0. STYLING & SMALL UI HELPERS
 # ==========================================
-st.markdown("""
-<style>
-.stApp {background:#fcfbf9;color:#2d3748;font-family:'Inter', sans-serif;}
-section[data-testid="stSidebar"] {background:#f5f2ed !important; border-right: 1px solid #e2d9d0;}
+def _detect_dark_theme():
+    """True / False when Streamlit reports the active theme; None when unknown (older Streamlit, first load)."""
+    try:
+        t = st.context.theme.type
+        if t in ("dark", "light"):
+            return t == "dark"
+    except Exception:
+        pass
+    try:
+        base = st.get_option("theme.base")
+        if base in ("dark", "light"):
+            return base == "dark"
+    except Exception:
+        pass
+    return None
+
+
+IS_DARK = _detect_dark_theme()
+_LIGHT = dict(app_bg="#fcfbf9", text="#2d3748", side_bg="#f5f2ed", side_border="#e2d9d0", label="#4a5568",
+              card_bg="#ffffff", card_border="#e2d9d0", metric_label="#615a52", hdr_from="#f5f0eb", hdr_to="#ebe5df",
+              hdr_text="#2d3748", hdr_sub="#615a52", note_bg="#ffffff", note_border="#cbd5e0", note_accent="#3182ce",
+              note_h4="#2b6cb0", note_text="#4a5568", flag_bg="#fffaf0", flag_border="#f6d6a8", flag_accent="#dd6b20",
+              flag_b="#c05621", flag_text="#4a5568")
+_DARK = dict(app_bg="#0e1117", text="#e2e8f0", side_bg="#161a23", side_border="#2d3340", label="#cbd5e0",
+             card_bg="#1a1f2b", card_border="#2d3340", metric_label="#a0aec0", hdr_from="#1d2230", hdr_to="#171b26",
+             hdr_text="#f7fafc", hdr_sub="#a0aec0", note_bg="#1a1f2b", note_border="#2d3340", note_accent="#63b3ed",
+             note_h4="#90cdf4", note_text="#cbd5e0", flag_bg="#2a2118", flag_border="#5c4326", flag_accent="#ed8936",
+             flag_b="#fbd38d", flag_text="#e2e8f0")
+
+
+def _css_vars(pal):
+    return "".join(f"--{k.replace('_', '-')}:{v};" for k, v in pal.items())
+
+
+if IS_DARK is True:
+    _ROOT_CSS = f":root{{{_css_vars(_DARK)}}}"
+elif IS_DARK is False:
+    _ROOT_CSS = f":root{{{_css_vars(_LIGHT)}}}"
+else:  # theme not reported: light by default, follow the operating-system setting when it is dark
+    _ROOT_CSS = f":root{{{_css_vars(_LIGHT)}}} @media (prefers-color-scheme: dark){{:root{{{_css_vars(_DARK)}}}}}"
+
+# Plotly: dark template + transparent backgrounds in dark mode so charts sit on the page colour.
+CHART_KW = (dict(template="plotly_dark", paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+            if IS_DARK else dict(template="plotly_white"))
+
+
+def tone(light, dark):
+    """Pick a chart colour that stays readable on the active theme."""
+    return dark if IS_DARK else light
+
+
+_STATIC_CSS = """
+.stApp {background:var(--app-bg);color:var(--text);font-family:'Inter', sans-serif;}
+section[data-testid="stSidebar"] {background:var(--side-bg) !important; border-right: 1px solid var(--side-border);}
 section[data-testid="stSidebar"] h2, section[data-testid="stSidebar"] h3 {
     font-size: 0.95rem !important; margin-top: 6px !important; margin-bottom: 2px !important;
     padding-bottom: 0px !important; font-weight: 700 !important;
 }
-section[data-testid="stSidebar"] label {font-size: 0.78rem !important; color: #4a5568 !important;}
+section[data-testid="stSidebar"] label {font-size: 0.78rem !important; color: var(--label) !important;}
 div[data-testid="stMetric"] {
-    background:#fff; border:1px solid #e2d9d0; padding:6px 10px !important;
+    background:var(--card-bg); border:1px solid var(--card-border); padding:6px 10px !important;
     border-radius:6px; box-shadow: 0 1px 2px rgba(0,0,0,0.02);
 }
-div[data-testid="stMetric"] label {font-size:0.75rem !important; color:#615a52 !important;}
+div[data-testid="stMetric"] label {font-size:0.75rem !important; color:var(--metric-label) !important;}
 div[data-testid="stMetric"] div[data-testid="stMetricValue"] {font-size:1.1rem !important; font-weight:700;}
 .compact-header {
-    background: linear-gradient(135deg,#f5f0eb,#ebe5df); padding: 8px 14px; border-radius: 6px;
-    border: 1px solid #e2d9d0; margin-bottom: 8px;
+    background: linear-gradient(135deg,var(--hdr-from),var(--hdr-to)); padding: 8px 14px; border-radius: 6px;
+    border: 1px solid var(--card-border); margin-bottom: 8px;
 }
-.compact-header h1 {color:#2d3748; margin:0 0 2px 0; font-size:1.25rem; font-weight:700;}
-.compact-header p {color:#615a52; margin:0; font-size:0.8rem;}
+.compact-header h1 {color:var(--hdr-text); margin:0 0 2px 0; font-size:1.25rem; font-weight:700;}
+.compact-header p {color:var(--hdr-sub); margin:0; font-size:0.8rem;}
 .cfo-commentary {
-    background: #ffffff; border: 1px solid #cbd5e0; border-left: 4px solid #3182ce;
+    background: var(--note-bg); border: 1px solid var(--note-border); border-left: 4px solid var(--note-accent);
     padding: 10px 14px; border-radius: 6px; margin-bottom: 12px;
 }
-.cfo-commentary h4 {margin:0 0 4px 0; font-size:0.9rem; color:#2b6cb0; font-weight:700;}
-.cfo-commentary ul {margin:0; padding-left:16px; font-size:0.82rem; color:#4a5568;}
+.cfo-commentary h4 {margin:0 0 4px 0; font-size:0.9rem; color:var(--note-h4); font-weight:700;}
+.cfo-commentary ul {margin:0; padding-left:16px; font-size:0.82rem; color:var(--note-text);}
 .cfo-commentary li {margin-bottom:2px;}
 .assumption-flag {
-    background: #fffaf0; border: 1px solid #f6d6a8; border-left: 4px solid #dd6b20;
-    padding: 8px 12px; border-radius: 6px; margin-bottom: 12px; font-size: 0.8rem; color: #4a5568;
+    background: var(--flag-bg); border: 1px solid var(--flag-border); border-left: 4px solid var(--flag-accent);
+    padding: 8px 12px; border-radius: 6px; margin-bottom: 12px; font-size: 0.8rem; color: var(--flag-text);
 }
-.assumption-flag b {color: #c05621;}
+.assumption-flag b {color: var(--flag-b);}
 .assumption-flag ul {margin: 4px 0 0 0; padding-left: 16px;}
 .assumption-flag li {margin-bottom: 2px;}
-</style>
-""", unsafe_allow_html=True)
+"""
+st.markdown(f"<style>{_ROOT_CSS}\n{_STATIC_CSS}</style>", unsafe_allow_html=True)
+
 
 st.markdown("""
 <div class="compact-header">
@@ -79,13 +140,142 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-def token_price_note(p):
-    """One-line token-price disclaimer built from the LIVE inputs, so it can never quote stale prices."""
-    return (f"<b>Token-price assumption:</b> frontier ${p['f_in']:.2f} in / ${p['f_out']:.2f} out and standard ${p['s_in']:.4f} in / ${p['s_out']:.4f} out "
-            "per 1M tokens are illustrative, user-editable placeholders, not live vendor quotes, and are held <b>flat for the entire horizon</b> "
-            "(no price decline or increase is modeled) while tokens per prompt grow. Verify against current vendor rate cards. "
-            "COGS covers AI inference, vector DB, hosting and payment fees only; support, observability, compliance and other COGS are not included. "
-            "Flat prices tend to overstate future inference cost while omitted costs understate total COGS, so read margins as a planning range, not a forecast.")
+OTHER_BASIS = ["$ / month", "% of revenue"]
+TREAT_LABEL = {"COGS": "COGS", "S&M": "sales & marketing", "SPLIT": "trials in sales & marketing, freemium in COGS"}
+
+
+def ai_unit_cost_index(p, k):
+    """Multiplier on AI inference (API) cost in forecast month k (1-based): efficiency programme x one-time vendor price change.
+    Efficiency: from month `eff_start`, cost per prompt falls `eff_mom` per month, never below (1 - `eff_cap`) of the starting level.
+    Vendor price change: a one-time step of `price_step_pct` (signed) from month `price_step_month`. 1.0 = no change."""
+    eff = 1.0
+    if p["eff_mom"] > 0:
+        n_eff = max(0, k - int(p["eff_start"]) + 1)
+        if n_eff > 0:
+            eff = max(1.0 - p["eff_cap"], (1.0 - p["eff_mom"]) ** n_eff)
+    step = (1.0 + p["price_step_pct"]) if (p["price_step_pct"] != 0 and k >= int(p["price_step_month"])) else 1.0
+    return eff * step
+
+
+def ai_path_is_flat(p):
+    return p["eff_mom"] <= 0 and p["price_step_pct"] == 0
+
+
+def ai_path_text(p, horizon=None):
+    """Plain-English description of the AI cost path, built from live inputs."""
+    if ai_path_is_flat(p):
+        return "none (token prices held flat for the whole horizon)"
+    parts = []
+    if p["eff_mom"] > 0:
+        parts.append(f"{p['eff_mom'] * 100:.1f}% MoM reduction in inference cost per prompt from month {int(p['eff_start'])} "
+                     f"(capped at {p['eff_cap'] * 100:.0f}% cumulative)")
+    if p["price_step_pct"] != 0:
+        parts.append(f"{p['price_step_pct'] * 100:+.0f}% one-time vendor price change from month {int(p['price_step_month'])}")
+    txt = "; ".join(parts)
+    if horizon:
+        txt += f"; net AI unit-cost index x{ai_unit_cost_index(p, int(horizon)):.2f} by month {int(horizon)}"
+    return txt
+
+
+def token_price_note(p, horizon=None):
+    """Token-price disclaimer built from the LIVE inputs, so it can never quote stale prices or a stale cost path."""
+    base = (f"<b>Token-price assumption:</b> frontier ${p['f_in']:.2f} in / ${p['f_out']:.2f} out and standard ${p['s_in']:.4f} in / ${p['s_out']:.4f} out "
+            "per 1M tokens are illustrative, user-editable placeholders, not live vendor quotes. Verify against current vendor rate cards. ")
+    if ai_path_is_flat(p):
+        path = ("They are held <b>flat for the entire horizon</b> (no price decline or increase is modeled) while tokens per prompt grow; "
+                "right-sizing, model-routing gains and vendor price moves are not reflected unless you set the AI cost path in the sidebar. ")
+    else:
+        path = (f"An <b>AI cost path</b> is applied on top of those prices: {ai_path_text(p, horizon)}. "
+                "This is a planning assumption, not a vendor commitment: efficiency gains must be delivered and vendor prices can move either way. ")
+    tail = ("COGS covers AI inference, vector DB, hosting, payment fees and any other COGS lines you add; costs you do not enter are not in the margin. "
+            "Read margins as a planning range, not a forecast.")
+    return base + path + tail
+
+
+# ---------- feedback form helpers ----------
+FEEDBACK_CATEGORIES = ["🐛 Bug report or performance issue", "💡 Feature idea or suggestion", "❓ Question about how it works"]
+FEEDBACK_WELCOME = """
+**Welcome to the Deal Desk Feedback Space! 👋**
+
+Thank you for trying The AI Unit Economics Deal Desk! This is an independent, non-commercial portfolio project built for fun and learning.
+There are no paid plans, and your feedback directly helps me learn and shape future experiments.
+
+Use this form to share:
+
+* 🐛 Bug reports or performance issues
+* 💡 Feature ideas and suggestions
+* ❓ General questions about how it works
+
+*A note on the numbers: all figures are illustrative planning estimates, not financial advice. Please don't include confidential or personal financial details in your message.*
+
+As this is a solo personal project, I review submissions as often as I can. Thank you for your support and patience!
+"""
+_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
+def feedback_config():
+    """Where feedback goes, read from Streamlit secrets so no address or key lives in the code:
+    [feedback] webhook_url = "https://..."  (required to enable the form)   form_url = "..."  email = "..."  (optional fallbacks)."""
+    out = {"webhook_url": "", "form_url": "", "email": ""}
+    try:
+        fb = st.secrets.get("feedback", {})
+        for k in out:
+            out[k] = str(fb.get(k, "") or "").strip()
+    except Exception:
+        pass
+    return out
+
+
+def clean_text(txt, limit):
+    txt = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f]", "", str(txt or "")).strip()
+    return txt[:limit]
+
+
+def safe_cell(v):
+    """Stop spreadsheet apps from running text as a formula: prefix a quote when a string starts with = + - @ or a control character."""
+    if isinstance(v, str) and v[:1] in ("=", "+", "-", "@", "\t", "\r"):
+        return "'" + v
+    return v
+
+
+def safe_frame(d):
+    d = d.copy()
+    d.columns = [safe_cell(str(c)) for c in d.columns]
+    for c in d.columns:
+        if not pd.api.types.is_numeric_dtype(d[c]) and not pd.api.types.is_datetime64_any_dtype(d[c]):
+            d[c] = d[c].map(safe_cell)
+    return d
+
+
+def validate_feedback(category, message, email):
+    """Return an error string, or None when the submission is acceptable."""
+    if category not in FEEDBACK_CATEGORIES:
+        return "Please choose what you would like to share."
+    if len(clean_text(message, 5000)) < 10:
+        return "Please write a little more (at least 10 characters) so I can act on it."
+    if email and not _EMAIL_RE.match(email.strip()):
+        return "That email address doesn't look right. Leave it blank if you'd rather not share one."
+    return None
+
+
+def post_feedback(url, payload, timeout=8):
+    """POST the payload as JSON to the configured webhook (Google Apps Script, Formspree, Zapier, ...). Returns (ok, message).
+    Only https URLs are used (plain http is allowed for localhost testing only)."""
+    if not (url.startswith("https://") or url.startswith("http://127.0.0.1") or url.startswith("http://localhost")):
+        return False, "The feedback destination must be an https URL."
+    try:
+        req = urllib.request.Request(url, data=json.dumps(payload).encode("utf-8"),
+                                     headers={"Content-Type": "application/json", "Accept": "application/json"}, method="POST")
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            if 200 <= resp.status < 300:
+                return True, "sent"
+            return False, f"The feedback service answered with status {resp.status}."
+    except urllib.error.HTTPError as e:
+        return False, f"The feedback service rejected the message (HTTP {e.code})."
+    except urllib.error.URLError as e:
+        return False, f"Could not reach the feedback service ({type(e.reason).__name__})."
+    except Exception as e:  # timeouts, bad URLs, anything unexpected: never crash the app over a feedback form
+        return False, f"Could not send ({type(e).__name__})."
 
 
 def _supports_stretch(fn):
@@ -206,6 +396,11 @@ DEFAULTS = {
     "ai_expiry": 0, "cloud_expiry": 0, "invoice_lag": 1, "ai_elig": 1.0, "cloud_elig": 1.0,
     # scenario hooks (1.0 = unchanged)
     "usage_mult": 1.0, "price_mult": 1.0,
+    # cost treatment, fully loaded view and AI cost path (defaults reproduce v2.5 headline numbers)
+    "free_treatment": "COGS", "infra_alloc": "paid", "other_cogs": [],
+    # traffic mix: trial share of free traffic, separate free-tier routing (None = same as main), internal traffic
+    "trial_share": 0.25, "front_mix_free": None, "internal_pct": 0.0, "internal_treatment": "RD",
+    "eff_mom": 0.0, "eff_start": 13, "eff_cap": 0.50, "price_step_pct": 0.0, "price_step_month": 13,
 }
 cfg = dict(DEFAULTS)
 
@@ -229,6 +424,31 @@ baseline_prompts = st.sidebar.slider("Baseline Prompts / Active Paid User / Day"
 st.sidebar.header("2. Targets")
 margin_target = st.sidebar.slider("Target Gross Margin (%)", 0, 90, 60)
 budget_monthly = st.sidebar.number_input("Monthly COGS Budget Cap ($; 0 = none)", min_value=0.0, value=0.0, step=1000.0)
+
+st.sidebar.header("3. Cost Treatment & AI Cost Path")
+_treat_opts = {"All in COGS": "COGS", "All in sales & marketing": "S&M", "Trials in S&M, freemium in COGS": "SPLIT"}
+_treat = st.sidebar.radio(
+    "Free / trial inference cost is booked to", list(_treat_opts), index=0,
+    help="Free and trial traffic earns no revenue. Many companies book its inference cost to sales & marketing (it is acquisition spend); others keep it in COGS, "
+         "ideally as its own sub-line; some book trials to S&M and the perpetual free tier to COGS. Either way it is a real cost: this switch only moves it. "
+         "Paying customers' margin never carries it. The third option uses the trial share set just below.",
+)
+cfg["free_treatment"] = _treat_opts[_treat]
+cfg["trial_share"] = st.sidebar.slider("Trials as share of free-tier traffic (%)", 0, 100, 25, 5,
+    help="Illustrative placeholder. Share of free-tier prompts that come from time-limited trials of a paid plan (the rest is the perpetual free tier). "
+         "Drives the trial vs freemium cost split, and what moves to S&M under 'Trials in S&M, freemium in COGS'. Replace it with your own funnel data.") / 100
+with st.sidebar.expander("📉 AI cost path (efficiency & vendor pricing)"):
+    st.caption("Optional. Leave at 0 for flat token prices. These are planning assumptions: efficiency gains must be delivered, and vendor prices can move either way.")
+    cfg["eff_mom"] = st.slider("MoM reduction in AI cost per prompt (%)", 0.0, 10.0, 0.0, 0.5,
+                               help="Right-sizing, model routing, caching, prompt trimming. Applies to AI inference (API) cost only, compounding monthly from the start month.") / 100
+    cfg["eff_start"] = int(st.slider("Reduction starts in forecast month", 1, 36, 13,
+                                     help="1 = first forecast month. The first reduction lands in this month."))
+    cfg["eff_cap"] = st.slider("Maximum cumulative reduction (%)", 0, 90, 50, 5,
+                               help="Floor on the efficiency path: cost per prompt never falls below (1 - cap) of its starting level.") / 100
+    cfg["price_step_pct"] = st.slider("One-time vendor price change (%)", -50, 100, 0, 5,
+                                      help="A step change in vendor list prices (OpenAI, Anthropic, etc.): negative = price cut, positive = increase. Applies on top of the efficiency path.") / 100
+    cfg["price_step_month"] = int(st.slider("Vendor price change takes effect in forecast month", 1, 36, 13))
+    st.caption(f"Net AI unit-cost index at month {forecast_horizon}: **x{ai_unit_cost_index(cfg, forecast_horizon):.2f}** (1.00 = today's prices)")
 
 if advanced_mode:
     with st.sidebar.expander("📂 A. Subscriber Funnel & Revenue"):
@@ -320,6 +540,22 @@ if advanced_mode:
                                               help="Vendor invoices (API, vector, infra) are paid this many months late. Payment fees and implementation costs are paid immediately."))
         cfg["ai_elig"] = st.slider("AI Credit Eligible Share of API Cost (%)", 0, 100, 100) / 100
         cfg["cloud_elig"] = st.slider("Cloud Credit Eligible Share of Vector + Infra (%)", 0, 100, 100) / 100
+        _alloc = st.selectbox("Fixed Infrastructure Attributed to Free Tier", ["All to paid customers (conservative)", "Split by prompt share"], index=0,
+                              help="Free-tier API + vector cost always follows prompt share. Fixed hosting is needed to serve paying customers anyway, so by default it stays with them; "
+                                   "'Split by prompt share' assigns the free tier its share, which raises paid-customer margin.")
+        cfg["infra_alloc"] = "paid" if _alloc.startswith("All") else "prompt"
+
+    with st.sidebar.expander("📂 F. Traffic Mix: Trials, Tiers & Internal"):
+        if st.checkbox("Route the free tier on a different model mix", value=False,
+                       help="Off: free traffic uses the same frontier / standard routing as paying customers. On: set a separate frontier share for free traffic (for example a cheaper model for free users)."):
+            cfg["front_mix_free"] = st.slider("Free-Tier Frontier Model Share (%)", 0, 100, int(cfg["front_mix"] * 100)) / 100
+        cfg["internal_pct"] = st.slider("Internal / Non-Customer Traffic (% of customer prompts)", 0, 50, 0, 1,
+                                        help="Staff use, evals, QA, staging and synthetic tests. Priced like paying-customer traffic, earns no revenue.") / 100
+        _it = st.selectbox("Internal Traffic Cost Booked To", ["R&D / G&A (usual)", "COGS"], index=0,
+                           help="Internal and eval traffic is usually R&D or G&A, not COGS. Choose COGS to be conservative.")
+        cfg["internal_treatment"] = "RD" if _it.startswith("R&D") else "COGS"
+
+st.sidebar.caption("💬 Feedback, bug reports or ideas? See the **Feedback** tab.")
 
 P = dict(cfg)
 P.update({
@@ -362,6 +598,36 @@ def validate_params(p):
         errs.append("Pareto prompt share must be below 100%.")
     if int(p["invoice_lag"]) not in (0, 1, 2, 3):
         errs.append("Invoice lag must be 0-3 months.")
+    if p["free_treatment"] not in ("COGS", "S&M", "SPLIT"):
+        errs.append("Free-tier cost treatment must be COGS, S&M or SPLIT.")
+    if p["internal_treatment"] not in ("RD", "COGS"):
+        errs.append("Internal traffic treatment must be RD (R&D / G&A) or COGS.")
+    if not (0.0 <= p["trial_share"] <= 1.0):
+        errs.append("Trial share of free traffic must be between 0% and 100%.")
+    if not (0.0 <= p["internal_pct"] <= 5.0):
+        errs.append("Internal traffic must be between 0% and 500% of customer prompts.")
+    if p["front_mix_free"] is not None and not (0.0 <= p["front_mix_free"] <= 1.0):
+        errs.append("Free-tier frontier share must be between 0% and 100%.")
+    if p["infra_alloc"] not in ("paid", "prompt"):
+        errs.append("Fixed-infrastructure attribution must be 'paid' or 'prompt'.")
+    if not (0.0 <= p["eff_mom"] <= 0.5):
+        errs.append("Monthly AI cost reduction must be between 0% and 50%.")
+    if not (0.0 <= p["eff_cap"] <= 0.95):
+        errs.append("Maximum cumulative AI cost reduction must be between 0% and 95%.")
+    if not (-0.95 <= p["price_step_pct"] <= 5.0):
+        errs.append("One-time vendor price change must be between -95% and +500%.")
+    for k in ("eff_start", "price_step_month"):
+        if not (1 <= int(p[k]) <= 36):
+            errs.append(f"'{k}' must be a forecast month between 1 and 36.")
+    for ln in p["other_cogs"]:
+        if ln["basis"] not in OTHER_BASIS:
+            errs.append(f"Other COGS line '{ln['name']}': basis must be one of {OTHER_BASIS}.")
+        if ln["amount"] < 0 or (ln["basis"] == "% of revenue" and ln["amount"] > 100):
+            errs.append(f"Other COGS line '{ln['name']}': amount must be >= 0 (and <= 100 when % of revenue).")
+        if int(ln["start"]) < 1 or int(ln["end"]) < 0:
+            errs.append(f"Other COGS line '{ln['name']}': start must be >= 1 and end >= 0 (0 = through the horizon).")
+        if ln["growth"] < -50 or ln["growth"] > 100:
+            errs.append(f"Other COGS line '{ln['name']}': monthly growth must be between -50% and +100%.")
     if errs:
         raise ValueError(" ".join(errs))
 
@@ -388,6 +654,24 @@ def usage_curve(cal_months, base, v1, m1, w1, v2, m2, w2):
     c1 = (max(v1, base) - base) * np.exp(-(circ(m1) ** 2) / (2 * w1 ** 2))
     c2 = (max(v2, base) - base) * np.exp(-(circ(m2) ** 2) / (2 * w2 ** 2))
     return base + c1 + c2
+
+
+def other_cogs_for_month(lines, k, revenue):
+    """Sum of user-defined extra COGS lines in forecast month k (1-based). % lines scale with that month's recognized revenue;
+    $ lines can grow month over month from their start month. A line applies from `start` to `end` (0 = through the horizon)."""
+    total = 0.0
+    for ln in lines:
+        amt = float(ln["amount"])
+        if amt <= 0:
+            continue
+        start, end = int(ln["start"]), int(ln["end"])
+        if k < start or (end > 0 and k > end):
+            continue
+        if ln["basis"] == "% of revenue":
+            total += revenue * amt / 100.0
+        else:
+            total += amt * (1.0 + float(ln["growth"]) / 100.0) ** (k - start)
+    return total
 
 
 def simulate(p):
@@ -495,22 +779,36 @@ def simulate(p):
         heavy_prompts = pro_active * p["heavy_share"] * typ_rate * h_mult * month_days[i]
         ent_prompts = avg_equiv * p["ent_prompts"] * p["usage_mult"]
         free_prompts = free_dau * typ_rate * p["free_mult"] * month_days[i]
-        prompts_total = typ_prompts + heavy_prompts + ent_prompts + free_prompts
+        paid_prompts_m = typ_prompts + heavy_prompts + ent_prompts
+        trial_prompts = free_prompts * p["trial_share"]                 # time-limited trials of paid plans
+        freemium_prompts = free_prompts - trial_prompts                 # perpetual free tier
+        internal_prompts = (paid_prompts_m + free_prompts) * p["internal_pct"]   # staff, evals, QA, synthetic tests
+        prompts_total = paid_prompts_m + free_prompts + internal_prompts
 
-        # ---------- API / vector / infra ----------
+        # ---------- API / vector / infra (priced per traffic class so tiers can route differently) ----------
         in_tok = p["in_tok"] * ((1 + p["in_grow"]) ** i)
         out_tok = p["out_tok"] * ((1 + p["out_grow"]) ** i)
-        raw_in_m = prompts_total * in_tok / 1_000_000
-        raw_out_m = prompts_total * out_tok / 1_000_000
-        unc_in_m = raw_in_m * (1 - p["cache_rate"])
-        cac_in_m = raw_in_m * p["cache_rate"]
-        std_mix = 1.0 - p["front_mix"]
-        front_in = (unc_in_m * f_in + cac_in_m * f_in * p["cache_ratio"]) * p["front_mix"]
-        std_in = (unc_in_m * s_in + cac_in_m * s_in * p["cache_ratio"]) * std_mix
-        front_out = raw_out_m * f_out * p["front_mix"]
-        std_out = raw_out_m * s_out * std_mix
-        api_cost = (front_in + std_in + front_out + std_out) * ((1 - p["batch_share"]) + p["batch_share"] * p["batch_ratio"]) * (1 + p["overhead"])
-        vector_cost = prompts_total / 1000.0 * p["vec_cost"]
+        unit_idx = ai_unit_cost_index(p, i + 1)   # AI cost path: efficiency programme x one-time vendor price change (1.0 = none)
+        batch_factor = (1 - p["batch_share"]) + p["batch_share"] * p["batch_ratio"]
+
+        def api_for(n_prompts, mix):
+            raw_in_m = n_prompts * in_tok / 1_000_000
+            raw_out_m = n_prompts * out_tok / 1_000_000
+            unc_in_m = raw_in_m * (1 - p["cache_rate"])
+            cac_in_m = raw_in_m * p["cache_rate"]
+            front_in = (unc_in_m * f_in + cac_in_m * f_in * p["cache_ratio"]) * mix
+            std_in = (unc_in_m * s_in + cac_in_m * s_in * p["cache_ratio"]) * (1.0 - mix)
+            front_out = raw_out_m * f_out * mix
+            std_out = raw_out_m * s_out * (1.0 - mix)
+            return (front_in + std_in + front_out + std_out) * batch_factor * (1 + p["overhead"]) * unit_idx
+
+        free_mix = p["front_mix"] if p["front_mix_free"] is None else p["front_mix_free"]
+        api_paid = api_for(paid_prompts_m, p["front_mix"])
+        api_free = api_for(free_prompts, free_mix)
+        api_internal = api_for(internal_prompts, p["front_mix"])
+        api_cost = api_paid + api_free + api_internal
+        vec_per_prompt = p["vec_cost"] / 1000.0
+        vector_cost = prompts_total * vec_per_prompt
 
         ending_paid_accounts = ending_pro + end_acc
         if p["step_type"] == "DAU Threshold":
@@ -540,9 +838,38 @@ def simulate(p):
         # ---------- COGS ----------
         payment_fees = recognized_rev * p["fee_pct"]
         impl_cost = new_ent * p["impl_cost"]
-        cogs = api_cost + vector_cost + infra_cost + payment_fees + impl_cost
+        direct_cost = api_cost + vector_cost + infra_cost + payment_fees + impl_cost   # every direct cost, whatever its accounting label
+        # Three traffic classes: paying customers, free / trial traffic, internal traffic. Variable cost (API + vector) is priced per class;
+        # fixed infrastructure stays with paid customers unless the sidebar says to split it by prompt share.
+        free_cost = api_free + free_prompts * vec_per_prompt
+        internal_cost = api_internal + internal_prompts * vec_per_prompt
+        if p["infra_alloc"] == "prompt":
+            sh_free = free_prompts / prompts_total if prompts_total > 0 else 1.0   # a month with no traffic: idle capacity lands in the free / idle bucket
+            sh_int = internal_prompts / prompts_total if prompts_total > 0 else 0.0
+            free_cost += infra_cost * sh_free
+            internal_cost += infra_cost * sh_int
+        paid_pool = api_cost + vector_cost + infra_cost - free_cost - internal_cost
+        trial_cost = free_cost * p["trial_share"]
+        freemium_cost = free_cost - trial_cost
+        if p["free_treatment"] == "COGS":
+            free_in_cogs = free_cost
+        elif p["free_treatment"] == "S&M":
+            free_in_cogs = 0.0
+        else:  # SPLIT: trials are acquisition spend (S&M); the perpetual free tier stays in COGS
+            free_in_cogs = freemium_cost
+        free_in_sm = free_cost - free_in_cogs
+        internal_in_cogs = internal_cost if p["internal_treatment"] == "COGS" else 0.0
+        internal_off_cogs = internal_cost - internal_in_cogs                            # booked to R&D / G&A
+        paid_cogs = paid_pool + payment_fees + impl_cost                                # costs of serving paying customers
+        cogs = paid_cogs + free_in_cogs + internal_in_cogs                              # reported COGS (after the treatment choices)
         gp = recognized_rev - cogs
         gm = gp / recognized_rev * 100 if recognized_rev > 0 else np.nan
+        paid_gp = recognized_rev - paid_cogs
+        paid_gm = paid_gp / recognized_rev * 100 if recognized_rev > 0 else np.nan
+        other_cogs = other_cogs_for_month(p["other_cogs"], i + 1, recognized_rev)
+        fl_cogs = cogs + other_cogs
+        fl_gp = recognized_rev - fl_cogs
+        fl_gm = fl_gp / recognized_rev * 100 if recognized_rev > 0 else np.nan
 
         # ---------- credits ----------
         ai_open, cloud_open = ai_left, cloud_left
@@ -582,6 +909,9 @@ def simulate(p):
             "Heavy Pro Prompts": heavy_prompts,
             "Team / SMB Prompts": ent_prompts,
             "Free Prompts": free_prompts,
+            "Trial Prompts": trial_prompts,
+            "Freemium Prompts": freemium_prompts,
+            "Internal Prompts": internal_prompts,
             "Monthly Prompts": prompts_total,
             "Ending MRR Run-Rate ($)": ending_mrr,
             "Subscription Revenue ($)": subscription_rev,
@@ -593,9 +923,28 @@ def simulate(p):
             "Fixed Infrastructure ($)": infra_cost,
             "Payment Processing ($)": payment_fees,
             "Implementation Cost ($)": impl_cost,
+            "Total Direct Cost ($)": direct_cost,
+            "Paid-Customer Inference & Infra ($)": paid_pool,
+            "Paid-Customer Prompts": paid_prompts_m,
+            "Paid-Customer Variable Cost ($)": api_paid + paid_prompts_m * vec_per_prompt,
+            "Free-Tier Inference Cost ($)": free_cost,
+            "Trial Inference Cost ($)": trial_cost,
+            "Freemium Inference Cost ($)": freemium_cost,
+            "Internal Traffic Cost ($)": internal_cost,
+            "Internal Cost in COGS ($)": internal_in_cogs,
+            "Internal Cost in R&D / G&A ($)": internal_off_cogs,
+            "Free-Tier Cost in COGS ($)": free_in_cogs,
+            "Free-Tier Cost in S&M ($)": free_in_sm,
+            "Paid-Customer COGS ($)": paid_cogs,
+            "Paid-Customer Gross Margin (%)": paid_gm,
             "Total Modeled COGS ($)": cogs,
             "Modeled Gross Profit ($)": gp,
             "Modeled Gross Margin (%)": gm,
+            "Other COGS ($)": other_cogs,
+            "Fully Loaded COGS ($)": fl_cogs,
+            "Fully Loaded Gross Profit ($)": fl_gp,
+            "Fully Loaded Gross Margin (%)": fl_gm,
+            "AI Unit-Cost Index (x)": unit_idx,
             "Opening AI Credits ($)": ai_open,
             "AI Credits Expired ($)": ai_expired,
             "AI Credits Applied ($)": ai_applied,
@@ -628,26 +977,21 @@ run_model_simulation = st.cache_data(show_spinner=False)(simulate)
 
 
 def cost_allocation(df):
-    """Split API + vector + infra cost between paid and free traffic by prompt volume, month by month."""
-    pool = df["API Cost ($)"] + df["Vector DB Cost ($)"] + df["Fixed Infrastructure ($)"]
-    prompts = df["Monthly Prompts"].to_numpy()
-    paid_prompts = (df["Typical Pro Prompts"] + df["Heavy Pro Prompts"] + df["Team / SMB Prompts"]).to_numpy()
-    # Share of the month's pool carried by paid traffic. Months with no traffic at all (idle capacity)
-    # have no paid share, so their cost lands in the free-tier / idle bucket instead of vanishing.
-    paid_share = np.divide(paid_prompts, prompts, out=np.zeros(len(df)), where=prompts > 0)
-    pool_arr = pool.to_numpy()
-    return float((pool_arr * paid_share).sum()), float((pool_arr * (1.0 - paid_share)).sum())
+    """Paid vs free-tier share of API + vector + infra cost, summed over the horizon.
+    Variable cost splits by prompt volume each month; fixed infrastructure follows the sidebar attribution setting.
+    Months with no traffic at all carry no variable cost, so nothing vanishes."""
+    return float(df["Paid-Customer Inference & Infra ($)"].sum()), float(df["Free-Tier Inference Cost ($)"].sum())
 
 
 def usage_ceiling(df, p, target_pct):
     """Per-account Pro usage ceiling in the ENDING month, using that month's marginal cost per prompt."""
     row = df.iloc[-1]
-    prompts = float(row["Monthly Prompts"])
+    prompts = float(row["Paid-Customer Prompts"])   # price the ceiling on paying-customer traffic only (free / internal may use a cheaper model)
     rev = p["arpu_pro"] * (1 + p["pro_expansion_pct"])
     allowed = rev * (1 - target_pct / 100.0 - p["fee_pct"])
     if prompts <= 0:
         return {"var_cost": 0.0, "loaded_cost": 0.0, "var": math.inf, "loaded": math.inf, "no_headroom": allowed <= 0, "rev": rev, "allowed": allowed}
-    var_cost = float(row["API Cost ($)"] + row["Vector DB Cost ($)"]) / prompts
+    var_cost = float(row["Paid-Customer Variable Cost ($)"]) / prompts
     loaded_cost = var_cost + float(row["Fixed Infrastructure ($)"]) / prompts
     if allowed <= 0:
         return {"var_cost": var_cost, "loaded_cost": loaded_cost, "var": 0.0, "loaded": 0.0, "no_headroom": True, "rev": rev, "allowed": allowed}
@@ -706,6 +1050,15 @@ def totals(d):
     cogs = float(d["Total Modeled COGS ($)"].sum())
     return {
         "rev": rev, "cogs": cogs, "gp": rev - cogs, "gm": ((rev - cogs) / rev * 100) if rev > 0 else np.nan,
+        "paid_cogs": float(d["Paid-Customer COGS ($)"].sum()),
+        "paid_gm": ((rev - float(d["Paid-Customer COGS ($)"].sum())) / rev * 100) if rev > 0 else np.nan,
+        "free_cost": float(d["Free-Tier Inference Cost ($)"].sum()), "free_sm": float(d["Free-Tier Cost in S&M ($)"].sum()),
+        "free_cogs": float(d["Free-Tier Cost in COGS ($)"].sum()),
+        "trial_cost": float(d["Trial Inference Cost ($)"].sum()), "freemium_cost": float(d["Freemium Inference Cost ($)"].sum()),
+        "internal_cost": float(d["Internal Traffic Cost ($)"].sum()), "internal_cogs": float(d["Internal Cost in COGS ($)"].sum()),
+        "internal_off": float(d["Internal Cost in R&D / G&A ($)"].sum()),
+        "other": float(d["Other COGS ($)"].sum()), "fl_cogs": float(d["Fully Loaded COGS ($)"].sum()),
+        "fl_gm": ((rev - float(d["Fully Loaded COGS ($)"].sum())) / rev * 100) if rev > 0 else np.nan,
         "arr": float(d["Ending MRR Run-Rate ($)"].iloc[-1]) * 12,
         "payable": float(d["Estimated Cash Payable ($)"].sum()),
         "paid": float(d["Estimated Cash Paid This Month ($)"].sum()),
@@ -793,7 +1146,36 @@ def run_integrity_checks(df, p, base_totals=None, pricing_df=None):
 
     add("Gross profit = revenue - COGS (every month)", close(df["Modeled Gross Profit ($)"], df["Recognized Revenue ($)"] - df["Total Modeled COGS ($)"]))
     comp = (df["API Cost ($)"] + df["Vector DB Cost ($)"] + df["Fixed Infrastructure ($)"] + df["Payment Processing ($)"] + df["Implementation Cost ($)"])
-    add("COGS = API + vector + infra + payment fees + implementation cost", close(df["Total Modeled COGS ($)"], comp))
+    add("Total direct cost = API + vector + infra + payment fees + implementation cost", close(df["Total Direct Cost ($)"], comp))
+    add("Reported COGS = total direct cost - free-tier cost booked to S&M - internal cost booked to R&D / G&A",
+        close(df["Total Modeled COGS ($)"], df["Total Direct Cost ($)"] - df["Free-Tier Cost in S&M ($)"] - df["Internal Cost in R&D / G&A ($)"]))
+    add("Paid-customer COGS + free-tier cost + internal traffic cost = total direct cost",
+        close(df["Paid-Customer COGS ($)"] + df["Free-Tier Inference Cost ($)"] + df["Internal Traffic Cost ($)"], df["Total Direct Cost ($)"]))
+    _fb = df["Free-Tier Cost in COGS ($)"] + df["Free-Tier Cost in S&M ($)"]
+    _free_ok = close(_fb, df["Free-Tier Inference Cost ($)"])
+    if p["free_treatment"] == "COGS":
+        _free_ok = _free_ok and bool((df["Free-Tier Cost in S&M ($)"].abs() < 1e-9).all())
+    elif p["free_treatment"] == "S&M":
+        _free_ok = _free_ok and bool((df["Free-Tier Cost in COGS ($)"].abs() < 1e-9).all())
+    else:
+        _free_ok = _free_ok and close(df["Free-Tier Cost in COGS ($)"], df["Freemium Inference Cost ($)"])
+    add("Free-tier cost is booked once: COGS part + S&M part = free-tier cost (and matches the treatment)", _free_ok, f"treatment = {p['free_treatment']}")
+    add("Trial + freemium = free-tier cost and free prompts",
+        close(df["Trial Inference Cost ($)"] + df["Freemium Inference Cost ($)"], df["Free-Tier Inference Cost ($)"])
+        and close(df["Trial Prompts"] + df["Freemium Prompts"], df["Free Prompts"]))
+    add("Internal traffic cost is booked once: COGS part + R&D / G&A part = internal cost",
+        close(df["Internal Cost in COGS ($)"] + df["Internal Cost in R&D / G&A ($)"], df["Internal Traffic Cost ($)"]),
+        f"internal traffic = {p['internal_pct'] * 100:.0f}% of customer prompts, booked to {'COGS' if p['internal_treatment'] == 'COGS' else 'R&D / G&A'}")
+    add("Fully loaded GP = revenue - reported COGS - other COGS",
+        close(df["Fully Loaded Gross Profit ($)"], df["Recognized Revenue ($)"] - df["Total Modeled COGS ($)"] - df["Other COGS ($)"]))
+    _rev_gp = df["Recognized Revenue ($)"] - df["Paid-Customer COGS ($)"]
+    add("Margin ordering every month: paid-customer GP >= reported GP >= fully loaded GP",
+        bool((_rev_gp >= df["Modeled Gross Profit ($)"] - 1e-6).all() and (df["Modeled Gross Profit ($)"] >= df["Fully Loaded Gross Profit ($)"] - 1e-6).all()))
+    _floor = (1.0 - p["eff_cap"]) * min(1.0, 1.0 + p["price_step_pct"]) - 1e-9
+    _ceil = max(1.0, 1.0 + p["price_step_pct"]) + 1e-9
+    add("AI unit-cost index stays between the efficiency floor and the vendor price step",
+        bool(((df["AI Unit-Cost Index (x)"] >= _floor) & (df["AI Unit-Cost Index (x)"] <= _ceil)).all()),
+        ai_path_text(p))
     add("Revenue = subscriptions + implementation recognized", close(df["Recognized Revenue ($)"], df["Subscription Revenue ($)"] + df["Implementation Revenue ($)"]))
     add("Pro roll-forward: beginning + conversions - churn = ending",
         close(df["Beginning Pro Subs"] + df["New-User Conversions"] + df["Free-Pool Conversions"] - df["Churned Pro Subs"], df["Ending Pro Subs"]))
@@ -802,7 +1184,8 @@ def run_integrity_checks(df, p, base_totals=None, pricing_df=None):
         close(df["Beginning Team Accounts"] + df["New Team Deals"] - df["Team Non-Renewals"] - df["Team In-Term Churn"], df["Ending Team Accounts"]))
     add("Team continuity: beginning(t) = ending(t-1)", close(df["Beginning Team Accounts"].iloc[1:], df["Ending Team Accounts"].iloc[:-1]))
     add("Starting team accounts tie to input", abs(float(df["Beginning Team Accounts"].iloc[0]) - p["ent"]) < 1e-6)
-    add("Prompt segments sum to total", close(df["Typical Pro Prompts"] + df["Heavy Pro Prompts"] + df["Team / SMB Prompts"] + df["Free Prompts"], df["Monthly Prompts"]))
+    add("Prompt segments sum to total (paid + free + internal)",
+        close(df["Typical Pro Prompts"] + df["Heavy Pro Prompts"] + df["Team / SMB Prompts"] + df["Free Prompts"] + df["Internal Prompts"], df["Monthly Prompts"]))
     for tag, start, o, a, e, rem in [("AI", p["ai_credits"], "Opening AI Credits ($)", "AI Credits Applied ($)", "AI Credits Expired ($)", "Remaining AI Credits ($)"),
                                      ("Cloud", p["cloud_credits"], "Opening Cloud Credits ($)", "Cloud Credits Applied ($)", "Cloud Credits Expired ($)", "Remaining Cloud Credits ($)")]:
         add(f"{tag} credits: opening - expired - applied = remaining", close(df[o] - df[e] - df[a], df[rem]))
@@ -810,7 +1193,8 @@ def run_integrity_checks(df, p, base_totals=None, pricing_df=None):
     add("Credits applied never exceed eligible cost",
         bool((df["AI Credits Applied ($)"] <= df["API Cost ($)"] * p["ai_elig"] + 1e-6).all()
              and (df["Cloud Credits Applied ($)"] <= (df["Vector DB Cost ($)"] + df["Fixed Infrastructure ($)"]) * p["cloud_elig"] + 1e-6).all()))
-    add("Cash payable = COGS - credits applied", close(df["Estimated Cash Payable ($)"], df["Total Modeled COGS ($)"] - df["Total Credits Applied ($)"]))
+    add("Cash payable = total direct cost - credits applied (independent of the COGS / S&M label)",
+        close(df["Estimated Cash Payable ($)"], df["Total Direct Cost ($)"] - df["Total Credits Applied ($)"]))
     add("Cash reconciliation: cash paid + outstanding invoices at horizon = cash payable",
         close(df["Estimated Cash Paid This Month ($)"].sum() + df["Vendor Invoices Outstanding ($)"].iloc[-1], df["Estimated Cash Payable ($)"].sum()),
         f"lag = {int(p['invoice_lag'])} month(s)")
@@ -818,10 +1202,13 @@ def run_integrity_checks(df, p, base_totals=None, pricing_df=None):
         close(df["Implementation Fees Billed ($)"].cumsum() - df["Implementation Revenue ($)"].cumsum(), df["Deferred Implementation Revenue ($)"]))
     paid_cost, free_cost = cost_allocation(df)
     pool = float((df["API Cost ($)"] + df["Vector DB Cost ($)"] + df["Fixed Infrastructure ($)"]).sum())
-    add("Cost allocation: paid + free traffic cost = API + vector + infra", abs(paid_cost + free_cost - pool) < 1e-4 * max(1.0, pool))
+    _internal_total = float(df["Internal Traffic Cost ($)"].sum())
+    add("Cost allocation: paid + free + internal traffic cost = API + vector + infra", abs(paid_cost + free_cost + _internal_total - pool) < 1e-4 * max(1.0, pool))
     must_be_nonneg = ["DAU", "Beginning Pro Subs", "Ending Pro Subs", "Ending Team Accounts", "Ending Paid Accounts", "Monthly Prompts",
                       "Free Prompts", "Recognized Revenue ($)", "API Cost ($)", "Vector DB Cost ($)", "Fixed Infrastructure ($)",
-                      "Total Modeled COGS ($)", "Remaining AI Credits ($)", "Remaining Cloud Credits ($)", "Estimated Cash Payable ($)",
+                      "Total Modeled COGS ($)", "Total Direct Cost ($)", "Paid-Customer COGS ($)", "Free-Tier Inference Cost ($)",
+                      "Other COGS ($)", "Fully Loaded COGS ($)", "Internal Traffic Cost ($)", "Trial Inference Cost ($)", "Freemium Inference Cost ($)",
+                      "Remaining AI Credits ($)", "Remaining Cloud Credits ($)", "Estimated Cash Payable ($)",
                       "Estimated Cash Paid This Month ($)", "Vendor Invoices Outstanding ($)", "Deferred Implementation Revenue ($)"]
     add("No negative balances, counts, prompts, costs or revenues", bool((df[must_be_nonneg] >= -1e-9).all().all()))
     # Usage ceiling: at the ceiling, per-account margin must equal the target. Always listed; N/A (never silently skipped)
@@ -847,9 +1234,267 @@ def run_integrity_checks(df, p, base_totals=None, pricing_df=None):
     return pd.DataFrame(checks)
 
 
+# ---------- analysis helpers: sensitivity, goal-seek, model health, CAC / LTV ----------
+METRIC_OPTIONS = {
+    "Reported gross margin (forecast period)": "gm",
+    "Fully loaded gross margin (forecast period)": "fl_gm",
+    "Paid-customer gross margin (forecast period)": "paid_gm",
+    "Reported gross margin (ending month)": "end_gm",
+}
+
+
+def metric_of(df, key):
+    if key == "end_gm":
+        return float(df["Modeled Gross Margin (%)"].iloc[-1])
+    return float(totals(df)[key])
+
+
+# (parameter, label, kind): 'frac' inputs are clipped to 0-100%, 'ratio' inputs only to >= 0
+SENS_DRIVERS = [
+    ("usage_mult", "Prompt intensity (all segments)", "ratio"),
+    ("free_mult", "Free-tier usage multiplier", "frac"),
+    ("front_mix", "Frontier-model traffic share", "frac"),
+    ("cache_rate", "Prompt cache hit rate", "frac"),
+    ("price_mult", "Token prices (all vendors)", "ratio"),
+    ("in_grow", "Input-token growth per month", "frac"),
+    ("base_infra", "Base fixed infrastructure ($)", "ratio"),
+    ("arpu_pro", "Pro price (monthly ARPU)", "ratio"),
+    ("new_conv", "New-user conversion to Pro", "frac"),
+    ("churn", "Pro monthly churn", "frac"),
+    ("dau_growth", "DAU monthly growth", "ratio"),
+    ("heavy_mult", "Heavy-user prompt multiplier", "ratio"),
+]
+
+
+def _fmt_driver(v, kind):
+    return f"{v * 100:.1f}%" if kind == "frac" else f"{v:,.2f}"
+
+
+def tornado_table(p, pct, metric_key):
+    """One-at-a-time sensitivity: move each driver down and up by `pct` (relative) and record the change in the chosen margin metric."""
+    base = metric_of(simulate(p), metric_key)
+    rows = []
+    for key, label, kind in SENS_DRIVERS:
+        if key == "heavy_mult" and p["heavy_mode"] != "Multiplier":
+            continue
+        v0 = float(p[key])
+        if v0 == 0:
+            continue
+        lo, hi = v0 * (1 - pct), v0 * (1 + pct)
+        if kind == "frac":
+            lo, hi = min(max(lo, 0.0), 1.0), min(max(hi, 0.0), 1.0)
+        vals = []
+        for v in (lo, hi):
+            try:
+                vals.append(metric_of(simulate({**p, key: v}), metric_key))
+            except ValueError:
+                vals.append(np.nan)
+        d_lo, d_hi = vals[0] - base, vals[1] - base
+        rows.append({"Driver": label, "Base input": _fmt_driver(v0, kind), "Low input": _fmt_driver(lo, kind), "High input": _fmt_driver(hi, kind),
+                     "Δ Margin at Low Input (pp)": d_lo, "Δ Margin at High Input (pp)": d_hi,
+                     "Δ Swing (pp)": float(np.nanmax(np.abs([d_lo, d_hi]))) if not (np.isnan(d_lo) and np.isnan(d_hi)) else np.nan})
+    out = pd.DataFrame(rows)
+    if len(out):
+        out = out.sort_values("Δ Swing (pp)", ascending=False, na_position="last").reset_index(drop=True)
+    return base, out
+
+
+# (parameter, label, search low, search high, display kind)
+GOAL_LEVERS = [
+    ("free_mult", "Free-tier usage multiplier", 0.0, 1.0, "pct"),
+    ("front_mix", "Frontier-model traffic share", 0.0, 1.0, "pct"),
+    ("cache_rate", "Prompt cache hit rate", 0.0, 0.9, "pct"),
+    ("batch_share", "Traffic on batch pricing", 0.0, 0.8, "pct"),
+    ("eff_mom", "MoM AI cost reduction (uses the start month and cap set in the sidebar)", 0.0, 0.15, "pct"),
+    ("arpu_pro", "Pro price (monthly ARPU, $)", 5.0, 500.0, "usd"),
+    ("price_mult", "Token price level (x the entered prices)", 0.1, 3.0, "x"),
+]
+
+
+def goal_seek(p, key, lo, hi, target, metric_key, iters=30):
+    """Bisection on one lever to hit a target margin. Assumes the margin moves one way as the lever moves (true for these levers)."""
+    def f(x):
+        try:
+            return metric_of(simulate({**p, key: x}), metric_key)
+        except ValueError:
+            return np.nan
+    f_lo, f_hi, cur = f(lo), f(hi), metric_of(simulate(p), metric_key)
+    out = {"current_value": float(p[key]), "current_metric": cur, "f_lo": f_lo, "f_hi": f_hi, "lo": lo, "hi": hi}
+    if np.isnan(f_lo) or np.isnan(f_hi):
+        return {**out, "status": "undefined"}
+    if target < min(f_lo, f_hi) - 1e-9 or target > max(f_lo, f_hi) + 1e-9:
+        return {**out, "status": "unreachable"}
+    increasing = f_hi >= f_lo
+    a, b = lo, hi
+    for _ in range(iters):
+        m = (a + b) / 2.0
+        if (f(m) < target) == increasing:
+            a = m
+        else:
+            b = m
+    x = (a + b) / 2.0
+    return {**out, "status": "ok", "value": x, "achieved": f(x)}
+
+
+def lever_curve(p, key, lo, hi, metric_key, n=25):
+    """Margin at n evenly spaced values of one lever, for the goal-seek chart."""
+    xs = np.linspace(lo, hi, n)
+    ys = []
+    for x in xs:
+        try:
+            ys.append(metric_of(simulate({**p, key: float(x)}), metric_key))
+        except ValueError:
+            ys.append(np.nan)
+    return xs, np.asarray(ys, dtype=float)
+
+
+def usage_curve_for(p):
+    """Month labels and the typical-paid-user prompts/day curve exactly as the engine builds it (before usage multipliers)."""
+    n = int(p["horizon"])
+    sp = pd.Period(freq="M", year=int(p["start_year"]), month=int(p["start_month"]))
+    dates = [sp + i for i in range(n)]
+    curve = usage_curve([d.month for d in dates], p["base_prompts"], p["p1_vol"], p["p1_month"], p["p1_width"], p["p2_vol"], p["p2_month"], p["p2_width"])
+    return [d.strftime("%b %Y") for d in dates], np.asarray(curve, dtype=float)
+
+
+def health_flags(df, p, t, h_mult):
+    """Rule-based sanity checks. Level 'check' = likely an input problem worth reviewing; 'info' = worth knowing, not necessarily wrong."""
+    flags = []
+    _, curve = usage_curve_for(p)
+    base = max(float(p["base_prompts"]), 1e-9)
+    if curve.max() / base > 3.0:
+        flags.append(("check", "Seasonal peak far above baseline",
+                      f"Peak usage reaches {curve.max() / base:.1f}x the baseline ({curve.max():.0f} vs {p['base_prompts']:.0f} prompts / active user / day). "
+                      "Peaks are absolute numbers, not multipliers, and they apply to free users too; the presets use about 1.7x-2.1x."))
+    cust = float(df["Typical Pro Prompts"].sum() + df["Heavy Pro Prompts"].sum() + df["Team / SMB Prompts"].sum() + df["Free Prompts"].sum())
+    free_sh = float(df["Free Prompts"].sum()) / cust if cust > 0 else 0.0
+    if free_sh > 0.85:
+        flags.append(("info", "Free users dominate traffic",
+                      f"Free users generate {free_sh * 100:.0f}% of customer prompts, so margin is very sensitive to the free-tier multiplier, routing and caps (see the Levers tab)."))
+    end_dau = float(df["DAU"].iloc[-1])
+    if end_dau > 0 and float(df["Ending Pro Subs"].iloc[-1]) / end_dau > 0.25:
+        flags.append(("check", "Very high Pro share of DAU",
+                      f"Pro subscribers equal {float(df['Ending Pro Subs'].iloc[-1]) / end_dau * 100:.0f}% of ending DAU. Check that DAU and subscriber counts use one definition."))
+    tok_idx = (1 + p["in_grow"]) ** max(0, len(df) - 1)
+    if tok_idx > 3.0:
+        flags.append(("info", "Input tokens compound strongly", f"Input tokens per prompt reach x{tok_idx:.1f} by month {len(df)}. Prices are flat unless you set an AI cost path."))
+    end_idx = float(df["AI Unit-Cost Index (x)"].iloc[-1])
+    if end_idx < 0.4:
+        flags.append(("info", "Aggressive AI cost path", f"The AI cost path takes inference cost per prompt to x{end_idx:.2f} by month {len(df)} (a {(1 - end_idx) * 100:.0f}% reduction). "
+                                                       "Efficiency gains must be delivered; consider a lower cap or a later start."))
+    if h_mult > 10:
+        flags.append(("check", "Very high heavy-user multiplier", f"Heavy Pro users prompt {h_mult:.0f}x a typical user. Confirm against per-user usage logs."))
+    if p["free_mult"] > 0.8:
+        flags.append(("info", "Free users nearly as active as paid", f"Free users prompt at {p['free_mult'] * 100:.0f}% of a typical paid user's rate."))
+    tot_prompts = float(df["Monthly Prompts"].sum())
+    if tot_prompts > 0 and float(df["Internal Prompts"].sum()) / tot_prompts > 0.15:
+        flags.append(("info", "Large internal traffic share", f"Internal / non-customer traffic is {float(df['Internal Prompts'].sum()) / tot_prompts * 100:.0f}% of all prompts."))
+    last = df.iloc[-1]
+    if not pd.isna(last["Modeled Gross Margin (%)"]) and last["Modeled Gross Margin (%)"] < 0:
+        flags.append(("info", "Negative margin at the horizon", f"Reported gross margin is {last['Modeled Gross Margin (%)']:.0f}% in the ending month: unit economics do not work at the end of the forecast under these inputs."))
+    if float(last["Total Modeled COGS ($)"]) > 0 and float(last["Fixed Infrastructure ($)"]) / float(last["Total Direct Cost ($)"]) > 0.6:
+        flags.append(("info", "Fixed infrastructure dominates cost", "Over 60% of ending-month direct cost is fixed infrastructure, so margin improves mainly with scale."))
+    if not p["other_cogs"]:
+        flags.append(("info", "No other COGS lines", "Margins cover AI-direct costs only. Add support, observability and similar lines in the 'Fully loaded margin' panel."))
+    return flags
+
+
+def cac_ltv(df, p, t, sm_monthly, count_free):
+    """Simplified unit economics. LTV = monthly ARPU x margin x expected lifetime (capped at 60 months, undiscounted, no expansion beyond the Pro uplift).
+    Margin = paid-customer margin after other COGS lines, so free-tier cost is counted once (as acquisition cost), never twice."""
+    n_pro = float(df["New-User Conversions"].sum() + df["Free-Pool Conversions"].sum())
+    n_team = float(df["New Team Deals"].sum())
+    n_new = n_pro + n_team
+    H = len(df)
+    rev = t["rev"]
+    margin = (rev - t["paid_cogs"] - t["other"]) / rev if rev > 0 else np.nan
+    arpu_pro = p["arpu_pro"] * (1 + p["pro_expansion_pct"])
+    life_pro = min(60.0, 1.0 / p["churn"]) if p["churn"] > 0 else 60.0
+    life_team = min(60.0, p["ent_term"] / (1.0 - p["ent_renewal_rate"])) if p["ent_renewal_rate"] < 1.0 else 60.0
+    ltv_pro = arpu_pro * margin * life_pro
+    ltv_team = p["arpu_ent"] * margin * life_team
+    free_cost = t["free_cost"] if count_free else 0.0
+    spend = sm_monthly * H
+    cac = (spend + free_cost) / n_new if n_new > 0 else np.nan
+    cac_ex_free = spend / n_new if n_new > 0 else np.nan
+    if n_new > 0:
+        ltv = (n_pro * ltv_pro + n_team * ltv_team) / n_new
+        gp_month = (n_pro * arpu_pro + n_team * p["arpu_ent"]) * margin / n_new
+    else:
+        ltv, gp_month = np.nan, np.nan
+    return {"n_pro": n_pro, "n_team": n_team, "n_new": n_new, "spend": spend, "free_cost": free_cost, "margin": margin,
+            "life_pro": life_pro, "life_team": life_team, "ltv_pro": ltv_pro, "ltv_team": ltv_team, "ltv": ltv, "cac": cac, "cac_ex_free": cac_ex_free,
+            "ltv_cac": ltv / cac if (n_new > 0 and cac and cac > 0) else np.nan,
+            "payback": cac / gp_month if (n_new > 0 and gp_month and gp_month > 0 and not pd.isna(cac)) else np.nan,
+            "gp_month": gp_month}
+
+
+def scenario_snapshot(df, p, t):
+    """The comparable numbers saved for a named scenario."""
+    last = df.iloc[-1]
+    return {
+        "Starting profile / horizon": f"{p.get('_preset', '?')} / {len(df)} mo",
+        "Free-tier cost booked to": {"COGS": "COGS", "S&M": "Sales & marketing", "SPLIT": "Trials S&M / freemium COGS"}[p["free_treatment"]],
+        "AI cost path": ai_path_text(p, len(df)),
+        "Ending ARR ($)": t["arr"], "Forecast revenue ($)": t["rev"],
+        "Paid-customer GM (%)": t["paid_gm"], "Reported GM (%)": t["gm"], "Fully loaded GM (%)": t["fl_gm"],
+        "Ending-month reported GM (%)": float(last["Modeled Gross Margin (%)"]),
+        "Free-tier cost ($)": t["free_cost"], "Other COGS ($)": t["other"], "Reported COGS ($)": t["cogs"],
+    }
+
+
 # ==========================================
 # 3. RUN, GUARDS, KPIs & BRIEFING
 # ==========================================
+_OTHER_COLS = ["Line item", "Basis", "Amount", "From month", "To month (0 = end)", "MoM growth (%)"]
+_other_default = pd.DataFrame([
+    ["Customer support & success", "% of revenue", 0.0, 1, 0, 0.0],
+    ["Observability, security & compliance", "$ / month", 0.0, 1, 0, 0.0],
+], columns=_OTHER_COLS)
+
+
+def parse_other_cogs(frame):
+    """Turn the editable table into engine lines. Blank, zero or non-numeric rows are ignored; bad basis falls back to $ / month."""
+    lines = []
+    for _, r in frame.iterrows():
+        amt = pd.to_numeric(r.get("Amount"), errors="coerce")
+        if pd.isna(amt) or amt <= 0:
+            continue
+        name = r.get("Line item")
+        name = "Other COGS" if (name is None or pd.isna(name) or not str(name).strip()) else str(name).strip()
+        basis = r.get("Basis") if r.get("Basis") in OTHER_BASIS else OTHER_BASIS[0]
+        start = pd.to_numeric(r.get("From month"), errors="coerce")
+        end = pd.to_numeric(r.get("To month (0 = end)"), errors="coerce")
+        growth = pd.to_numeric(r.get("MoM growth (%)"), errors="coerce")
+        lines.append({"name": name, "basis": basis, "amount": float(amt),
+                      "start": 1 if pd.isna(start) else int(max(1, start)),
+                      "end": 0 if pd.isna(end) else int(max(0, end)),
+                      "growth": 0.0 if pd.isna(growth) else float(growth)})
+    return lines
+
+
+with st.expander("➕ Fully loaded margin: add other COGS lines on top of AI inference", expanded=False):
+    st.caption("The model counts AI inference, vector DB, hosting, payment fees and implementation delivery. Add the costs it does not know about "
+               "(support, success, observability, security, compliance, moderation, third-party APIs...) to see a fully loaded gross margin. "
+               "Add a row for each line; to model a step-up, add a second row with a later start month. Nothing here changes revenue, cash timing or credits.")
+    _other_edit = _stretch(
+        st.data_editor, _other_default, hide_index=True, num_rows="dynamic", key="other_cogs_editor",
+        column_config={
+            "Line item": st.column_config.TextColumn("Line item"),
+            "Basis": st.column_config.SelectboxColumn("Basis", options=OTHER_BASIS, required=True,
+                                                      help="'$ / month' is a fixed monthly cost; '% of revenue' scales with that month's recognized revenue."),
+            "Amount": st.column_config.NumberColumn("Amount ($ or %)", min_value=0.0, step=100.0, format="%.2f",
+                                                    help="Dollars per month, or a percentage of revenue (e.g. 5 = 5%) depending on Basis."),
+            "From month": st.column_config.NumberColumn("From month", min_value=1, max_value=36, step=1, format="%d",
+                                                        help="Forecast month the line starts (1 = first month)."),
+            "To month (0 = end)": st.column_config.NumberColumn("To month (0 = end)", min_value=0, max_value=36, step=1, format="%d",
+                                                                help="Last forecast month the line applies. 0 = through the end of the horizon."),
+            "MoM growth (%)": st.column_config.NumberColumn("MoM growth (%)", min_value=-50.0, max_value=100.0, step=0.5, format="%.1f",
+                                                            help="Monthly growth of a $ / month line from its start month. Ignored for % of revenue lines."),
+        },
+    )
+P["other_cogs"] = parse_other_cogs(_other_edit)
+
 _act = P["paid_dau_factor"]
 _start_active_paid = starting_pro_subs * _act + starting_ent_accounts * P["ent_seats"] * _act
 if _start_active_paid > starting_dau:
@@ -874,8 +1519,10 @@ df["Budget ($)"] = budget_monthly if budget_monthly > 0 else np.nan
 df["Budget Variance ($)"] = (df["Total Modeled COGS ($)"] - budget_monthly) if budget_monthly > 0 else np.nan
 _prompts_safe = df["Monthly Prompts"].replace(0, np.nan)
 df["API Cost / 1,000 Prompts ($)"] = df["API Cost ($)"] / _prompts_safe * 1000
-df["Blended COGS / 1,000 Prompts ($)"] = df["Total Modeled COGS ($)"] / _prompts_safe * 1000
-df["Blended COGS / Paid Account ($)"] = df["Total Modeled COGS ($)"] / df["Ending Paid Accounts"].replace(0, np.nan)
+df["Blended Direct Cost / 1,000 Prompts ($)"] = df["Total Direct Cost ($)"] / _prompts_safe * 1000
+_paid_accts_safe = df["Ending Paid Accounts"].replace(0, np.nan)
+df["Paid-Customer COGS / Paid Account ($)"] = df["Paid-Customer COGS ($)"] / _paid_accts_safe
+df["Incl. Free-Tier Cost / Paid Account ($)"] = df["Total Direct Cost ($)"] / _paid_accts_safe
 
 m_last = df.iloc[-1]
 tot = totals(df)
@@ -899,9 +1546,33 @@ c2.metric("Forecast-Period Gross Margin", "n/a (no revenue)" if pd.isna(period_g
           f"Target: {margin_target}%" if pd.isna(period_gm) else f"{period_gm - margin_target:+.1f}pp vs {margin_target}% target")
 c3.metric(f"Est. Pro Usage Ceiling @ {margin_target}% GM (M{H})",
           "No headroom" if ceil["no_headroom"] else fmt_prompts(ceil["var"]),
-          "Estimate, not a safe limit" if ceil["no_headroom"] else f"Fully loaded: {fmt_prompts(ceil['loaded'])} (estimate)",
+          "Estimate, not a safe limit" if ceil["no_headroom"] else f"Incl. fixed infra: {fmt_prompts(ceil['loaded'])} (estimate)",
           help="Estimated from the ending month's company-wide cost per prompt. Capacity steps, customer mix and real routing can move marginal cost; do not treat it as a guaranteed safe usage limit.")
 c4.metric("Heavy-User Cohort", f"{P['heavy_share'] * 100:.0f}% of Pro users", f"{h_mult_used:.1f}x typical prompts")
+
+
+def fmt_pct(v):
+    return "n/a" if pd.isna(v) else f"{v:.1f}%"
+
+
+_treat_name = {"COGS": "COGS", "S&M": "S&M", "SPLIT": "COGS / S&M split"}[P["free_treatment"]]
+d1, d2, d3, d4 = st.columns(4)
+d1.metric("Paid-Customer Gross Margin", fmt_pct(tot["paid_gm"]), "Before free-tier cost", delta_color="off",
+          help="Revenue less the cost of serving paying customers only (their inference, vector, fixed infra, payment fees, implementation). Free-tier cost is never loaded onto paying customers.")
+d2.metric(f"Free-Tier Inference Cost (in {_treat_name})", f"${tot['free_cost']:,.0f}",
+          "n/a (no revenue)" if tot["rev"] <= 0 else f"{tot['free_cost'] / tot['rev'] * 100:.0f}% of revenue", delta_color="off",
+          help="Inference cost of free / trial traffic over the horizon. The sidebar switch books it to COGS or to sales & marketing.")
+d3.metric("Fully Loaded Gross Margin", fmt_pct(tot["fl_gm"]),
+          f"After ${tot['other']:,.0f} other COGS" if tot["other"] > 0 else "No other COGS lines added", delta_color="off",
+          help="Reported gross margin after the extra COGS lines you add in the 'Fully loaded margin' panel above the KPIs. With no lines it equals the reported margin.")
+d4.metric(f"AI Unit-Cost Index (M{H})", f"x{float(m_last['AI Unit-Cost Index (x)']):.2f}",
+          "Flat prices" if ai_path_is_flat(P) else "AI cost path active", delta_color="off",
+          help="Multiplier on AI inference cost from the AI cost path (efficiency programme and vendor price change). 1.00 = prices as entered.")
+
+_flags = health_flags(df, P, tot, h_mult_used)
+_checks = [f for f in _flags if f[0] == "check"]
+if _checks:
+    st.warning(f"🩺 {len(_checks)} input check(s) worth reviewing: " + "; ".join(f[1] for f in _checks) + ". Details are in the Audit Register tab (Model Health Flags).")
 
 bullets = []
 if pd.isna(period_gm):
@@ -929,64 +1600,152 @@ if due_total > 0:
     bullets.append(f"<b>Team / SMB Renewals:</b> {due_total:,.1f} account-renewals fall due in the horizon; at {P['ent_renewal_rate'] * 100:.0f}% renewal about "
                    f"{df['Team Non-Renewals'].sum():,.1f} accounts are lost.")
 if df["Monthly Prompts"].sum() > 0:
-    bullets.append(f"<b>Free-Tier Cost-to-Serve:</b> Free users generate {free_share * 100:.0f}% of prompts and ≈${free_cost_alloc:,.0f} of API + vector + infrastructure cost "
-                   f"({free_cost_alloc / max(1.0, paid_cost_alloc + free_cost_alloc) * 100:.0f}% of the pool), carried by paid revenue.")
+    _free_pct_rev = (f"{free_cost_alloc / tot['rev'] * 100:.0f}% of revenue" if tot["rev"] > 0 else "no revenue to compare")
+    if P["free_treatment"] == "COGS":
+        _treat_txt = f"It is booked to <b>COGS</b>, so reported margin carries it; paid-customer margin is <b>{fmt_pct(tot['paid_gm'])}</b> before it."
+    elif P["free_treatment"] == "SPLIT":
+        _treat_txt = (f"<b>Trials</b> (≈${tot['trial_cost']:,.0f}) are booked to sales & marketing and the perpetual <b>freemium</b> tier (≈${tot['freemium_cost']:,.0f}) to COGS, "
+                      f"giving a reported margin of {fmt_pct(tot['gm'])}; paid-customer margin is {fmt_pct(tot['paid_gm'])}.")
+    else:
+        _treat_txt = (f"It is booked to <b>sales & marketing</b>, so reported COGS excludes it (reported margin {fmt_pct(tot['gm'])}). It is still a real cost: "
+                      "judge it as acquisition spend against free-to-paid conversion.")
+    bullets.append(f"<b>Free-Tier Cost-to-Serve:</b> Free users generate {free_share * 100:.0f}% of prompts and ≈${free_cost_alloc:,.0f} of inference cost ({_free_pct_rev}). {_treat_txt}")
+if tot["other"] > 0:
+    bullets.append(f"<b>Fully Loaded Margin:</b> Your other COGS lines add ${tot['other']:,.0f} over the horizon, taking margin from {fmt_pct(tot['gm'])} (reported) to <b>{fmt_pct(tot['fl_gm'])}</b> fully loaded.")
+else:
+    bullets.append(f"<b>Fully Loaded Margin:</b> No other COGS lines entered, so margin covers AI-direct costs only. Add support, observability, compliance and similar costs in the "
+                   f"'Fully loaded margin' panel to see the fully loaded margin.")
+if not ai_path_is_flat(P):
+    _flat_df = run_model_simulation({**P, "eff_mom": 0.0, "price_step_pct": 0.0})
+    _api_delta = float(df["API Cost ($)"].sum() - _flat_df["API Cost ($)"].sum())
+    _gm_flat = totals(_flat_df)["gm"]
+    _gm_delta_txt = "" if (pd.isna(period_gm) or pd.isna(_gm_flat)) else f" and moves forecast-period margin by {period_gm - _gm_flat:+.1f}pp"
+    bullets.append(f"<b>AI Cost Path:</b> {ai_path_text(P, H)}. Versus flat prices this changes API cost by {'-' if _api_delta < 0 else '+'}${abs(_api_delta):,.0f}{_gm_delta_txt}. "
+                   "A planning assumption, not a vendor commitment.")
 st.markdown(f"""
 <div class="cfo-commentary">
     <h4>💡 Deal Desk & Contract Pricing Governance Briefing</h4>
     <ul>{"".join(f"<li>{b}</li>" for b in bullets)}</ul>
 </div>
 """, unsafe_allow_html=True)
-st.markdown(f'<div class="assumption-flag">⚠️ {token_price_note(P)}</div>', unsafe_allow_html=True)
+st.markdown(f'<div class="assumption-flag">⚠️ {token_price_note(P, H)}</div>', unsafe_allow_html=True)
 
 
 # ==========================================
 # 4. DASHBOARD TABS
 # ==========================================
-tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+tornado_cached = st.cache_data(show_spinner=False)(tornado_table)
+goal_seek_cached = st.cache_data(show_spinner=False)(goal_seek)
+lever_curve_cached = st.cache_data(show_spinner=False)(lever_curve)
+
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs([
     "📊 Revenue & Margin", "💳 Credits & Cash", "📋 Monthly Detail",
     "📈 Scenario Matrix", "📑 Audit Register", "🎯 Value & Pricing Strategy",
+    "🎛️ Levers & Goal-Seek", "💰 CAC & LTV", "🧪 Compare & Export", "💬 Feedback",
 ])
 
 with tab1:
     st.subheader("Forecast Recognized Revenue, COGS & Gross Margin")
     fig = make_subplots(specs=[[{"secondary_y": True}]])
     fig.add_trace(go.Bar(x=df["Month"], y=df["Recognized Revenue ($)"], name="Recognized Revenue ($)", marker_color="#3182ce"), secondary_y=False)
-    fig.add_trace(go.Scatter(x=df["Month"], y=df["Total Modeled COGS ($)"], name="Direct COGS ($)", mode="lines+markers", line=dict(color="#e53e3e", width=3)), secondary_y=False)
+    fig.add_trace(go.Scatter(x=df["Month"], y=df["Total Modeled COGS ($)"], name="Reported COGS ($)", mode="lines+markers", line=dict(color="#e53e3e", width=3)), secondary_y=False)
+    if df["Other COGS ($)"].sum() > 0:
+        fig.add_trace(go.Scatter(x=df["Month"], y=df["Fully Loaded COGS ($)"], name="Fully Loaded COGS ($)", mode="lines", line=dict(color="#d69e2e", width=2, dash="dash")), secondary_y=False)
     if budget_monthly > 0:
         fig.add_trace(go.Scatter(x=df["Month"], y=[budget_monthly] * H, name="COGS Budget Cap ($)", mode="lines", line=dict(color="#dd6b20", width=1.5, dash="dot")), secondary_y=False)
-    fig.add_trace(go.Scatter(x=df["Month"], y=df["Modeled Gross Margin (%)"], name="Gross Margin (%)", mode="lines+markers", line=dict(color="#27965a", width=3, dash="dash")), secondary_y=True)
+    fig.add_trace(go.Scatter(x=df["Month"], y=df["Modeled Gross Margin (%)"], name="Reported Gross Margin (%)", mode="lines+markers", line=dict(color="#27965a", width=3, dash="dash")), secondary_y=True)
+    fig.add_trace(go.Scatter(x=df["Month"], y=df["Paid-Customer Gross Margin (%)"], name="Paid-Customer GM (%)", mode="lines", line=dict(color=tone("#2b6cb0", "#63b3ed"), width=1.5, dash="dot")), secondary_y=True)
+    if df["Other COGS ($)"].sum() > 0:
+        fig.add_trace(go.Scatter(x=df["Month"], y=df["Fully Loaded Gross Margin (%)"], name="Fully Loaded GM (%)", mode="lines", line=dict(color="#d69e2e", width=2)), secondary_y=True)
     fig.add_trace(go.Scatter(x=df["Month"], y=[margin_target] * H, name=f"Target Margin ({margin_target}%)", mode="lines", line=dict(color="#a0aec0", width=1.5, dash="dot")), secondary_y=True)
-    fig.update_layout(template="plotly_white", height=350, margin=dict(l=30, r=40, t=10, b=20), legend=dict(orientation="h", y=1.12))
+    fig.update_layout(**CHART_KW, height=350, margin=dict(l=30, r=40, t=10, b=20), legend=dict(orientation="h", y=1.12))
     fig.update_yaxes(title_text="USD ($ / Month)", secondary_y=False, rangemode="tozero")
     fig.update_yaxes(title_text="Gross Margin (%)", secondary_y=True)
     show_chart(fig)
-    st.caption("Gross margin here is a management metric: payment processing fees and implementation delivery cost are included in COGS. "
-               "API cost uses the illustrative token prices in the sidebar, held flat for the whole horizon (no price decline modeled), while input tokens per prompt grow; "
-               "support, observability, compliance and other COGS are not included.")
+    st.caption("Gross margin here is a management metric: payment processing fees and implementation delivery cost are included in COGS, and free-tier inference is booked to "
+               f"{TREAT_LABEL[P['free_treatment']]} (sidebar 3). API cost uses the illustrative token prices in the sidebar; AI cost path: {ai_path_text(P, H)}. "
+               + ("Other COGS lines you entered are shown as the fully loaded view." if tot["other"] > 0 else
+                  "Support, observability, compliance and other COGS are not included unless you add lines in the 'Fully loaded margin' panel."))
+
+    st.markdown("#### Margin Bridge: paid-customer → reported → fully loaded")
+    _rev_p, _rev_e = tot["rev"], float(m_last["Recognized Revenue ($)"])
+
+    def _pct(v, base):
+        return v / base * 100 if base > 0 else np.nan
+
+    _bridge_spec = [
+        ("Recognized revenue", tot["rev"], _rev_e),
+        ("Less: paid-customer COGS (inference, vector, infra, payment fees, implementation)", tot["paid_cogs"], float(m_last["Paid-Customer COGS ($)"])),
+        ("= Paid-customer gross profit", tot["rev"] - tot["paid_cogs"], _rev_e - float(m_last["Paid-Customer COGS ($)"])),
+        ("Less: free-tier inference cost booked to COGS", tot["free_cogs"], float(m_last["Free-Tier Cost in COGS ($)"])),
+        ("= Gross profit as reported", tot["gp"], float(m_last["Modeled Gross Profit ($)"])),
+        ("Less: other COGS (your lines)", tot["other"], float(m_last["Other COGS ($)"])),
+        ("= Fully loaded gross profit", tot["rev"] - tot["fl_cogs"], float(m_last["Fully Loaded Gross Profit ($)"])),
+        ("Memo: free-tier inference cost booked to sales & marketing", tot["free_sm"], float(m_last["Free-Tier Cost in S&M ($)"])),
+    ]
+    bridge = pd.DataFrame([{"Line": lab, "Forecast Period ($)": v, "Period, % of Revenue (%)": _pct(v, _rev_p),
+                            f"Ending Month M{H} ($)": ve, f"Ending Month, % of Revenue (%)": _pct(ve, _rev_e)} for lab, v, ve in _bridge_spec])
+    show_df(style_frame(bridge), hide_index=True)
+    st.caption("Costs are shown as positive amounts; lines starting with '=' are subtotals. Free-tier inference is a real cost however it is booked: the sidebar switch only moves it "
+               "between COGS and sales & marketing, and paying customers' margin never carries it. Other COGS lines are not part of cash or credit timing.")
+
+    st.markdown("#### Inference Traffic & Cost by Customer Type")
+    _pt, _ph, _pm = (float(df[c].sum()) for c in ("Typical Pro Prompts", "Heavy Pro Prompts", "Team / SMB Prompts"))
+    _paid_pr = _pt + _ph + _pm
+    _paid_pool = float(df["Paid-Customer Inference & Infra ($)"].sum())
+
+    def _paid_cost(x):
+        return _paid_pool * x / _paid_pr if _paid_pr > 0 else 0.0
+
+    _ft = P["free_treatment"]
+    _book_trial = "COGS" if _ft == "COGS" else "Sales & marketing"
+    _book_free = "Sales & marketing" if _ft == "S&M" else "COGS"
+    _book_int = "COGS" if P["internal_treatment"] == "COGS" else "R&D / G&A"
+    _tr_rows = [
+        ("Paying: Pro, typical users", _pt, _paid_cost(_pt), "COGS"),
+        ("Paying: Pro, heavy users", _ph, _paid_cost(_ph), "COGS"),
+        ("Paying: Team / SMB", _pm, _paid_cost(_pm), "COGS"),
+        ("Free trials", float(df["Trial Prompts"].sum()), tot["trial_cost"], _book_trial),
+        ("Free tier (perpetual freemium)", float(df["Freemium Prompts"].sum()), tot["freemium_cost"], _book_free),
+        ("Internal / non-customer", float(df["Internal Prompts"].sum()), tot["internal_cost"], _book_int),
+    ]
+    _tp, _tc = sum(r[1] for r in _tr_rows), sum(r[2] for r in _tr_rows)
+    traffic = pd.DataFrame(
+        [{"Customer Type": lab, "Prompts": pr, "Share of Prompts (%)": pr / _tp * 100 if _tp > 0 else np.nan,
+          "Inference & Infra Cost ($)": c, "Share of Cost (%)": c / _tc * 100 if _tc > 0 else np.nan,
+          "Cost / 1,000 Prompts ($)": c / pr * 1000 if pr > 0 else np.nan, "Booked To": bk} for lab, pr, c, bk in _tr_rows]
+        + [{"Customer Type": "Total", "Prompts": _tp, "Share of Prompts (%)": 100.0 if _tp > 0 else np.nan, "Inference & Infra Cost ($)": _tc,
+            "Share of Cost (%)": 100.0 if _tc > 0 else np.nan, "Cost / 1,000 Prompts ($)": _tc / _tp * 1000 if _tp > 0 else np.nan, "Booked To": ""}])
+    show_df(style_frame(traffic), hide_index=True)
+    st.caption("Cost = API + vector + attributed fixed infrastructure over the horizon. The three paying segments share the paid pool by prompt volume. "
+               "By default all fixed infrastructure stays with paying customers (Advanced > E), which is why their cost per 1,000 prompts is higher than the free tier's. "
+               "Trial vs freemium needs the trial share set in Advanced > F; internal traffic is 0 unless you set it there.")
 
     st.markdown("#### Founder Unit-Economics Snapshot (ending month)")
     k1, k2, k3, k4 = st.columns(4)
     end_paid = float(m_last["Ending Paid Accounts"])
-    cogs_pp = float(m_last["Total Modeled COGS ($)"]) / end_paid if end_paid > 0 else 0.0
+    cogs_pp = float(m_last["Paid-Customer COGS ($)"]) / end_paid if end_paid > 0 else 0.0
     rev_pp = float(m_last["Recognized Revenue ($)"]) / end_paid if end_paid > 0 else 0.0
-    k1.metric("COGS / paid account", f"${cogs_pp:,.2f}")
+    free_pp = float(m_last["Free-Tier Inference Cost ($)"]) / end_paid if end_paid > 0 else 0.0
+    k1.metric("Paid-customer COGS / paid account", f"${cogs_pp:,.2f}")
     k2.metric("Revenue / paid account", f"${rev_pp:,.2f}")
-    k3.metric("Gross profit / paid account", f"${rev_pp - cogs_pp:,.2f}")
-    k4.metric("Modeled COGS", f"${float(m_last['Total Modeled COGS ($)']):,.0f}")
-    st.caption("Blended company-level averages across Pro subscribers and team/SMB accounts (a team account is a contract, not a user).")
+    k3.metric("Paid-customer gross profit / paid account", f"${rev_pp - cogs_pp:,.2f}")
+    k4.metric("Memo: free-tier cost / paid account", f"${free_pp:,.2f}")
+    st.caption("Company-level averages across Pro subscribers and team/SMB accounts (a team account is a contract, not a user). "
+               "Free-tier cost is shown as a memo and is NOT loaded onto paying accounts, so per-account cost reflects what it costs to serve a paying customer.")
 
     st.markdown("#### Inference Unit Cost Telemetry")
     cu1, cu2 = st.columns(2)
     fu1 = go.Figure()
-    fu1.add_trace(go.Scatter(x=df["Month"], y=df["API Cost / 1,000 Prompts ($)"], name="API-only / 1k", mode="lines+markers", line=dict(color="#805ad5", width=2.5)))
-    fu1.add_trace(go.Scatter(x=df["Month"], y=df["Blended COGS / 1,000 Prompts ($)"], name="Blended COGS / 1k", mode="lines+markers", line=dict(color="#e53e3e", width=2, dash="dash")))
-    fu1.update_layout(title="API Cost vs Blended COGS per 1,000 Prompts ($)", template="plotly_white", height=250, margin=dict(l=30, r=30, t=40, b=20), legend=dict(orientation="h", y=1.18))
+    fu1.add_trace(go.Scatter(x=df["Month"], y=df["API Cost / 1,000 Prompts ($)"], name="API-only / 1k", mode="lines+markers", line=dict(color=tone("#805ad5", "#b794f4"), width=2.5)))
+    fu1.add_trace(go.Scatter(x=df["Month"], y=df["Blended Direct Cost / 1,000 Prompts ($)"], name="Blended direct cost / 1k", mode="lines+markers", line=dict(color="#e53e3e", width=2, dash="dash")))
+    fu1.update_layout(title="API Cost vs Blended Direct Cost per 1,000 Prompts ($)", **CHART_KW, height=250, margin=dict(l=30, r=30, t=40, b=20), legend=dict(orientation="h", y=1.18))
     with cu1:
         show_chart(fu1)
     fu2 = go.Figure()
-    fu2.add_trace(go.Scatter(x=df["Month"], y=df["Blended COGS / Paid Account ($)"], mode="lines+markers", name="COGS / paid account", line=dict(color="#319795", width=2.5)))
-    fu2.update_layout(title="Blended COGS / Paid Account ($)", template="plotly_white", height=250, margin=dict(l=30, r=30, t=40, b=20))
+    fu2.add_trace(go.Scatter(x=df["Month"], y=df["Paid-Customer COGS / Paid Account ($)"], mode="lines+markers", name="Paid-customer COGS / paid account", line=dict(color="#319795", width=2.5)))
+    fu2.add_trace(go.Scatter(x=df["Month"], y=df["Incl. Free-Tier Cost / Paid Account ($)"], mode="lines", name="Incl. free-tier cost (memo)", line=dict(color="#a0aec0", width=1.5, dash="dash")))
+    fu2.update_layout(title="COGS per Paid Account ($)", legend=dict(orientation="h", y=1.18), **CHART_KW, height=250, margin=dict(l=30, r=30, t=40, b=20))
     with cu2:
         show_chart(fu2)
 
@@ -996,15 +1755,19 @@ with tab1:
                           ("Fixed Infrastructure ($)", "Infrastructure Step-Cost", "#ed8936"),
                           ("Payment Processing ($)", "Payment Fees", "#9f7aea"), ("Implementation Cost ($)", "Implementation Delivery", "#a0aec0")]:
         cogs_fig.add_trace(go.Bar(x=df["Month"], y=df[col], name=nm, marker_color=colr))
-    cogs_fig.update_layout(template="plotly_white", barmode="stack", height=320, margin=dict(l=30, r=30, t=20, b=20), legend=dict(orientation="h", y=1.12))
+    if df["Other COGS ($)"].sum() > 0:
+        cogs_fig.add_trace(go.Bar(x=df["Month"], y=df["Other COGS ($)"], name="Other COGS (your lines)", marker_color="#d69e2e"))
+    cogs_fig.add_trace(go.Scatter(x=df["Month"], y=df["Total Modeled COGS ($)"], name="Reported COGS", mode="lines", line=dict(color=tone("#2d3748", "#e2e8f0"), width=2, dash="dot")))
+    cogs_fig.update_layout(**CHART_KW, barmode="stack", height=320, margin=dict(l=30, r=30, t=20, b=20), legend=dict(orientation="h", y=1.12))
     show_chart(cogs_fig)
+    st.caption("Bars show every direct cost at full value, regardless of whether free-tier cost is booked to COGS or sales & marketing; the dotted line is reported COGS.")
 
     st.markdown("#### Team / SMB Account Roll-Forward")
     fe = make_subplots(specs=[[{"secondary_y": True}]])
     fe.add_trace(go.Bar(x=df["Month"], y=df["Ending Team Accounts"], name="Ending Accounts", marker_color="#3182ce"), secondary_y=False)
     fe.add_trace(go.Bar(x=df["Month"], y=-df["Team Non-Renewals"], name="Non-Renewals", marker_color="#e53e3e"), secondary_y=False)
     fe.add_trace(go.Scatter(x=df["Month"], y=df["Team Expansion Index"], name="Expansion Index (x)", mode="lines+markers", line=dict(color="#27965a", width=2)), secondary_y=True)
-    fe.update_layout(template="plotly_white", barmode="relative", height=300, margin=dict(l=30, r=40, t=10, b=20), legend=dict(orientation="h", y=1.15))
+    fe.update_layout(**CHART_KW, barmode="relative", height=300, margin=dict(l=30, r=40, t=10, b=20), legend=dict(orientation="h", y=1.15))
     show_chart(fe)
 
 with tab2:
@@ -1013,10 +1776,10 @@ with tab2:
     fig2.add_trace(go.Bar(x=df["Month"], y=df["AI Credits Applied ($)"], name="AI Credits Applied ($)", marker_color="#38a169"), secondary_y=False)
     fig2.add_trace(go.Bar(x=df["Month"], y=df["Cloud Credits Applied ($)"], name="Cloud Credits Applied ($)", marker_color="#4fd1c5"), secondary_y=False)
     fig2.add_trace(go.Bar(x=df["Month"], y=df["Estimated Cash Payable ($)"], name="Cash Payable, accrual ($)", marker_color="#dd6b20"), secondary_y=False)
-    fig2.add_trace(go.Scatter(x=df["Month"], y=df["Estimated Cash Paid This Month ($)"], name="Estimated Cash Paid ($)", mode="lines+markers", line=dict(color="#805ad5", width=2)), secondary_y=False)
-    fig2.add_trace(go.Scatter(x=df["Month"], y=df["Remaining AI Credits ($)"], name="Remaining AI Credits ($)", mode="lines", line=dict(color="#2b6cb0", width=2, dash="dash")), secondary_y=True)
-    fig2.add_trace(go.Scatter(x=df["Month"], y=df["Remaining Cloud Credits ($)"], name="Remaining Cloud Credits ($)", mode="lines", line=dict(color="#805ad5", width=2, dash="dot")), secondary_y=True)
-    fig2.update_layout(template="plotly_white", height=380, barmode="stack", margin=dict(l=30, r=40, t=10, b=20), legend=dict(orientation="h", y=1.15))
+    fig2.add_trace(go.Scatter(x=df["Month"], y=df["Estimated Cash Paid This Month ($)"], name="Estimated Cash Paid ($)", mode="lines+markers", line=dict(color=tone("#805ad5", "#b794f4"), width=2)), secondary_y=False)
+    fig2.add_trace(go.Scatter(x=df["Month"], y=df["Remaining AI Credits ($)"], name="Remaining AI Credits ($)", mode="lines", line=dict(color=tone("#2b6cb0", "#63b3ed"), width=2, dash="dash")), secondary_y=True)
+    fig2.add_trace(go.Scatter(x=df["Month"], y=df["Remaining Cloud Credits ($)"], name="Remaining Cloud Credits ($)", mode="lines", line=dict(color=tone("#805ad5", "#b794f4"), width=2, dash="dot")), secondary_y=True)
+    fig2.update_layout(**CHART_KW, height=380, barmode="stack", margin=dict(l=30, r=40, t=10, b=20), legend=dict(orientation="h", y=1.15))
     fig2.update_yaxes(title_text="Monthly COGS coverage ($)", secondary_y=False, rangemode="tozero")
     fig2.update_yaxes(title_text="Credit balances ($)", secondary_y=True, rangemode="tozero")
     show_chart(fig2)
@@ -1039,7 +1802,8 @@ with tab4:
     st.subheader("📈 Multi-Scenario Comparative Analysis Matrix")
     st.caption("Each scenario moves one driver family unless labeled combined. Prompt intensity scales ALL segments, including team/SMB. Deal counts are not rounded. "
                "These are simplified sensitivities on one operating plan, not independent plans. "
-               "Scenarios 8-9 apply a flat price change to every month of the horizon; they are not a price-decline trajectory.")
+               "Scenarios 8-9 apply a flat price change to every month of the horizon; they are not a price-decline trajectory. "
+               f"The AI cost path set in the sidebar ({ai_path_text(P, H)}) and the free-tier treatment ({TREAT_LABEL[P['free_treatment']]}) apply to every scenario, and each scenario's other COGS lines follow the same rules.")
     scen_rows = []
     scen_totals = {}
     for name, spec in SCENARIOS:
@@ -1056,7 +1820,7 @@ with tab4:
             "ID": idx, "Scenario": name,
             "Revenue ($)": t["rev"], "Δ Revenue vs Base ($)": t["rev"] - base_t["rev"],
             "COGS ($)": t["cogs"], "Δ COGS vs Base ($)": t["cogs"] - base_t["cogs"],
-            "Gross Profit ($)": t["gp"], "Gross Margin (%)": t["gm"],
+            "Gross Profit ($)": t["gp"], "Gross Margin (%)": t["gm"], "Fully Loaded GM (%)": t["fl_gm"],
             "Δ Margin vs Base (pp)": (t["gm"] - base_t["gm"]) if not (pd.isna(t["gm"]) or pd.isna(base_t["gm"])) else np.nan,
             "Ending ARR ($)": t["arr"],
             "Cash Payable, Horizon ($)": t["payable"], "Cash Paid, Horizon ($)": t["paid"],
@@ -1071,7 +1835,7 @@ with tab5:
     st.caption("Generated from the live inputs, so values cannot drift from the model. 'Status' is an honest label: nothing here has been verified against actuals by this tool.")
     PRESET_EST = "Founder-profile preset (estimate) — replace with actuals"
     ASSUME = "Model assumption — verify"
-    TOKEN_FLAG = "KEY ASSUMPTION — illustrative price, held flat for the horizon; verify against vendor rate card"
+    TOKEN_FLAG = "KEY ASSUMPTION — illustrative price (flat unless an AI cost path is set); verify against vendor rate card"
     audit = [
         ("Forecast start / horizon", f"{pd.Period(freq='M', year=start_year, month=start_month).strftime('%b %Y')} / {H} months", "FP&A planning calendar", "Planning choice"),
         ("Starting DAU", f"{starting_dau:,.0f}", "Mixpanel / Segment / PostHog (define DAU consistently)", PRESET_EST),
@@ -1099,8 +1863,29 @@ with tab5:
                                                       f"(input tokens x{(1 + P['in_grow']) ** max(0, H - 1):.2f} by month {H})", "LLM provider logs", ASSUME),
         ("Frontier routing share and prices", f"{P['front_mix'] * 100:.0f}%; ${P['f_in']:.2f} in / ${P['f_out']:.2f} out per 1M", "Vendor rate card (public, unverified)", TOKEN_FLAG),
         ("Standard model prices", f"${P['s_in']:.4f} in / ${P['s_out']:.4f} out per 1M", "Vendor rate card (public, unverified)", TOKEN_FLAG),
-        ("Token price trajectory over the horizon", "Flat: no price decline or increase is modeled. Scenarios 8-9 apply one flat % change to every month", "Vendor price history; contract and commit terms", TOKEN_FLAG),
-        ("Modeled COGS scope", "API inference, vector DB, fixed infrastructure, payment fees, implementation delivery. Excludes support, observability, compliance and other COGS", "Chart of accounts / COGS policy", "Known limitation — modeled margin is higher than a fully loaded margin"),
+        ("AI cost path (efficiency / vendor price change)",
+         ("Flat: no price decline or increase is modeled. Scenarios 8-9 apply one flat % change to every month" if ai_path_is_flat(P) else ai_path_text(P, H)),
+         "Vendor price history and commit terms; engineering cost-reduction plan with owners and dates", TOKEN_FLAG),
+        ("Free / trial inference cost treatment",
+         f"Booked to {TREAT_LABEL[P['free_treatment']]}; fixed infrastructure attributed to free tier: "
+         f"{'by prompt share' if P['infra_alloc'] == 'prompt' else 'none (stays with paid customers)'}",
+         "Accounting policy (CPA / auditor); investor reporting convention", "Policy choice — apply consistently and disclose"),
+        ("Trial share of free-tier traffic", f"{P['trial_share'] * 100:.0f}% trials / {(1 - P['trial_share']) * 100:.0f}% freemium",
+         "Funnel analytics: trial starts and trial prompt logs", "Illustrative placeholder — replace with your own funnel data"),
+        ("Free-tier model routing", ("Same mix as paying customers" if P["front_mix_free"] is None else f"{P['front_mix_free'] * 100:.0f}% frontier on free-tier traffic"),
+         "Gateway routing logs by plan", ASSUME),
+        ("Internal / non-customer traffic", f"{P['internal_pct'] * 100:.0f}% of customer prompts, booked to {'COGS' if P['internal_treatment'] == 'COGS' else 'R&D / G&A'}",
+         "Gateway logs by API key (staff, eval, staging keys)", ASSUME),
+        ("Other COGS lines (fully loaded view)",
+         ("; ".join(f"{ln['name']}: " + (f"{ln['amount']:g}% of revenue" if ln["basis"] == "% of revenue" else f"${ln['amount']:,.0f}/mo" + (f" (+{ln['growth']:g}%/mo)" if ln["growth"] else ""))
+                    + f" from M{ln['start']}" + (f" to M{ln['end']}" if ln["end"] else "") for ln in P["other_cogs"]) or "None entered"),
+         "Chart of accounts; support & success headcount; tooling, security and compliance invoices",
+         ASSUME if P["other_cogs"] else "Not entered — fully loaded margin equals reported margin"),
+        ("Modeled COGS scope",
+         "API inference, vector DB, fixed infrastructure, payment fees, implementation delivery" + (f" plus {len(P['other_cogs'])} user-defined line(s) in the fully loaded view"
+                                                                                                    if P["other_cogs"] else ". Excludes support, observability, compliance and other COGS unless you add lines"),
+         "Chart of accounts / COGS policy",
+         "User-defined lines included in fully loaded margin" if P["other_cogs"] else "Known limitation — modeled margin is higher than a fully loaded margin"),
         ("Prompt caching", f"{P['cache_rate'] * 100:.0f}% hit / {P['cache_ratio'] * 100:.0f}% price", "Gateway cache logs; vendor terms", ASSUME),
         ("Batch routing / inference overhead", f"{P['batch_share'] * 100:.0f}% at {P['batch_ratio'] * 100:.0f}% price / +{P['overhead'] * 100:.0f}%", "Batch API telemetry", ASSUME),
         ("Base infrastructure / step block / step cost", f"${P['base_infra']:,.0f} / {P['step_thresh']:,.0f} ({P['step_type']}) / ${P['step_cost']:,.0f}", "Cloud invoices; capacity plan", PRESET_EST),
@@ -1127,6 +1912,24 @@ with tab5:
     st.caption("These checks confirm the arithmetic is internally consistent. They cannot prove an assumption is right: "
                "a consistently wrong input passes every check. Known-answer tests (hand-calculated cases) live in tests/test_engine.py.")
     show_df(checks_df, hide_index=True)
+
+    st.markdown("#### Model Health Flags")
+    st.caption("Rule-based sanity checks on inputs and results. ⚠️ = likely worth reviewing; ℹ️ = worth knowing, not necessarily wrong. Unlike the integrity checks above, these look at plausibility, not arithmetic.")
+    for _lvl, _ttl, _txt in _flags:
+        st.markdown(f"{'⚠️' if _lvl == 'check' else 'ℹ️'} **{_ttl}.** {_txt}")
+    if not _flags:
+        st.success("No flags.")
+    st.markdown("#### Usage Curve: prompts per active user per day")
+    _mn, _cv = usage_curve_for(P)
+    uf = go.Figure()
+    uf.add_trace(go.Scatter(x=_mn, y=_cv * P["usage_mult"], name="Typical paid user", mode="lines+markers", line=dict(color="#3182ce", width=2.5)))
+    uf.add_trace(go.Scatter(x=_mn, y=_cv * P["usage_mult"] * h_mult_used, name=f"Heavy Pro user ({h_mult_used:.1f}x)", mode="lines", line=dict(color="#e53e3e", width=1.5, dash="dash")))
+    uf.add_trace(go.Scatter(x=_mn, y=_cv * P["usage_mult"] * P["free_mult"], name=f"Free user ({P['free_mult'] * 100:.0f}% of typical)", mode="lines", line=dict(color="#27965a", width=2)))
+    uf.add_trace(go.Scatter(x=_mn, y=[P["base_prompts"]] * len(_mn), name="Baseline", mode="lines", line=dict(color="#a0aec0", width=1.5, dash="dot")))
+    uf.update_layout(**CHART_KW, height=300, margin=dict(l=30, r=30, t=10, b=20), legend=dict(orientation="h", y=1.15))
+    uf.update_yaxes(title_text="Prompts / user / day", rangemode="tozero")
+    show_chart(uf)
+    st.caption("The curve the engine uses, by calendar month. Peaks are absolute prompts per day (not multipliers over baseline) and drive the cost of every user, including free users.")
 
 with tab6:
     st.subheader("🎯 Value-Creation Anchor & Hybrid Pricing Strategy")
@@ -1162,7 +1965,7 @@ with tab6:
         st.markdown("#### 2. Fixed-Usage Pricing Archetype Comparison")
         st.caption("This is a sensitivity on constant customer behavior, not a forecast of what customers would buy: usage, plan mix and churn are held the same under every price. "
                    "All archetypes are applied to the SAME simulated customers and usage, segment by segment (typical Pro, heavy Pro, team / SMB). "
-                   "Cost is the same API + vector + infrastructure pool allocated by prompt volume; payment fees are recomputed on each archetype's revenue. "
+                   "Cost is the paid-attributable share of the API + vector + infrastructure pool (variable cost by prompt volume; fixed infrastructure per the sidebar attribution setting); payment fees are recomputed on each archetype's revenue. "
                    "Free-tier traffic (and any idle capacity in months with no traffic) earns no revenue, so its cost is shown separately.")
         with st.expander("Edit comparable pricing rules", expanded=False):
             rules = {
@@ -1188,11 +1991,215 @@ with tab6:
                    "Contribution margin is before free-tier and idle cost; gross margin after free-tier cost is the comparable company-level figure.")
         st.markdown(f"**Estimated Pro usage ceiling at {margin_target}% target margin (month {H}):** "
                     + ("no headroom at this target and fee rate." if ceil["no_headroom"]
-                       else f"{fmt_prompts(ceil['var'])} on variable cost (API + vector); {fmt_prompts(ceil['loaded'])} fully loaded with allocated infrastructure. "
+                       else f"{fmt_prompts(ceil['var'])} on variable cost (API + vector); {fmt_prompts(ceil['loaded'])} including allocated fixed infrastructure. "
                             f"Current average Pro usage that month: "
                             f"{(float(m_last['Typical Pro Prompts'] + m_last['Heavy Pro Prompts']) / max(1e-9, float(m_last['Average Pro Subs']))):,.0f} prompts per subscriber."))
         st.caption("An estimate from company-wide cost per prompt, not a guaranteed safe limit. Capacity steps, customer mix and real routing can move marginal cost. "
-                   "Cost per prompt reflects illustrative token prices held flat for the whole horizon, so the ceiling moves one-for-one with the price inputs.")
+                   "Cost per prompt reflects the illustrative token prices and the AI cost path in the ending month (" + ai_path_text(P, H) + "), so the ceiling moves with them.")
+
+# ---------- tab 7: levers & goal-seek ----------
+with tab7:
+    st.subheader("🎛️ What Moves Margin? Sensitivity & Goal-Seek")
+    lc1, lc2 = st.columns(2)
+    sens_metric_label = lc1.selectbox("Margin measure", list(METRIC_OPTIONS), index=0)
+    sens_pct = lc2.slider("Move each input by ± (%)", 5, 50, 25, 5) / 100
+    sens_key = METRIC_OPTIONS[sens_metric_label]
+    base_m, torn = tornado_cached(P, sens_pct, sens_key)
+    if pd.isna(base_m) or torn.empty:
+        st.info("No margin to analyse: the model has no recognized revenue for these inputs.")
+    else:
+        _top = torn.iloc[0]
+        st.info(f"💡 **Biggest lever:** {_top['Driver']} moves the margin by up to {_top['Δ Swing (pp)']:.1f}pp for a ±{sens_pct * 100:.0f}% change. Base margin: {base_m:.1f}%.")
+        _ts = torn.iloc[::-1]
+        tf = go.Figure()
+        tf.add_trace(go.Bar(y=_ts["Driver"], x=_ts["Δ Margin at Low Input (pp)"], name=f"Input -{sens_pct * 100:.0f}%", orientation="h", marker_color="#3182ce"))
+        tf.add_trace(go.Bar(y=_ts["Driver"], x=_ts["Δ Margin at High Input (pp)"], name=f"Input +{sens_pct * 100:.0f}%", orientation="h", marker_color="#e53e3e"))
+        tf.update_layout(**CHART_KW, barmode="overlay", height=max(300, 34 * len(_ts) + 90), margin=dict(l=30, r=30, t=10, b=30), legend=dict(orientation="h", y=1.08))
+        tf.update_xaxes(title_text="Change in margin (percentage points)")
+        show_chart(tf)
+        show_df(style_frame(torn), hide_index=True)
+        st.caption("One input at a time, everything else held at your current settings: a local sensitivity, not a forecast range. Percent inputs move relative to their own value "
+                   "(±25% of a 40% multiplier = 30%-50%) and are kept between 0% and 100%. Includes your free-tier treatment, other COGS lines and AI cost path.")
+
+    st.markdown("#### Goal-Seek: what would it take to hit a target margin?")
+    gc1, gc2, gc3 = st.columns(3)
+    goal_lever_label = gc1.selectbox("Lever to change", [g[1] for g in GOAL_LEVERS], index=0)
+    goal_target = gc2.slider("Target margin (%)", 0, 95, int(margin_target), 1)
+    goal_metric_label = gc3.selectbox("Margin to hit", list(METRIC_OPTIONS), index=0)
+    _gl = next(g for g in GOAL_LEVERS if g[1] == goal_lever_label)
+    _gkey, _glo, _ghi, _gkind = _gl[0], _gl[2], _gl[3], _gl[4]
+    _gmk = METRIC_OPTIONS[goal_metric_label]
+
+    def _fmt_lever(v):
+        return f"{v * 100:.1f}%" if _gkind == "pct" else (f"${v:,.2f}" if _gkind == "usd" else f"x{v:.2f}")
+
+    gres = goal_seek_cached(P, _gkey, _glo, _ghi, float(goal_target), _gmk)
+    if gres["status"] == "ok":
+        st.success(f"To reach **{goal_target}%** ({goal_metric_label.lower()}), set **{goal_lever_label.split(' (')[0]}** to **{_fmt_lever(gres['value'])}** "
+                   f"(currently {_fmt_lever(gres['current_value'])}). Check: the model gives {gres['achieved']:.1f}% at that value.")
+    elif gres["status"] == "unreachable":
+        st.warning(f"No value of this lever between {_fmt_lever(_glo)} and {_fmt_lever(_ghi)} reaches {goal_target}%: it moves the margin only from {gres['f_lo']:.1f}% to {gres['f_hi']:.1f}%. "
+                   "Try a different lever or combine several (use the table above to pick).")
+    else:
+        st.info("The margin is undefined for these inputs (no recognized revenue).")
+    _xs, _ys = lever_curve_cached(P, _gkey, _glo, _ghi, _gmk)
+    if not np.all(np.isnan(_ys)):
+        gf = go.Figure()
+        gf.add_trace(go.Scatter(x=_xs * (100 if _gkind == "pct" else 1), y=_ys, name="Margin", mode="lines", line=dict(color="#3182ce", width=2.5)))
+        gf.add_trace(go.Scatter(x=[_xs[0] * (100 if _gkind == "pct" else 1), _xs[-1] * (100 if _gkind == "pct" else 1)], y=[goal_target, goal_target], name="Target", mode="lines",
+                                line=dict(color="#a0aec0", width=1.5, dash="dot")))
+        if gres["status"] == "ok":
+            gf.add_trace(go.Scatter(x=[gres["value"] * (100 if _gkind == "pct" else 1)], y=[gres["achieved"]], name="Solution", mode="markers", marker=dict(color="#27965a", size=11)))
+        gf.update_layout(**CHART_KW, height=300, margin=dict(l=30, r=30, t=10, b=30), legend=dict(orientation="h", y=1.12))
+        gf.update_xaxes(title_text=goal_lever_label.split(" (")[0] + (" (%)" if _gkind == "pct" else ""))
+        gf.update_yaxes(title_text="Margin (%)")
+        show_chart(gf)
+    st.caption("Searches one lever at a time with everything else as set in the sidebar. It assumes the margin moves in one direction as the lever moves, which holds for these levers. "
+               "Apply a result by setting the matching input in the sidebar (Advanced mode for some).")
+
+# ---------- tab 8: CAC, LTV & payback ----------
+with tab8:
+    st.subheader("💰 CAC, LTV & Payback (free-tier cost counted as acquisition cost)")
+    ac1, ac2 = st.columns(2)
+    sm_monthly = ac1.number_input("Monthly sales & marketing spend ($, excluding free-tier inference)", min_value=0.0, value=0.0, step=500.0,
+                                  help="Ads, sales salaries and commissions, tools, content. The model has no sales & marketing spend of its own, so enter yours.")
+    count_free = ac2.toggle("Count free / trial inference as acquisition cost", value=True,
+                            help="Free users are how Pro customers are acquired, so their inference cost is part of the cost of acquiring them, however it is booked in the accounts.")
+    cl = cac_ltv(df, P, tot, sm_monthly, count_free)
+    if sm_monthly <= 0:
+        st.warning("No sales & marketing spend entered: the CAC below contains only free-tier inference, so LTV/CAC and payback look better than they would in practice. Enter your real monthly spend.")
+    r1, r2, r3 = st.columns(3)
+    r1.metric("New paying customers", f"{cl['n_new']:,.0f}", f"{cl['n_pro']:,.0f} Pro, {cl['n_team']:,.1f} Team / SMB deals", delta_color="off",
+              help="Pro conversions plus new team deals over the horizon (existing customers at the start are excluded).")
+    r2.metric("Acquisition cost over horizon", f"${cl['spend'] + cl['free_cost']:,.0f}", f"${cl['spend']:,.0f} S&M + ${cl['free_cost']:,.0f} free-tier inference", delta_color="off")
+    r3.metric("Blended CAC", "n/a" if pd.isna(cl["cac"]) else f"${cl['cac']:,.2f}",
+              "n/a" if pd.isna(cl["cac_ex_free"]) else f"${cl['cac_ex_free']:,.2f} excluding free-tier cost", delta_color="off")
+    q1, q2, q3 = st.columns(3)
+    _neg = pd.isna(cl["margin"]) or cl["margin"] <= 0
+    q1.metric("Blended LTV", "n/m (margin <= 0)" if _neg else f"${cl['ltv']:,.2f}", f"Pro ${cl['ltv_pro']:,.0f} / Team ${cl['ltv_team']:,.0f}" if not _neg else "", delta_color="off",
+              help="Monthly price x margin x expected lifetime, averaged over new Pro and team customers. Lifetime is capped at 60 months; not discounted.")
+    q2.metric("LTV / CAC", "n/m" if (_neg or pd.isna(cl["ltv_cac"])) else f"{cl['ltv_cac']:.1f}x", "Common rule of thumb: 3x or more", delta_color="off")
+    q3.metric("CAC payback", "n/a" if (_neg or pd.isna(cl["payback"])) else f"{cl['payback']:.1f} months", "Common rule of thumb: under 12", delta_color="off")
+    _marg_txt = "n/a" if pd.isna(cl["margin"]) else f"{cl['margin'] * 100:.1f}%"
+    st.caption(f"Method (simplified): margin used = paid-customer margin after your other COGS lines = {_marg_txt}, "
+               f"so free-tier cost is counted once, as acquisition cost, and never also in margin. Pro lifetime = 1 / monthly churn ({cl['life_pro']:.0f} months); "
+               f"team lifetime = term / (1 - renewal rate) ({cl['life_team']:.0f} months, capped at 60). Team deals are sales-led and usually cost far more to win than Pro conversions, "
+               "so a blended CAC can hide a large gap; treat this as a directional planning view, not an investor-grade calculation.")
+
+# ---------- tab 9: save, compare & export ----------
+with tab9:
+    st.subheader("🧪 Save, Compare & Export")
+    if "saved_scenarios" not in st.session_state:
+        st.session_state["saved_scenarios"] = {}
+    saved = st.session_state["saved_scenarios"]
+    _snap_now = scenario_snapshot(df, {**P, "_preset": founder_stage}, tot)
+    sc1, sc2 = st.columns([3, 1])
+    scn_name = sc1.text_input("Scenario name", value="", placeholder="e.g. Free tier on a cheaper model")
+    if sc2.button("💾 Save current as scenario"):
+        _nm = clean_text(scn_name, 60) or f"Scenario {len(saved) + 1}"
+        if _nm in ("Metric", "Current (unsaved)"):
+            _nm += " (saved)"
+        while _nm in saved:
+            _nm += " (2)"
+        if len(saved) >= 8:
+            st.warning("You can keep up to 8 saved scenarios. Clear some to save another.")
+        else:
+            saved[_nm] = {"snapshot": _snap_now, "assumptions": json.loads(json.dumps(P, default=str))}
+            st.success(f"Saved '{_nm}'.")
+
+    def _fmt_snap(key, v):
+        if isinstance(v, str):
+            return v
+        if pd.isna(v):
+            return "n/a"
+        return f"${v:,.0f}" if key.endswith("($)") else (f"{v:.1f}%" if key.endswith("(%)") else str(v))
+
+    compare_df = pd.DataFrame({"Metric": list(_snap_now)})
+    compare_df["Current (unsaved)"] = [_fmt_snap(k, v) for k, v in _snap_now.items()]
+    for _nm, _rec in saved.items():
+        compare_df[_nm] = [_fmt_snap(k, _rec["snapshot"].get(k, np.nan)) for k in _snap_now]
+    show_df(compare_df, hide_index=True)
+    if saved and st.button("🗑️ Clear all saved scenarios"):
+        saved.clear()
+        st.rerun()
+    st.caption("Saved scenarios live in this browser session only and are lost when you refresh or close the page. Use the exports below to keep a permanent record. "
+               "Loading a saved scenario back into the sidebar is not supported; the exported assumptions list what to re-enter.")
+
+    st.markdown("#### Export")
+    _audit_df = pd.DataFrame(audit, columns=["Model Parameter", "Current Value", "Verify Against (System of Record)", "Status"])
+    _export = {"app": APP_NAME, "app_version": APP_VERSION, "generated_at_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(), "starting_profile": founder_stage,
+               "assumptions": json.loads(json.dumps(P, default=str)), "assumptions_register": _audit_df.to_dict("records"),
+               "results": {k: (None if (not isinstance(v, str) and pd.isna(v)) else v) for k, v in _snap_now.items()}}
+    ex1, ex2, ex3 = st.columns(3)
+    ex1.download_button("⬇️ Assumptions & results (JSON)", data=json.dumps(_export, indent=2, default=str).encode("utf-8"),
+                        file_name="deal_desk_assumptions.json", mime="application/json")
+    ex2.download_button("⬇️ Margin bridge (CSV)", data=safe_frame(bridge).to_csv(index=False).encode("utf-8"), file_name="deal_desk_margin_bridge.csv", mime="text/csv")
+    try:
+        _sheets = {"Assumptions": _audit_df, "Monthly detail": df, "Margin bridge": bridge, "Traffic by type": traffic, "Scenario compare": compare_df}
+        if "torn" in globals() and not torn.empty:
+            _sheets["Sensitivity"] = torn
+        _bio = io.BytesIO()
+        with pd.ExcelWriter(_bio, engine="openpyxl") as _xw:
+            for _sn, _fr in _sheets.items():
+                safe_frame(_fr).to_excel(_xw, sheet_name=_sn[:31], index=False)
+        ex3.download_button("⬇️ Full workbook (Excel)", data=_bio.getvalue(), file_name="deal_desk_model.xlsx",
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    except Exception:
+        ex3.caption("Excel export needs the `openpyxl` package. Add it to requirements.txt to enable it.")
+
+# ---------- tab 10: feedback ----------
+with tab10:
+    st.subheader("💬 Feedback")
+    st.markdown(FEEDBACK_WELCOME)
+    _fb = feedback_config()
+    _fallbacks = []
+    if _fb["form_url"]:
+        _fallbacks.append(f"[open the feedback form]({_fb['form_url']})")
+    if _fb["email"]:
+        _fallbacks.append(f"[email me](mailto:{_fb['email']})")
+    if not _fb["webhook_url"]:
+        st.info("The in-app feedback form isn't connected yet." + (f" In the meantime you can {' or '.join(_fallbacks)}." if _fallbacks else ""))
+        with st.expander("For the app owner: connect this form"):
+            st.markdown("Add this to `.streamlit/secrets.toml` (or the app's Secrets box on Streamlit Community Cloud). The webhook URL stays private and is never shown in the app.")
+            st.code('[feedback]\nwebhook_url = "https://script.google.com/macros/s/XXXX/exec"   # or a Formspree / Zapier / Make URL\n'
+                    'form_url = "https://forms.gle/XXXX"   # optional fallback link\nemail = "you@example.com"   # optional fallback', language="toml")
+            st.markdown("**Free option: a Google Sheet.** Create a sheet with a tab named `Feedback`, open Extensions > Apps Script, paste the example below, "
+                        "then Deploy > New deployment > Web app (execute as you, access: anyone) and paste the web app URL as `webhook_url`.")
+            st.code('function doPost(e) {\n  var d = JSON.parse(e.postData.contents);\n  SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Feedback")\n'
+                    '    .appendRow([new Date(), d.category, d.message, d.email, d.app_version, JSON.stringify(d.settings || {})]);\n'
+                    '  return ContentService.createTextOutput(JSON.stringify({ok: true})).setMimeType(ContentService.MimeType.JSON);\n}', language="javascript")
+    else:
+        st.session_state.setdefault("fb_opened", time.time())
+        with st.form("feedback_form", clear_on_submit=False):
+            fb_category = st.radio("What would you like to share?", FEEDBACK_CATEGORIES, index=0)
+            fb_message = st.text_area("Your message", max_chars=2000, height=150, placeholder="What happened, what you expected, or what you would like to see. Steps to reproduce help for bugs.")
+            fb_email = st.text_input("Email (optional, only if you'd like a reply)", max_chars=200)
+            fb_attach = st.checkbox("Attach my current model settings (no personal data) so a problem is easier to reproduce", value=True)
+            st.caption("Your message is used only to improve this project. Please don't include confidential or personal financial details.")
+            fb_submit = st.form_submit_button("Send feedback")
+        if fb_submit:
+            _err = validate_feedback(fb_category, fb_message, fb_email)
+            if _err:
+                st.error(_err)
+            elif st.session_state.get("fb_count", 0) >= 5:
+                st.warning("You've sent several messages in this session, thank you! Please try again later.")
+            elif time.time() - st.session_state["fb_opened"] < 2:
+                st.success("Thank you for your feedback!")   # too fast to be a person: acknowledge, send nothing
+            else:
+                _settings = None
+                if fb_attach:
+                    _settings = {"starting_profile": founder_stage, "horizon_months": H, "advanced_mode": bool(advanced_mode), "free_tier_booked_to": P["free_treatment"],
+                                 "fixed_infra_to_free_tier": P["infra_alloc"], "trial_share": P["trial_share"], "free_tier_frontier_mix": P["front_mix_free"],
+                                 "internal_traffic_pct": P["internal_pct"], "ai_cost_path": ai_path_text(P, H), "other_cogs_lines": len(P["other_cogs"]),
+                                 "reported_gm_pct": None if pd.isna(tot["gm"]) else round(tot["gm"], 1), "ending_arr": round(tot["arr"])}
+                _payload = {"submitted_at_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(), "app": APP_NAME, "app_version": APP_VERSION,
+                            "category": fb_category, "message": safe_cell(clean_text(fb_message, 2000)), "email": safe_cell(clean_text(fb_email, 200)), "settings": _settings}
+                _ok, _msg = post_feedback(_fb["webhook_url"], _payload)
+                if _ok:
+                    st.session_state["fb_count"] = st.session_state.get("fb_count", 0) + 1
+                    st.success("Thank you! Your feedback was sent.")
+                else:
+                    st.error(f"{_msg} Your message was not sent." + (f" You can also {' or '.join(_fallbacks)}." if _fallbacks else ""))
 
 # ==========================================
 # 5. FOOTER, CHANGE LOG & LIMITATIONS
@@ -1200,26 +2207,38 @@ with tab6:
 st.markdown("---")
 SHOW_CHANGE_LOG = False
 CHANGE_LOG_MD = """
-**v2.5 changes**
-1. **Seasonal usage peaks are now preset-specific and sized to each preset's baseline.** Peaks were a fixed 35 / 45 prompts per user per day for every preset, so the baseline slider had almost no effect and inference cost was inflated (Early traction 36-month COGS falls about 32% with no other change). Peaks are now 5 / 6 (Pre-launch), 20 / 25 (Early traction) and 17 / 21 (Scaling), about 1.7x and 2.1x each baseline. Editable under Advanced > C.
-2. **Scaling preset rebuilt so it reads as a larger business than Early traction.** Starting DAU 12,000 (was 3,000, below Early traction), 600 Pro subscribers, 10 team accounts, 2 deals per month, 10 baseline prompts, $6,000 base infra, 30% frontier routing, 45% caching, $25k AI and $40k cloud credits.
-3. **Pre-launch and Early traction are otherwise unchanged.**
-4. **Indicative 36-month results (start Oct 2026, default assumptions):** Pre-launch ending gross margin moves from about -85% to about +31%; Early traction ending margin moves from 33.8% to 56.2% with ARR unchanged at about $0.79M, still below the 60% target; Scaling ending ARR moves from about $0.95M to about $2.78M at roughly 83% modeled margin.
-5. **Token-price disclaimers added** to the briefing, Revenue & Margin tab, Scenario tab, Value & Pricing tab, sidebar price inputs, audit register and footer.
-6. **Removed the v2.4 note** claiming Scaling reaches "~$1.2M ARR with built-in positive margins via model optimization"; it did not match the preset's actual output.
+**v2.7 changes**
+1. **Traffic mix.** Free-tier traffic can be split into trials and freemium (sidebar 3) and can be routed to a cheaper model mix; internal / eval traffic can be modeled and booked to R&D / G&A or COGS (Advanced > F). A traffic-by-type table shows paid vs trial vs freemium vs internal.
+2. **Sensitivity and goal seek.** A tornado shows which assumptions move your chosen metric most; goal seek solves for the lever value that hits a target margin; a usage-curve chart and sanity warnings flag implausible inputs.
+3. **CAC, LTV and payback** count free-tier inference as acquisition cost (once), with a simplified, directional method.
+4. **Save, compare and export.** Save scenarios in-session, compare them side by side, and export JSON, CSV or an Excel workbook. Text beginning with = + - @ is neutralised so spreadsheets never run it as a formula.
+5. **In-app feedback form** (Feedback tab). It sends to a destination you configure in Streamlit secrets; until then it shows a fallback.
+6. **Fix:** the per-account usage ceiling now prices paying-customer traffic only, so a cheaper free-tier model no longer understates paid cost per prompt.
+
+**v2.6 changes**
+1. **Free / trial inference cost can be booked to COGS or to sales & marketing** (sidebar 3). The default is COGS, so headline numbers are unchanged. Free-tier cost is now its own sub-line, and paying customers' margin never carries it.
+2. **Three margins side by side:** paid-customer gross margin, gross margin as reported (after your COGS / S&M choice) and fully loaded gross margin, with a margin bridge on the Revenue & Margin tab.
+3. **Other COGS lines for a fully loaded margin.** An editable table above the KPIs takes $ / month or % of revenue lines with start month, end month and monthly growth. Nothing is added by default.
+4. **AI cost path (sidebar 3).** A MoM reduction in AI cost per prompt from a chosen month (with a cumulative cap) and a one-time vendor price change (cut or increase). Defaults are off, so prices stay flat unless you set it.
+5. **Per-account cost fixed.** "COGS per paid account" now uses paid-customer COGS only; the version that included free-tier cost is shown as a memo. Blended cost per 1,000 prompts uses total direct cost.
+6. **Fixed infrastructure** now stays with paid customers by default (Advanced > E lets you split it by prompt share, the v2.5 behaviour). Variable free-tier cost still follows prompt share. This changes the Value & Pricing tab's free-tier figures versus v2.5; headline gross margin is unchanged.
+7. **Dark mode.** Colours now follow the active Streamlit theme (or the operating-system setting when the theme is not reported), and charts switch to a dark template.
+8. **New integrity checks** cover the cost split, free-tier booking, fully loaded reconciliation, margin ordering and the AI cost path.
 
 **Known limitations**
-- **Token prices are illustrative placeholders held flat for the whole horizon.** No price decline or increase is modeled. Scenarios 8-9 apply one flat % change to every month.
-- **Input tokens per prompt grow monthly while prices stay flat,** which pushes cost per prompt up over time.
+- **Token prices are illustrative placeholders.** They are flat unless you set an AI cost path; the path is a planning assumption, not a vendor commitment, and applies to AI inference (API) cost only, not vector DB or hosting. Scenarios 8-9 apply one flat % change to every month.
+- **Input tokens per prompt grow monthly,** which pushes cost per prompt up unless offset by an efficiency path.
 - **Cache and batch discounts** are vendor-dependent and assumed to stay available at the configured levels.
-- **Modeled COGS excludes** support, observability, compliance and other costs, so modeled margin is higher than a fully loaded margin.
+- **Other COGS lines are display-only:** they change the fully loaded margin but not cash payable, credits or the usage ceiling.
+- **Accounting treatment is a policy choice.** The COGS / S&M switch is a presentation of the same cost; confirm your policy with your accountant or auditor.
+- **Margins exclude any cost you do not enter,** so modeled margin is higher than a fully loaded margin unless you add lines.
 
 **Material changes from v1**
 1. **Team / SMB engine rebuilt as cohorts.** Accounts, renewals, non-renewals, in-term churn and expansion are tracked per cohort.
 2. **Expansion is no longer double counted.** Team / SMB expansion grows contract value, seats and prompts of existing accounts.
 """
 if SHOW_CHANGE_LOG:
-    with st.expander("Change log & limitations (v2.5)"):
+    with st.expander("Change log & limitations (v2.7)"):
         st.markdown(CHANGE_LOG_MD)
 else:
     _hidden = html.escape(CHANGE_LOG_MD.strip()).replace("\n\n", "<br>").replace("\n", "<br>")
@@ -1230,10 +2249,12 @@ _in_mult = (1 + P["in_grow"]) ** max(0, H - 1)
 st.markdown(f"""
 <div class="assumption-flag"><b>Key assumptions & limitations</b>
 <ul>
-<li>{token_price_note(P)}</li>
-<li><b>Token volume:</b> input tokens per prompt grow {P['in_grow'] * 100:.1f}% per month (x{_in_mult:.2f} by month {H}) and output tokens {P['out_grow'] * 100:.1f}% per month, against flat prices, so cost per prompt rises over the horizon.</li>
+<li>{token_price_note(P, H)}</li>
+<li><b>Token volume:</b> input tokens per prompt grow {P['in_grow'] * 100:.1f}% per month (x{_in_mult:.2f} by month {H}) and output tokens {P['out_grow'] * 100:.1f}% per month, against {'flat prices, so cost per prompt rises over the horizon' if ai_path_is_flat(P) else 'the AI cost path above, which offsets or adds to that growth'}.</li>
 <li><b>Discounts:</b> caching ({P['cache_rate'] * 100:.0f}% of eligible input at {P['cache_ratio'] * 100:.0f}% of list price) and batch routing ({P['batch_share'] * 100:.0f}% of traffic at {P['batch_ratio'] * 100:.0f}% of list price) depend on vendor terms and are assumed to stay available throughout.</li>
-<li><b>Price scenarios:</b> scenarios 8-9 apply one flat % price change to every month; they are not a price-decline trajectory.</li>
+<li><b>Price scenarios:</b> scenarios 8-9 apply one flat % price change to every month; for a gradual path use the AI cost path in the sidebar.</li>
+<li><b>Cost treatment:</b> free / trial inference cost is booked to {TREAT_LABEL[P['free_treatment']]} (a policy choice; confirm with your accountant or auditor). Paying customers' margin never carries it.</li>
+<li><b>Fully loaded margin:</b> {('includes ' + str(len(P['other_cogs'])) + ' user-defined COGS line(s); they do not affect cash timing or credits.') if P['other_cogs'] else 'no other COGS lines entered, so margins cover AI-direct costs only.'}</li>
 <li><b>Presets:</b> founder presets are planning estimates, not benchmarks. Replace them with actuals from your billing system and LLM gateway logs.</li>
 </ul></div>
 """, unsafe_allow_html=True)
