@@ -67,14 +67,16 @@ _LIGHT = dict(app_bg="#f2f2f2", text="#2c2f39", side_bg="#f8f8fa", side_border="
               note_h4="#0b2cbc", note_text="#3d4150", flag_bg="#fffaf0", flag_border="#f6d6a8", flag_accent="#dd6b20",
               flag_b="#c05621", flag_text="#4a5568",
               accent="#0b2cbc", on_accent="#ffffff", navy="#131733", ring="#e4e7f6", chip_bg="#e3e7f8", chip_text="#0b2cbc",
-              good="#1f7a4d", good_bg="#e1f3e9", warn="#9a5b00", warn_bg="#fdf0d5", bad="#b42318", bad_bg="#fde4e1")
+              good="#1f7a4d", good_bg="#e1f3e9", warn="#9a5b00", warn_bg="#fdf0d5", bad="#b42318", bad_bg="#fde4e1",
+              accent_dark="#0a1f8a", seg_bg="#e6e8f0", seg_on="#ffffff", violet="#8a5cf6", sky="#33c2ff")
 _DARK = dict(app_bg="#0f1226", text="#e8eaf3", side_bg="#151937", side_border="#262b52", label="#c5c9e0",
              card_bg="#171b3a", card_border="#2a3060", metric_label="#a3a9cc", hdr_from="#1a1f45", hdr_to="#151937",
              hdr_text="#f5f6fb", hdr_sub="#a3a9cc", note_bg="#171b3a", note_border="#2a3060", note_accent="#6f8bff",
              note_h4="#9db0ff", note_text="#c5c9e0", flag_bg="#2a2118", flag_border="#5c4326", flag_accent="#ed8936",
              flag_b="#fbd38d", flag_text="#e8eaf3",
              accent="#5b7bff", on_accent="#0f1226", navy="#0a0c1c", ring="#222861", chip_bg="#232a5e", chip_text="#aebcff",
-             good="#5fd08f", good_bg="#14301f", warn="#f3b25c", warn_bg="#33270f", bad="#ff8a80", bad_bg="#3a1816")
+             good="#5fd08f", good_bg="#14301f", warn="#f3b25c", warn_bg="#33270f", bad="#ff8a80", bad_bg="#3a1816",
+             accent_dark="#2a3fb0", seg_bg="#1f2552", seg_on="#2a3060", violet="#a78bfa", sky="#5cd0ff")
 
 
 def _css_vars(pal):
@@ -132,23 +134,32 @@ div[data-testid="stMetric"] div[data-testid="stMetricValue"] {font-size:1.1rem !
 .assumption-flag b {color: var(--flag-b);}
 .assumption-flag ul {margin: 4px 0 0 0; padding-left: 16px;}
 .assumption-flag li {margin-bottom: 2px;}
-.hero {padding: 18px 4px 6px 4px;}
+.hero {padding: 4px 4px 0 4px;}
+div.block-container {padding-top: 2.4rem !important; padding-bottom: 2rem !important;}
+header[data-testid="stHeader"] {background: transparent;}
 .eyebrow {font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing: .14em; text-transform: uppercase;
           font-size: .72rem; color: var(--accent); font-weight: 600;}
-.hero h1 {font-size: 2.7rem; line-height: 1.08; font-weight: 600; color: var(--text); margin: 6px 0 10px 0; letter-spacing: -0.02em;}
+.hero h1 {font-size: clamp(1.7rem, 2.9vw, 2.4rem); line-height: 1.15; font-weight: 600; color: var(--text); margin: 4px 0 6px 0; letter-spacing: -0.02em;}
 .hero h1 .accent, .chapter h2 .accent {color: var(--accent);}
-.hero p.sub {font-size: 1.05rem; color: var(--label); max-width: 46rem; margin: 0 0 8px 0;}
-.skipbar {font-size: .8rem; color: var(--label); margin: 4px 0 10px 0;}
+.hero p.sub {font-size: 1rem; color: var(--label); max-width: 62rem; margin: 0 0 4px 0;}
+.skipbar {font-size: .8rem; color: var(--label); margin: 2px 0 2px 0;}
 .skipbar a {color: var(--accent); text-decoration: none; margin-right: 14px; font-weight: 600;}
-.chapter {margin: 26px 0 4px 0; padding-top: 14px; border-top: 1px solid var(--card-border);}
-.chapter h2 {font-size: 1.7rem; font-weight: 600; margin: 4px 0 4px 0; color: var(--text); letter-spacing: -0.01em;}
-.chapter p.lede {font-size: .98rem; color: var(--label); margin: 0 0 8px 0; max-width: 46rem;}
-.kpi-card {background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 14px; padding: 14px 16px;
-           box-shadow: 0 0 0 4px var(--ring); margin-bottom: 8px;}
+.chapter {margin: 12px 0 0 0; padding-top: 8px; border-top: 1px solid var(--card-border);}
+.chapter h2 {font-size: 1.45rem; font-weight: 600; margin: 2px 0 2px 0; color: var(--text); letter-spacing: -0.01em;}
+.chapter p.lede {font-size: .95rem; color: var(--label); margin: 0 0 4px 0; max-width: 62rem;}
+.kpi-card {border: 2px solid transparent; border-radius: 14px; padding: 14px 16px; margin-bottom: 8px;
+           background: linear-gradient(var(--card-bg), var(--card-bg)) padding-box, linear-gradient(135deg, var(--accent), var(--violet) 60%, var(--sky)) border-box;}
+.kpi-card svg {display: block; margin: 2px 0 2px 0;}
+.kpi-card .delta {font-size: .78rem; font-weight: 600;} .kpi-card .delta.up {color: var(--good);} .kpi-card .delta.down {color: var(--bad);}
+.rank {list-style: none; margin: 6px 0 0 0; padding: 0;}
+.rank li {display: flex; align-items: center; gap: 10px; padding: 6px 0; border-top: 1px solid var(--card-border); font-size: .85rem;}
+.rank .n {width: 20px; height: 20px; border-radius: 50%; background: var(--text); color: var(--app-bg); font-size: .7rem; display: flex; align-items: center; justify-content: center; flex: none;}
+.rank .bar {height: 6px; border-radius: 9px; background: var(--seg-bg); flex: 1; max-width: 110px;} .rank .bar i {display: block; height: 100%; border-radius: 9px; background: var(--accent);}
+.rank .amt {margin-left: auto; font-weight: 600;}
 .kpi-card .k {font-size: .74rem; font-weight: 600; color: var(--metric-label); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
               letter-spacing: .08em; text-transform: uppercase;}
 .kpi-card .v {font-size: 2.1rem; font-weight: 650; color: var(--text); line-height: 1.15; margin: 4px 0 4px 0;}
-.kpi-card .d {font-size: .8rem; color: var(--label);}
+.kpi-card .d {font-size: .8rem; color: var(--label); min-height: 2.6em;}
 .pill {display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: .72rem; font-weight: 600; margin-bottom: 4px;
        background: var(--chip-bg); color: var(--chip-text);}
 .pill.good {background: var(--good-bg); color: var(--good);} .pill.warn {background: var(--warn-bg); color: var(--warn);}
@@ -156,7 +167,24 @@ div[data-testid="stMetric"] div[data-testid="stMetricValue"] {font-size:1.1rem !
 .takeaway {background: var(--note-bg); border: 1px solid var(--note-border); border-left: 4px solid var(--accent);
            padding: 10px 14px; border-radius: 10px; margin: 12px 0; font-size: .92rem; color: var(--note-text);}
 .bridge {border-left: 3px solid var(--accent); padding: 4px 12px; color: var(--label); font-style: italic; margin: 14px 0 6px 0;}
-.stButton > button[kind="primary"] {background: var(--accent); color: var(--on-accent); border: 0; border-radius: 10px;}
+.stButton > button, .stDownloadButton > button, div[data-testid="stFormSubmitButton"] > button {
+    border-radius: 12px; font-weight: 600; background: var(--card-bg); color: var(--text); border: 1px solid var(--card-border);
+    box-shadow: 0 3px 0 var(--card-border); transition: transform .06s, box-shadow .06s;}
+.stButton > button:active, .stDownloadButton > button:active, div[data-testid="stFormSubmitButton"] > button:active {transform: translateY(3px); box-shadow: 0 0 0 var(--card-border);}
+.stButton > button[kind="primary"], .stDownloadButton > button[kind="primary"], div[data-testid="stFormSubmitButton"] > button[kind="primary"] {
+    background: var(--accent); color: var(--on-accent); border: 0; box-shadow: 0 4px 0 var(--accent-dark);}
+.stButton > button[kind="primary"]:active {box-shadow: 0 1px 0 var(--accent-dark);}
+.st-key-chips .stButton > button {border-radius: 999px; background: var(--chip-bg); color: var(--chip-text); border: 0; box-shadow: none; padding: 4px 14px; font-size: .82rem;}
+.st-key-chips .stButton > button:active {transform: none;}
+.st-key-view_mode div[role="radiogroup"] {background: var(--seg-bg); border-radius: 999px; padding: 4px; display: inline-flex; gap: 0;}
+.st-key-view_mode label[data-baseweb="radio"] {margin: 0; padding: 6px 16px; border-radius: 999px; cursor: pointer;}
+.st-key-view_mode label[data-baseweb="radio"] > div:first-child {display: none;}
+.st-key-view_mode label[data-baseweb="radio"]:has(input:checked) {background: var(--seg-on); box-shadow: 0 1px 4px rgba(20,30,90,.18);}
+.st-key-view_mode label[data-baseweb="radio"]:has(input:checked) p {color: var(--accent); font-weight: 600;}
+.st-key-stage_story div[role="radiogroup"] {gap: 12px; flex-wrap: wrap;}
+.st-key-stage_story label[data-baseweb="radio"] {background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 14px; padding: 12px 18px; margin: 0; min-width: 220px; cursor: pointer;}
+.st-key-stage_story label[data-baseweb="radio"] > div:first-child {display: none;}
+.st-key-stage_story label[data-baseweb="radio"]:has(input:checked) {border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), 0 0 0 5px var(--ring);}
 """
 st.markdown(f"<style>{_ROOT_CSS}\n{_STATIC_CSS}</style>", unsafe_allow_html=True)
 
@@ -166,10 +194,48 @@ VIEW = st.radio("View", ["Guided story", "Analyst view"], horizontal=True, key="
 GUIDED = VIEW == "Guided story"
 
 
-def kpi_card(label, value, note="", pill=None, pill_kind=""):
+def _spark_svg(vals, color="var(--accent)"):
+    v = [float(x) for x in vals if x is not None and not pd.isna(x)]
+    if len(v) < 2:
+        return ""
+    lo, hi = min(v), max(v)
+    span = (hi - lo) or 1.0
+    pts = " ".join(f"{i / (len(v) - 1) * 160:.1f},{30 - (x - lo) / span * 26:.1f}" for i, x in enumerate(v))
+    return f'<svg width="100%" height="34" viewBox="0 0 160 34" preserveAspectRatio="none"><polyline fill="none" stroke="{color}" stroke-width="2.5" points="{pts}"/></svg>'
+
+
+def _delta_html(vals):
+    v = [float(x) for x in vals if x is not None and not pd.isna(x)]
+    if len(v) < 2:
+        return ""
+    d = v[-1] - v[0]
+    return f'<div class="delta {"up" if d >= 0 else "down"}">{"▲" if d >= 0 else "▼"} {abs(d):.1f} pts, first to last month</div>'
+
+
+def kpi_card(label, value, note="", pill=None, pill_kind="", series=None):
     _p = f'<span class="pill {pill_kind}">{html.escape(pill)}</span><br>' if pill else ""
-    return (f'<div class="kpi-card">{_p}<div class="k">{html.escape(label)}</div><div class="v">{html.escape(value)}</div>'
+    _sp = (_spark_svg(series) + _delta_html(series)) if series is not None else ""
+    return (f'<div class="kpi-card">{_p}<div class="k">{html.escape(label)}</div><div class="v">{html.escape(value)}</div>{_sp}'
             f'<div class="d">{html.escape(note)}</div></div>')
+
+
+def ring_card(label, pct, note=""):
+    p_ = 0.0 if pct is None or pd.isna(pct) else max(0.0, min(100.0, float(pct)))
+    txt = "n/a" if pct is None or pd.isna(pct) else f"{p_:.0f}%"
+    return (f'<div class="kpi-card"><div class="k">{html.escape(label)}</div>'
+            f'<svg width="100%" height="120" viewBox="0 0 120 120"><circle cx="60" cy="60" r="42" fill="none" stroke="var(--seg-bg)" stroke-width="14"/>'
+            f'<circle cx="60" cy="60" r="42" fill="none" stroke="var(--accent)" stroke-width="14" stroke-linecap="round" stroke-dasharray="{p_ / 100 * 264:.1f} 264" transform="rotate(-90 60 60)"/>'
+            f'<text x="60" y="67" text-anchor="middle" font-size="22" font-weight="700" fill="var(--text)">{txt}</text></svg>'
+            f'<div class="d">{html.escape(note)}</div></div>')
+
+
+def drivers_card(label, items):
+    items = [(n, float(v)) for n, v in items if v and not pd.isna(v) and v > 0]
+    items.sort(key=lambda t: -t[1])
+    top = items[0][1] if items else 1.0
+    rows = "".join(f'<li><span class="n">{i + 1}</span>{html.escape(n)}<div class="bar"><i style="width:{v / top * 100:.0f}%"></i></div><span class="amt">${v:,.0f}</span></li>'
+                   for i, (n, v) in enumerate(items[:5]))
+    return f'<div class="kpi-card"><div class="k">{html.escape(label)}</div><ul class="rank">{rows or "<li>No cost yet</li>"}</ul></div>'
 
 
 def chapter_head(anchor, num, label, question_html, lede):
@@ -181,7 +247,7 @@ if GUIDED:
     st.markdown("""
 <div class="hero">
   <div class="eyebrow">AI Deal Desk &middot; Guided story</div>
-  <h1>Will my AI product<br><span class="accent">make money?</span></h1>
+  <h1>Will my AI product <span class="accent">make money?</span></h1>
   <p class="sub">Every prompt costs something. Every free user adds a bill. And a customer who looks profitable can still lose you money.
   Pick a starting point, then follow the story. Every number comes from the same model.</p>
   <div class="skipbar">Skip to: <a href="#ch1">1 · One prompt</a> <a href="#deeper">Go deeper (all tabs)</a></div>
@@ -198,6 +264,7 @@ if GUIDED:
                 unsafe_allow_html=True)
     slot_ch1_ctl = st.container()
     slot_ch1_out = st.container()
+    slot_chat = st.container()
     st.markdown('<div class="chapter" id="deeper"><div class="eyebrow">Go deeper</div><h2>The full model, <span class="accent">tab by tab</span></h2>'
                 '<p class="lede">Chapters 2 to 6 (free-tier cost, margin bridge, forecast, levers and the Deal Desk) are in the tabs below, for now.</p></div>',
                 unsafe_allow_html=True)
@@ -434,7 +501,7 @@ if GUIDED:
     with slot_pick:
         founder_stage = st.radio("Choose a starting profile", ["Pre-launch", "Early traction", "Scaling"],
                                  index=["Pre-launch", "Early traction", "Scaling"].index(_stage_default), horizontal=True, key="stage_story",
-                                 format_func=lambda x: f"{x}: {_STAGE_DESC[x]}",
+                                 format_func=lambda x: f"**{x}**  :gray[{_STAGE_DESC[x]}]",
                                  help="Presets populate starting values only. All assumptions remain editable in the sidebar.")
     st.sidebar.header("0. Timing")
 else:
@@ -1838,15 +1905,15 @@ if GUIDED:
             return "On target", "good"
         return ("Close to target", "warn") if gm >= margin_target - 10 else ("Below target", "bad")
 
-    _vals = [("Paid-customer margin", tot["paid_gm"], "Revenue less the cost of serving paying customers only."),
-             ("Reported margin", tot["gm"], f"After booking free-tier cost to {_treat_name}."),
-             ("Fully loaded margin", tot["fl_gm"], "After the extra monthly costs you add." if tot["other"] > 0 else "Same as reported until you add other COGS lines.")]
+    _vals = [("Paid-customer margin", tot["paid_gm"], "Revenue less the cost of serving paying customers only.", df["Paid-Customer Gross Margin (%)"]),
+             ("Reported margin", tot["gm"], f"After booking free-tier cost to {_treat_name}.", df["Modeled Gross Margin (%)"]),
+             ("Fully loaded margin", tot["fl_gm"], "After the extra monthly costs you add." if tot["other"] > 0 else "Same as reported until you add other COGS lines.", df["Fully Loaded Gross Margin (%)"])]
     with slot_cards:
         _cols = st.columns(3)
-        for _c, (_lab, _v, _note) in zip(_cols, _vals):
+        for _c, (_lab, _v, _note, _ser) in zip(_cols, _vals):
             _pl, _pk = _status(_v)
-            _c.markdown(kpi_card(_lab, fmt_pct(_v), _note, _pl, _pk), unsafe_allow_html=True)
-        _known = [v for _, v, _ in _vals if not pd.isna(v)]
+            _c.markdown(kpi_card(_lab, fmt_pct(_v), _note, _pl, _pk, series=_ser), unsafe_allow_html=True)
+        _known = [v for _, v, _, _ in _vals if not pd.isna(v)]
         if _known:
             _spread = max(_known) - min(_known)
             st.markdown(f'<div class="takeaway"><b>Takeaway:</b> one business, three answers, {_spread:.1f} points apart. '
@@ -1876,6 +1943,13 @@ if GUIDED:
         _fc.update_layout(**CHART_KW, height=260, margin=dict(l=30, r=40, t=10, b=20), legend=dict(orientation="h", y=1.18),
                           yaxis=dict(title="$ per 1,000 prompts"), yaxis2=dict(title="$ per paid account", overlaying="y", side="right"))
         show_chart(_fc)
+        _share = free_cost_alloc / (paid_cost_alloc + free_cost_alloc) * 100 if (paid_cost_alloc + free_cost_alloc) > 0 else np.nan
+        _g1, _g2 = st.columns(2)
+        _g1.markdown(ring_card("Free-tier share of the AI bill", _share, "Share of paid + free inference and infrastructure cost that goes to free users."), unsafe_allow_html=True)
+        _g2.markdown(drivers_card("Top cost drivers over the forecast", [
+            ("Paying customers (inference + infra)", df["Paid-Customer Inference & Infra ($)"].sum()), ("Free tier", df["Free-Tier Inference Cost ($)"].sum()),
+            ("Internal traffic", df["Internal Traffic Cost ($)"].sum()), ("Payment fees", df["Payment Processing ($)"].sum()),
+            ("Implementation delivery", df["Implementation Cost ($)"].sum())]), unsafe_allow_html=True)
         st.markdown('<div class="bridge">But most of your users do not pay you. Who is using your AI budget? That is the next chapter, in the Value &amp; Pricing and Revenue &amp; Margin tabs.</div>',
                     unsafe_allow_html=True)
 
@@ -1946,7 +2020,91 @@ st.markdown(f'<div class="assumption-flag">⚠️ {token_price_note(P, H)}</div>
 # ==========================================
 tornado_cached = st.cache_data(show_spinner=False)(tornado_table)
 goal_seek_cached = st.cache_data(show_spinner=False)(goal_seek)
+
+QA_QUESTIONS = {
+    "free2x": "What if free usage doubles?",
+    "lever": "Which lever gets me to my target margin?",
+    "disc30": "Can I afford a 30% discount?",
+    "explain": "Explain the three margins",
+}
+
+
+def qa_answer(qid, p, dframe, t, target):
+    """Rule-based what-if answers. Every number comes from the same engine (no AI estimate); returns text, optional bars and optional table."""
+    def pct(v):
+        return "n/a" if pd.isna(v) else f"{v:.1f}%"
+    out = {"q": QA_QUESTIONS[qid], "md": "", "bars": None, "table": None, "changed": ""}
+    if qid == "free2x":
+        newv = min(1.0, p["free_mult"] * 2)
+        t2 = totals(simulate({**p, "free_mult": newv}))
+        out["md"] = (f"**Reported margin moves from {pct(t['gm'])} to {pct(t2['gm'])}.** Free-tier inference goes from ${t['free_cost']:,.0f} to ${t2['free_cost']:,.0f}, "
+                     f"while paid-customer margin goes from {pct(t['paid_gm'])} to {pct(t2['paid_gm'])}. Free usage is capped at 100% of a paying user's usage.")
+        out["bars"] = ("Reported margin (%)", ["Now", "Free usage x2"], [t["gm"], t2["gm"]])
+        out["changed"] = f"Free-tier usage multiplier {p['free_mult'] * 100:.0f}% to {newv * 100:.0f}%."
+    elif qid == "disc30":
+        t2 = totals(simulate({**p, "arpu_pro": p["arpu_pro"] * 0.7, "arpu_ent": p["arpu_ent"] * 0.7}))
+        verdict = "stays above" if (not pd.isna(t2["gm"]) and t2["gm"] >= target) else "falls below"
+        out["md"] = (f"**With 30% off every price, reported margin moves from {pct(t['gm'])} to {pct(t2['gm'])}, which {verdict} your {target:.0f}% target.** "
+                     f"Revenue over the forecast goes from ${t['rev']:,.0f} to ${t2['rev']:,.0f}; paid-customer margin goes from {pct(t['paid_gm'])} to {pct(t2['paid_gm'])}. "
+                     "This ignores any extra volume a discount might win, so it is the worst case for margin.")
+        out["bars"] = ("Reported margin (%)", ["Now", "30% discount"], [t["gm"], t2["gm"]])
+        out["changed"] = f"Pro price ${p['arpu_pro']:,.2f} to ${p['arpu_pro'] * 0.7:,.2f}; Team / SMB price x0.7."
+    elif qid == "lever":
+        rows = []
+        for key, lab, lo, hi, kind in GOAL_LEVERS:
+            g = goal_seek_cached(p, key, lo, hi, float(target), "gm")
+            fm = (lambda v: f"{v * 100:.1f}%") if kind == "pct" else ((lambda v: f"${v:,.2f}") if kind == "usd" else (lambda v: f"x{v:.2f}"))
+            if g["status"] == "ok":
+                rows.append({"Lever": lab.split(" (")[0], "Now": fm(g["current_value"]), "Needed alone": fm(g["value"])})
+            else:
+                rows.append({"Lever": lab.split(" (")[0], "Now": fm(g["current_value"]), "Needed alone": "not reachable on its own"})
+        out["table"] = pd.DataFrame(rows)
+        out["md"] = (f"**To reach a {target:.0f}% reported margin (now {pct(t['gm'])}), here is what each lever would need to be on its own.** "
+                     "Real plans combine several smaller moves. The Levers & Goal-Seek tab lets you explore them.")
+        out["changed"] = "One lever at a time; everything else as in the sidebar."
+    else:
+        out["md"] = (f"**Paid-customer margin ({pct(t['paid_gm'])})** counts only the cost of serving paying customers. **Reported margin ({pct(t['gm'])})** also includes free-tier cost "
+                     f"if your policy books it to COGS (${t['free_cost']:,.0f} here). **Fully loaded margin ({pct(t['fl_gm'])})** adds any other monthly costs you enter, such as support and tooling. "
+                     "The same inference bill appears in all three. These are management measures, not standardized accounting figures.")
+        out["changed"] = "Nothing changed."
+    return out
+
 lever_curve_cached = st.cache_data(show_spinner=False)(lever_curve)
+
+
+def _keyed_container(key):
+    try:
+        return st.container(key=key)
+    except TypeError:   # older Streamlit without container keys: still works, just unstyled
+        return st.container()
+
+
+if GUIDED:
+    with slot_chat:
+        st.markdown('<div class="chapter" id="ask"><div class="eyebrow">Ask the model</div><h2>Try a <span class="accent">what-if</span></h2>'
+                    '<p class="lede">Tap a question. The answer comes from the same model as everything else, with the settings it changed listed underneath. '
+                    'It is a rule-based answer, not an AI estimate.</p></div>', unsafe_allow_html=True)
+        with _keyed_container("chips"):
+            _qcols = st.columns(len(QA_QUESTIONS))
+            for _qc, (_qid, _qlab) in zip(_qcols, QA_QUESTIONS.items()):
+                if _qc.button(_qlab, key=f"qa_{_qid}"):
+                    st.session_state["qa"] = _qid
+        _sel = st.session_state.get("qa")
+        if _sel in QA_QUESTIONS:
+            _ans = qa_answer(_sel, P, df, tot, float(margin_target))
+            with st.chat_message("user"):
+                st.markdown(_ans["q"])
+            with st.chat_message("assistant"):
+                st.markdown(_ans["md"])
+                if _ans["bars"]:
+                    _bt, _bl, _bv = _ans["bars"]
+                    _bf = go.Figure()
+                    _bf.add_trace(go.Bar(x=_bl, y=[0 if pd.isna(v) else v for v in _bv], marker_color=[tone("#0b2cbc", "#7f97ff"), tone("#9aa8ec", "#4a5fb5")][:len(_bl)]))
+                    _bf.update_layout(**CHART_KW, height=220, margin=dict(l=30, r=20, t=10, b=20), yaxis=dict(title=_bt), showlegend=False)
+                    show_chart(_bf)
+                if _ans["table"] is not None:
+                    show_df(_ans["table"], hide_index=True)
+                st.caption(f"Settings changed: {_ans['changed']} Same engine as the rest of the app; token prices are illustrative placeholders.")
 
 tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab_deal, tab10 = st.tabs([
     "📊 Revenue & Margin", "💳 Credits & Cash", "📋 Monthly Detail",
