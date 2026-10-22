@@ -32,7 +32,7 @@ from plotly.subplots import make_subplots
 import streamlit as st
 
 APP_NAME = "The AI Unit Economics Deal Desk"
-APP_VERSION = "v2.7"
+APP_VERSION = "v2.9"
 
 st.set_page_config(
     page_title="The AI Unit Economics Deal Desk",
@@ -61,16 +61,20 @@ def _detect_dark_theme():
 
 
 IS_DARK = _detect_dark_theme()
-_LIGHT = dict(app_bg="#fcfbf9", text="#2d3748", side_bg="#f5f2ed", side_border="#e2d9d0", label="#4a5568",
-              card_bg="#ffffff", card_border="#e2d9d0", metric_label="#615a52", hdr_from="#f5f0eb", hdr_to="#ebe5df",
-              hdr_text="#2d3748", hdr_sub="#615a52", note_bg="#ffffff", note_border="#cbd5e0", note_accent="#3182ce",
-              note_h4="#2b6cb0", note_text="#4a5568", flag_bg="#fffaf0", flag_border="#f6d6a8", flag_accent="#dd6b20",
-              flag_b="#c05621", flag_text="#4a5568")
-_DARK = dict(app_bg="#0e1117", text="#e2e8f0", side_bg="#161a23", side_border="#2d3340", label="#cbd5e0",
-             card_bg="#1a1f2b", card_border="#2d3340", metric_label="#a0aec0", hdr_from="#1d2230", hdr_to="#171b26",
-             hdr_text="#f7fafc", hdr_sub="#a0aec0", note_bg="#1a1f2b", note_border="#2d3340", note_accent="#63b3ed",
-             note_h4="#90cdf4", note_text="#cbd5e0", flag_bg="#2a2118", flag_border="#5c4326", flag_accent="#ed8936",
-             flag_b="#fbd38d", flag_text="#e2e8f0")
+_LIGHT = dict(app_bg="#f2f2f2", text="#2c2f39", side_bg="#f8f8fa", side_border="#dfe1ea", label="#4a4e5c",
+              card_bg="#fcfcfd", card_border="#dfe1ea", metric_label="#5b5f6e", hdr_from="#fcfcfd", hdr_to="#eef0f7",
+              hdr_text="#2c2f39", hdr_sub="#5b5f6e", note_bg="#fcfcfd", note_border="#dfe1ea", note_accent="#1834c6",
+              note_h4="#0b2cbc", note_text="#3d4150", flag_bg="#fffaf0", flag_border="#f6d6a8", flag_accent="#dd6b20",
+              flag_b="#c05621", flag_text="#4a5568",
+              accent="#0b2cbc", on_accent="#ffffff", navy="#131733", ring="#e4e7f6", chip_bg="#e3e7f8", chip_text="#0b2cbc",
+              good="#1f7a4d", good_bg="#e1f3e9", warn="#9a5b00", warn_bg="#fdf0d5", bad="#b42318", bad_bg="#fde4e1")
+_DARK = dict(app_bg="#0f1226", text="#e8eaf3", side_bg="#151937", side_border="#262b52", label="#c5c9e0",
+             card_bg="#171b3a", card_border="#2a3060", metric_label="#a3a9cc", hdr_from="#1a1f45", hdr_to="#151937",
+             hdr_text="#f5f6fb", hdr_sub="#a3a9cc", note_bg="#171b3a", note_border="#2a3060", note_accent="#6f8bff",
+             note_h4="#9db0ff", note_text="#c5c9e0", flag_bg="#2a2118", flag_border="#5c4326", flag_accent="#ed8936",
+             flag_b="#fbd38d", flag_text="#e8eaf3",
+             accent="#5b7bff", on_accent="#0f1226", navy="#0a0c1c", ring="#222861", chip_bg="#232a5e", chip_text="#aebcff",
+             good="#5fd08f", good_bg="#14301f", warn="#f3b25c", warn_bg="#33270f", bad="#ff8a80", bad_bg="#3a1816")
 
 
 def _css_vars(pal):
@@ -128,11 +132,77 @@ div[data-testid="stMetric"] div[data-testid="stMetricValue"] {font-size:1.1rem !
 .assumption-flag b {color: var(--flag-b);}
 .assumption-flag ul {margin: 4px 0 0 0; padding-left: 16px;}
 .assumption-flag li {margin-bottom: 2px;}
+.hero {padding: 18px 4px 6px 4px;}
+.eyebrow {font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing: .14em; text-transform: uppercase;
+          font-size: .72rem; color: var(--accent); font-weight: 600;}
+.hero h1 {font-size: 2.7rem; line-height: 1.08; font-weight: 600; color: var(--text); margin: 6px 0 10px 0; letter-spacing: -0.02em;}
+.hero h1 .accent, .chapter h2 .accent {color: var(--accent);}
+.hero p.sub {font-size: 1.05rem; color: var(--label); max-width: 46rem; margin: 0 0 8px 0;}
+.skipbar {font-size: .8rem; color: var(--label); margin: 4px 0 10px 0;}
+.skipbar a {color: var(--accent); text-decoration: none; margin-right: 14px; font-weight: 600;}
+.chapter {margin: 26px 0 4px 0; padding-top: 14px; border-top: 1px solid var(--card-border);}
+.chapter h2 {font-size: 1.7rem; font-weight: 600; margin: 4px 0 4px 0; color: var(--text); letter-spacing: -0.01em;}
+.chapter p.lede {font-size: .98rem; color: var(--label); margin: 0 0 8px 0; max-width: 46rem;}
+.kpi-card {background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 14px; padding: 14px 16px;
+           box-shadow: 0 0 0 4px var(--ring); margin-bottom: 8px;}
+.kpi-card .k {font-size: .74rem; font-weight: 600; color: var(--metric-label); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+              letter-spacing: .08em; text-transform: uppercase;}
+.kpi-card .v {font-size: 2.1rem; font-weight: 650; color: var(--text); line-height: 1.15; margin: 4px 0 4px 0;}
+.kpi-card .d {font-size: .8rem; color: var(--label);}
+.pill {display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: .72rem; font-weight: 600; margin-bottom: 4px;
+       background: var(--chip-bg); color: var(--chip-text);}
+.pill.good {background: var(--good-bg); color: var(--good);} .pill.warn {background: var(--warn-bg); color: var(--warn);}
+.pill.bad {background: var(--bad-bg); color: var(--bad);}
+.takeaway {background: var(--note-bg); border: 1px solid var(--note-border); border-left: 4px solid var(--accent);
+           padding: 10px 14px; border-radius: 10px; margin: 12px 0; font-size: .92rem; color: var(--note-text);}
+.bridge {border-left: 3px solid var(--accent); padding: 4px 12px; color: var(--label); font-style: italic; margin: 14px 0 6px 0;}
+.stButton > button[kind="primary"] {background: var(--accent); color: var(--on-accent); border: 0; border-radius: 10px;}
 """
 st.markdown(f"<style>{_ROOT_CSS}\n{_STATIC_CSS}</style>", unsafe_allow_html=True)
 
 
-st.markdown("""
+VIEW = st.radio("View", ["Guided story", "Analyst view"], horizontal=True, key="view_mode", label_visibility="collapsed",
+                help="Guided story walks through the economics chapter by chapter. Analyst view is the full set of tabs.")
+GUIDED = VIEW == "Guided story"
+
+
+def kpi_card(label, value, note="", pill=None, pill_kind=""):
+    _p = f'<span class="pill {pill_kind}">{html.escape(pill)}</span><br>' if pill else ""
+    return (f'<div class="kpi-card">{_p}<div class="k">{html.escape(label)}</div><div class="v">{html.escape(value)}</div>'
+            f'<div class="d">{html.escape(note)}</div></div>')
+
+
+def chapter_head(anchor, num, label, question_html, lede):
+    return (f'<div class="chapter" id="{anchor}"><div class="eyebrow">Chapter {num} &middot; {html.escape(label)}</div>'
+            f'<h2>{question_html}</h2><p class="lede">{html.escape(lede)}</p></div>')
+
+
+if GUIDED:
+    st.markdown("""
+<div class="hero">
+  <div class="eyebrow">AI Deal Desk &middot; Guided story</div>
+  <h1>Will my AI product<br><span class="accent">make money?</span></h1>
+  <p class="sub">Every prompt costs something. Every free user adds a bill. And a customer who looks profitable can still lose you money.
+  Pick a starting point, then follow the story. Every number comes from the same model.</p>
+  <div class="skipbar">Skip to: <a href="#ch1">1 · One prompt</a> <a href="#deeper">Go deeper (all tabs)</a></div>
+</div>
+""", unsafe_allow_html=True)
+    st.markdown(f'<div class="chapter" id="ch0" style="border-top:0;margin-top:6px"><div class="eyebrow">Chapter 0 &middot; The hook</div>'
+                f'<h2>One business, <span class="accent">three margins</span></h2>'
+                f'<p class="lede">Choose where your business is today. The three cards below update from the same calculation as everything else.</p></div>',
+                unsafe_allow_html=True)
+    slot_pick = st.container()
+    slot_cards = st.container()
+    st.markdown(chapter_head("ch1", 1, "Unit economics", 'What does <span class="accent">one prompt</span> cost?',
+                             "Tokens in, tokens out, which model answers, and what that adds up to per customer each month. Change usage and watch the cost move."),
+                unsafe_allow_html=True)
+    slot_ch1_ctl = st.container()
+    slot_ch1_out = st.container()
+    st.markdown('<div class="chapter" id="deeper"><div class="eyebrow">Go deeper</div><h2>The full model, <span class="accent">tab by tab</span></h2>'
+                '<p class="lede">Chapters 2 to 6 (free-tier cost, margin bridge, forecast, levers and the Deal Desk) are in the tabs below, for now.</p></div>',
+                unsafe_allow_html=True)
+else:
+    st.markdown("""
 <div class="compact-header">
     <h1>⚡ The AI Unit Economics Deal Desk</h1>
     <p>Founder presets, team contract cohorts, typical/heavy-user costs, like-for-like pricing simulation, credit runway and cash timing.</p>
@@ -358,11 +428,23 @@ FOUNDER_PRESETS = {
     },
 }
 
-st.sidebar.header("0. Founder Onboarding")
-founder_stage = st.sidebar.selectbox(
-    "Choose a starting profile", ["Early traction", "Pre-launch", "Scaling"], index=0,
-    help="Presets populate starting values only. All assumptions remain editable.",
-)
+_STAGE_DESC = {"Pre-launch": "testing the idea", "Early traction": "first paying customers", "Scaling": "growing usage and revenue"}
+_stage_default = st.session_state.get("_stage", "Early traction")
+if GUIDED:
+    with slot_pick:
+        founder_stage = st.radio("Choose a starting profile", ["Pre-launch", "Early traction", "Scaling"],
+                                 index=["Pre-launch", "Early traction", "Scaling"].index(_stage_default), horizontal=True, key="stage_story",
+                                 format_func=lambda x: f"{x}: {_STAGE_DESC[x]}",
+                                 help="Presets populate starting values only. All assumptions remain editable in the sidebar.")
+    st.sidebar.header("0. Timing")
+else:
+    st.sidebar.header("0. Founder Onboarding")
+    founder_stage = st.sidebar.selectbox(
+        "Choose a starting profile", ["Early traction", "Pre-launch", "Scaling"],
+        index=["Early traction", "Pre-launch", "Scaling"].index(_stage_default), key="stage_side",
+        help="Presets populate starting values only. All assumptions remain editable.",
+    )
+st.session_state["_stage"] = founder_stage
 preset = FOUNDER_PRESETS[founder_stage]
 current_now = datetime.datetime.now()
 start_year = int(st.sidebar.number_input("Forecast Start Year", min_value=2024, max_value=2035, value=current_now.year))
@@ -419,7 +501,12 @@ net_new_ent_contracts = st.sidebar.number_input(
     "Net New Team / SMB Deals / Month", min_value=0.0, value=float(preset["deals"]), step=0.5, key=f"deals_{founder_stage}",
     help="Sales-led pipeline velocity, independent of PLG traffic. Fractional values allowed (e.g. 2.5 = 5 deals every 2 months).",
 )
-baseline_prompts = st.sidebar.slider("Baseline Prompts / Active Paid User / Day", 1, 20, int(preset["prompts"]), key=f"prompts_{founder_stage}")
+_prompts_help = "Typical paying user's prompts per day. More usage means a higher inference bill, so this is the first lever to try."
+if GUIDED:
+    with slot_ch1_ctl:
+        baseline_prompts = st.slider("Baseline Prompts / Active Paid User / Day", 1, 20, int(preset["prompts"]), key=f"prompts_{founder_stage}", help=_prompts_help)
+else:
+    baseline_prompts = st.sidebar.slider("Baseline Prompts / Active Paid User / Day", 1, 20, int(preset["prompts"]), key=f"prompts_{founder_stage}", help=_prompts_help)
 
 st.sidebar.header("2. Targets")
 margin_target = st.sidebar.slider("Target Gross Margin (%)", 0, 90, 60)
@@ -674,6 +761,26 @@ def other_cogs_for_month(lines, k, revenue):
     return total
 
 
+def api_cost_for(p, n_prompts, mix, i):
+    """AI inference (API) cost of `n_prompts` prompts in forecast month index i (0-based) at frontier share `mix`.
+    The single source of per-prompt AI cost: `simulate` and the Deal Desk both call it, so they cannot drift apart."""
+    pm = p["price_mult"]
+    f_in, f_out, s_in, s_out = p["f_in"] * pm, p["f_out"] * pm, p["s_in"] * pm, p["s_out"] * pm
+    in_tok = p["in_tok"] * ((1 + p["in_grow"]) ** i)
+    out_tok = p["out_tok"] * ((1 + p["out_grow"]) ** i)
+    unit_idx = ai_unit_cost_index(p, i + 1)
+    batch_factor = (1 - p["batch_share"]) + p["batch_share"] * p["batch_ratio"]
+    raw_in_m = n_prompts * in_tok / 1_000_000
+    raw_out_m = n_prompts * out_tok / 1_000_000
+    unc_in_m = raw_in_m * (1 - p["cache_rate"])
+    cac_in_m = raw_in_m * p["cache_rate"]
+    front_in = (unc_in_m * f_in + cac_in_m * f_in * p["cache_ratio"]) * mix
+    std_in = (unc_in_m * s_in + cac_in_m * s_in * p["cache_ratio"]) * (1.0 - mix)
+    front_out = raw_out_m * f_out * mix
+    std_out = raw_out_m * s_out * (1.0 - mix)
+    return (front_in + std_in + front_out + std_out) * batch_factor * (1 + p["overhead"]) * unit_idx
+
+
 def simulate(p):
     validate_params(p)
     n = int(p["horizon"])
@@ -792,15 +899,7 @@ def simulate(p):
         batch_factor = (1 - p["batch_share"]) + p["batch_share"] * p["batch_ratio"]
 
         def api_for(n_prompts, mix):
-            raw_in_m = n_prompts * in_tok / 1_000_000
-            raw_out_m = n_prompts * out_tok / 1_000_000
-            unc_in_m = raw_in_m * (1 - p["cache_rate"])
-            cac_in_m = raw_in_m * p["cache_rate"]
-            front_in = (unc_in_m * f_in + cac_in_m * f_in * p["cache_ratio"]) * mix
-            std_in = (unc_in_m * s_in + cac_in_m * s_in * p["cache_ratio"]) * (1.0 - mix)
-            front_out = raw_out_m * f_out * mix
-            std_out = raw_out_m * s_out * (1.0 - mix)
-            return (front_in + std_in + front_out + std_out) * batch_factor * (1 + p["overhead"]) * unit_idx
+            return api_cost_for(p, n_prompts, mix, i)
 
         free_mix = p["front_mix"] if p["front_mix_free"] is None else p["front_mix_free"]
         api_paid = api_for(paid_prompts_m, p["front_mix"])
@@ -1001,6 +1100,168 @@ def usage_ceiling(df, p, target_pct):
         "loaded": allowed / loaded_cost if loaded_cost > 0 else math.inf,
         "no_headroom": False, "rev": rev, "allowed": allowed,
     }
+
+
+# ---------- deal desk engine ----------
+DEAL_DEFAULTS = {
+    "seats": 100, "list_price": 40.0, "discount": 0.20, "term": 12, "billing": "Monthly",
+    "impl_fee": 0.0, "impl_cost": 0.0, "pps": 400.0, "heavy_share": 0.10, "usage_growth": 0.02,
+    "front_mix": None, "dedicated_infra": 0.0, "support": 0.0, "alloc_shared_infra": True,
+    "included_pps": 0.0, "overage_per_1k": 0.0, "cap_pps": 0.0, "start_month": 1,
+}
+
+
+def validate_deal(d):
+    """Return an error string, or None when the deal inputs are usable."""
+    if d["seats"] <= 0:
+        return "Seats must be greater than zero."
+    if int(d["term"]) < 1:
+        return "Term must be at least 1 month."
+    if not (0.0 <= d["discount"] <= 1.0):
+        return "Discount must be between 0% and 100%."
+    if d["list_price"] < 0 or d["pps"] < 0 or d["impl_fee"] < 0 or d["impl_cost"] < 0 or d["dedicated_infra"] < 0 or d["support"] < 0:
+        return "Prices, usage and costs cannot be negative."
+    if not (0.0 <= d["heavy_share"] <= 1.0):
+        return "Heavy-user share must be between 0% and 100%."
+    return None
+
+
+def deal_pnl(p, d, df, h_mult):
+    """Month-by-month P&L and cash for ONE customer deal, priced with the same per-prompt AI cost as the main model.
+    Gross margin here = revenue less payment fees, AI inference, vector DB, allocated shared infrastructure, dedicated costs,
+    support and implementation delivery. Overage prompts are billable; prompts above a hard cap are blocked (not served, not billed)."""
+    T = int(d["term"])
+    mix = p["front_mix"] if d["front_mix"] is None else d["front_mix"]
+    net_price = d["list_price"] * (1 - d["discount"])
+    seat_factor = (1 - d["heavy_share"]) + d["heavy_share"] * h_mult
+    impl_rec = max(1, int(p["impl_rec_months"]))
+    lag = int(p["invoice_lag"])
+    rows, vend_paid_cash = [], []
+    start = int(d["start_month"]) - 1
+    for t in range(T):
+        k = start + t                                     # forecast month index (drives token growth and the AI cost path)
+        asked = d["seats"] * d["pps"] * seat_factor * ((1 + d["usage_growth"]) ** t)
+        served = min(asked, d["cap_pps"] * d["seats"]) if d["cap_pps"] > 0 else asked
+        blocked = asked - served
+        over = max(0.0, served - d["included_pps"] * d["seats"]) if d["overage_per_1k"] > 0 else 0.0
+        sub_rev = d["seats"] * net_price
+        over_rev = over / 1000.0 * d["overage_per_1k"]
+        impl_rev = d["impl_fee"] / impl_rec if t < impl_rec else 0.0
+        rev = sub_rev + over_rev + impl_rev
+        fees = rev * p["fee_pct"]
+        ai = api_cost_for(p, served, mix, k)
+        vec = served * p["vec_cost"] / 1000.0
+        if d["alloc_shared_infra"]:
+            kk = min(k, len(df) - 1)
+            tot_pr = float(df["Monthly Prompts"].iloc[kk]) + served
+            infra = float(df["Fixed Infrastructure ($)"].iloc[kk]) * (served / tot_pr) if tot_pr > 0 else 0.0
+        else:
+            infra = 0.0
+        ded = d["dedicated_infra"]
+        sup = d["support"]
+        imp = d["impl_cost"] if t == 0 else 0.0
+        cogs = fees + ai + vec + infra + ded + sup + imp
+        gp = rev - cogs
+        vendor = ai + vec + infra
+        rows.append({"Deal month": t + 1, "Prompts served": served, "Prompts blocked by cap": blocked, "Subscription revenue ($)": sub_rev,
+                     "Overage revenue ($)": over_rev, "Implementation revenue ($)": impl_rev, "Revenue ($)": rev, "Payment fees ($)": fees,
+                     "AI inference ($)": ai, "Vector DB ($)": vec, "Allocated shared infra ($)": infra, "Dedicated infra ($)": ded,
+                     "Support ($)": sup, "Implementation delivery ($)": imp, "Total COGS ($)": cogs, "Gross profit ($)": gp,
+                     "Gross margin (%)": gp / rev * 100 if rev > 0 else np.nan, "_vendor": vendor})
+    out = pd.DataFrame(rows)
+    # cash: billing timing, fees on billed amounts, vendor invoices paid `lag` months late, other costs immediate
+    cash_in = np.zeros(T)
+    sub_total = out["Subscription revenue ($)"].to_numpy()
+    if d["billing"] == "Annual upfront":
+        for t in range(0, T, 12):
+            cash_in[t] += sub_total[t:t + 12].sum()
+        cash_in += out["Overage revenue ($)"].to_numpy()
+    else:
+        cash_in += sub_total + out["Overage revenue ($)"].to_numpy()
+    cash_in[0] += d["impl_fee"]                           # implementation fee billed up front
+    cash_out = (cash_in * p["fee_pct"] + out["Dedicated infra ($)"].to_numpy() + out["Support ($)"].to_numpy() + out["Implementation delivery ($)"].to_numpy())
+    vend = out["_vendor"].to_numpy()
+    for t in range(T):
+        if t + lag < T:
+            cash_out[t + lag] += vend[t]
+    out["Cash in ($)"] = cash_in
+    out["Cash out ($)"] = cash_out
+    out["Cumulative cash ($)"] = np.cumsum(cash_in - cash_out)
+    return out.drop(columns=["_vendor"])
+
+
+def deal_summary(out):
+    rev = float(out["Revenue ($)"].sum())
+    gp = float(out["Gross profit ($)"].sum())
+    cum = out["Cumulative cash ($)"].to_numpy()
+    ok_from = None                                       # first month from which cumulative cash stays at or above zero
+    for t in range(len(cum)):
+        if (cum[t:] >= 0).all():
+            ok_from = t + 1
+            break
+    return {"revenue": rev, "cogs": float(out["Total COGS ($)"].sum()), "gp": gp, "margin": gp / rev * 100 if rev > 0 else np.nan,
+            "min_cash": float(cum.min()), "cash_ok_from": ok_from, "blocked": float(out["Prompts blocked by cap"].sum())}
+
+
+def deal_margin(p, d, df, h_mult):
+    s = deal_summary(deal_pnl(p, d, df, h_mult))
+    return s["margin"] if not pd.isna(s["margin"]) else -1e9
+
+
+def _solve_max(f, lo, hi, floor, iters=60):
+    """Largest x in [lo, hi] with f(x) >= floor, f falling in x. Returns (x, status) with status 'ok', 'none' (fails even at lo) or 'unbounded'."""
+    if f(lo) < floor:
+        return None, "none"
+    if f(hi) >= floor:
+        return hi, "unbounded"
+    a, b = lo, hi
+    for _ in range(iters):
+        m = (a + b) / 2
+        if f(m) >= floor:
+            a = m
+        else:
+            b = m
+    return a, "ok"
+
+
+def _solve_min(f, lo, hi, floor, iters=60):
+    """Smallest x in [lo, hi] with f(x) >= floor, f rising in x. Returns (x, status): 'ok', 'free' (holds at lo) or 'none' (fails at hi)."""
+    if f(hi) < floor:
+        return None, "none"
+    if f(lo) >= floor:
+        return lo, "free"
+    a, b = lo, hi
+    for _ in range(iters):
+        m = (a + b) / 2
+        if f(m) >= floor:
+            b = m
+        else:
+            a = m
+    return b, "ok"
+
+
+def deal_breakevens(p, d, df, h_mult, floor_pct):
+    """Break-evens on whole-term margin: max prompts per seat, min net price per seat, max discount."""
+    res = {}
+    use_hi = max(d["pps"], 1.0) * 1000
+    mu, st_u = _solve_max(lambda x: deal_margin(p, {**d, "pps": x}, df, h_mult), 0.0, use_hi, floor_pct)
+    res["max_pps"] = (mu, st_u)
+    price_hi = max(d["list_price"], 1.0) * 1000
+    lp, st_p = _solve_min(lambda x: deal_margin(p, {**d, "list_price": x, "discount": 0.0}, df, h_mult), 0.0, price_hi, floor_pct)
+    res["min_net_price"] = (lp, st_p)
+    if lp is not None and d["list_price"] > 0:
+        res["max_discount"] = (max(0.0, 1 - lp / d["list_price"]), st_p)
+    else:
+        res["max_discount"] = (None, st_p if lp is None else "ok")
+    return res
+
+
+def deal_verdict(margin, floor_pct, band_pp=5.0):
+    if pd.isna(margin) or margin < floor_pct:
+        return "Escalate"
+    if margin < floor_pct + band_pp:
+        return "Approve with conditions"
+    return "Approve"
 
 
 def credit_status(df, start_balance, opening_col, expired_col, remaining_col):
@@ -1569,6 +1830,55 @@ d4.metric(f"AI Unit-Cost Index (M{H})", f"x{float(m_last['AI Unit-Cost Index (x)
           "Flat prices" if ai_path_is_flat(P) else "AI cost path active", delta_color="off",
           help="Multiplier on AI inference cost from the AI cost path (efficiency programme and vendor price change). 1.00 = prices as entered.")
 
+if GUIDED:
+    def _status(gm):
+        if pd.isna(gm):
+            return None, ""
+        if gm >= margin_target:
+            return "On target", "good"
+        return ("Close to target", "warn") if gm >= margin_target - 10 else ("Below target", "bad")
+
+    _vals = [("Paid-customer margin", tot["paid_gm"], "Revenue less the cost of serving paying customers only."),
+             ("Reported margin", tot["gm"], f"After booking free-tier cost to {_treat_name}."),
+             ("Fully loaded margin", tot["fl_gm"], "After the extra monthly costs you add." if tot["other"] > 0 else "Same as reported until you add other COGS lines.")]
+    with slot_cards:
+        _cols = st.columns(3)
+        for _c, (_lab, _v, _note) in zip(_cols, _vals):
+            _pl, _pk = _status(_v)
+            _c.markdown(kpi_card(_lab, fmt_pct(_v), _note, _pl, _pk), unsafe_allow_html=True)
+        _known = [v for _, v, _ in _vals if not pd.isna(v)]
+        if _known:
+            _spread = max(_known) - min(_known)
+            st.markdown(f'<div class="takeaway"><b>Takeaway:</b> one business, three answers, {_spread:.1f} points apart. '
+                        f'Free-tier inference over the forecast is ${tot["free_cost"]:,.0f}. Moving it between COGS and sales &amp; marketing changes the label, '
+                        f'not the bill. These are management measures, not standardized accounting figures. Target: {margin_target}%.</div>', unsafe_allow_html=True)
+        else:
+            st.markdown('<div class="takeaway"><b>Takeaway:</b> no revenue is recognized in this forecast window yet, so margins are undefined. '
+                        'Costs are still being incurred. Try the Early traction profile or a longer horizon.</div>', unsafe_allow_html=True)
+
+    _rev_pa = float(m_last["Recognized Revenue ($)"]) / float(m_last["Ending Paid Accounts"]) if float(m_last["Ending Paid Accounts"]) > 0 else np.nan
+    _cogs_pa = float(m_last["Paid-Customer COGS / Paid Account ($)"])
+    _k1, _k2 = float(df["API Cost / 1,000 Prompts ($)"].dropna().iloc[0]) if df["API Cost / 1,000 Prompts ($)"].notna().any() else np.nan, float(m_last["API Cost / 1,000 Prompts ($)"])
+    with slot_ch1_out:
+        _a, _b, _c3 = st.columns(3)
+        _a.markdown(kpi_card("AI cost per 1,000 prompts", "n/a" if pd.isna(_k2) else f"${_k2:,.2f}",
+                             "No prompts yet" if pd.isna(_k1) else f"Month 1: ${_k1:,.2f}, month {H}: ${_k2:,.2f}"), unsafe_allow_html=True)
+        _b.markdown(kpi_card("Cost to serve a paid account", "n/a" if pd.isna(_cogs_pa) else f"${_cogs_pa:,.2f}", f"Per month, month {H}. Paying customers only."), unsafe_allow_html=True)
+        _c3.markdown(kpi_card("Revenue per paid account", "n/a" if pd.isna(_rev_pa) else f"${_rev_pa:,.2f}", f"Per month, month {H}."), unsafe_allow_html=True)
+        st.markdown(f'<div class="takeaway">Each prompt is about {P["in_tok"]:,} input and {P["out_tok"]:,} output tokens, growing {P["in_grow"] * 100:.0f}% a month on the input side. '
+                    f'{P["front_mix"] * 100:.0f}% of traffic goes to the premium model and {P["cache_rate"] * 100:.0f}% of input hits the cache. '
+                    f'<b>Token prices here are illustrative placeholders, not live vendor prices:</b> replace them with your rate card.</div>', unsafe_allow_html=True)
+        _fc = go.Figure()
+        _fc.add_trace(go.Scatter(x=df["Month"], y=df["API Cost / 1,000 Prompts ($)"], name="AI cost / 1,000 prompts ($)", mode="lines+markers",
+                                 line=dict(color=tone("#0b2cbc", "#7f97ff"), width=2.5)))
+        _fc.add_trace(go.Scatter(x=df["Month"], y=df["Paid-Customer COGS / Paid Account ($)"], name="Cost to serve / paid account ($)", mode="lines",
+                                 line=dict(color=tone("#9a5b00", "#f3b25c"), width=2, dash="dot"), yaxis="y2"))
+        _fc.update_layout(**CHART_KW, height=260, margin=dict(l=30, r=40, t=10, b=20), legend=dict(orientation="h", y=1.18),
+                          yaxis=dict(title="$ per 1,000 prompts"), yaxis2=dict(title="$ per paid account", overlaying="y", side="right"))
+        show_chart(_fc)
+        st.markdown('<div class="bridge">But most of your users do not pay you. Who is using your AI budget? That is the next chapter, in the Value &amp; Pricing and Revenue &amp; Margin tabs.</div>',
+                    unsafe_allow_html=True)
+
 _flags = health_flags(df, P, tot, h_mult_used)
 _checks = [f for f in _flags if f[0] == "check"]
 if _checks:
@@ -1638,10 +1948,10 @@ tornado_cached = st.cache_data(show_spinner=False)(tornado_table)
 goal_seek_cached = st.cache_data(show_spinner=False)(goal_seek)
 lever_curve_cached = st.cache_data(show_spinner=False)(lever_curve)
 
-tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab10 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab_deal, tab10 = st.tabs([
     "📊 Revenue & Margin", "💳 Credits & Cash", "📋 Monthly Detail",
     "📈 Scenario Matrix", "📑 Audit Register", "🎯 Value & Pricing Strategy",
-    "🎛️ Levers & Goal-Seek", "💰 CAC & LTV", "🧪 Compare & Export", "💬 Feedback",
+    "🎛️ Levers & Goal-Seek", "💰 CAC & LTV", "🧪 Compare & Export", "🤝 Deal Desk", "💬 Feedback",
 ])
 
 with tab1:
@@ -2147,6 +2457,124 @@ with tab9:
     except Exception:
         ex3.caption("Excel export needs the `openpyxl` package. Add it to requirements.txt to enable it.")
 
+# ---------- tab: deal desk ----------
+with tab_deal:
+    st.subheader("🤝 Deal Desk: does this customer deal clear the margin floor?")
+    st.caption("Prices one customer deal with the same per-prompt AI cost, token prices, caching, batch and AI cost path as the rest of the model. "
+               "Token prices are illustrative placeholders, so treat the verdict as a planning view and confirm against your vendor rate card.")
+    dd = dict(DEAL_DEFAULTS)
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        st.markdown("**Commercial**")
+        dd["seats"] = int(st.number_input("Seats", min_value=0, value=DEAL_DEFAULTS["seats"], step=10, key="dd_seats"))
+        dd["list_price"] = float(st.number_input("List price per seat per month ($)", min_value=0.0, value=DEAL_DEFAULTS["list_price"], step=1.0, key="dd_list"))
+        dd["discount"] = st.slider("Discount (%)", 0, 100, int(DEAL_DEFAULTS["discount"] * 100), 1, key="dd_disc") / 100
+        dd["term"] = int(st.number_input("Contract term (months)", min_value=1, max_value=60, value=DEAL_DEFAULTS["term"], step=1, key="dd_term"))
+        dd["billing"] = st.selectbox("Billing", ["Monthly", "Annual upfront"], key="dd_bill")
+        dd["impl_fee"] = float(st.number_input("Implementation fee ($)", min_value=0.0, value=0.0, step=1000.0, key="dd_ifee"))
+    with c2:
+        st.markdown("**Usage**")
+        dd["pps"] = float(st.number_input("Prompts per seat per month (typical user)", min_value=0.0, value=DEAL_DEFAULTS["pps"], step=50.0, key="dd_pps"))
+        dd["heavy_share"] = st.slider("Heavy-user share of seats (%)", 0, 100, int(DEAL_DEFAULTS["heavy_share"] * 100), 1, key="dd_heavy",
+                                      help=f"Heavy users prompt {h_mult_used:.1f}x the typical rate (the heavy-user multiplier from the main model).") / 100
+        dd["usage_growth"] = st.slider("Monthly usage growth (%)", 0.0, 15.0, DEAL_DEFAULTS["usage_growth"] * 100, 0.5, key="dd_grow") / 100
+        dd["start_month"] = int(st.number_input("Deal starts in forecast month", min_value=1, max_value=36, value=1, step=1, key="dd_start",
+                                                help="Sets token-length growth and where the deal sits on the AI cost path."))
+        _own_mix = st.checkbox("Use a different frontier-model share for this deal", value=False, key="dd_mixon")
+        if _own_mix:
+            dd["front_mix"] = st.slider("Frontier-model share for this deal (%)", 0, 100, int(P["front_mix"] * 100), 1, key="dd_mix") / 100
+    with c3:
+        st.markdown("**Cost to serve & overage**")
+        dd["dedicated_infra"] = float(st.number_input("Dedicated infrastructure ($ / month)", min_value=0.0, value=0.0, step=100.0, key="dd_ded"))
+        dd["support"] = float(st.number_input("Support / success cost ($ / month)", min_value=0.0, value=0.0, step=100.0, key="dd_sup"))
+        dd["impl_cost"] = float(st.number_input("Implementation delivery cost ($, month 1)", min_value=0.0, value=0.0, step=1000.0, key="dd_icost"))
+        dd["alloc_shared_infra"] = st.checkbox("Allocate shared fixed infrastructure by prompt share", value=True, key="dd_alloc",
+                                               help="Off: the deal carries no share of the shared platform cost (flatters the deal).")
+        _ov = st.checkbox("Usage-based overage and cap", value=False, key="dd_ovon")
+        if _ov:
+            dd["included_pps"] = float(st.number_input("Included prompts per seat per month", min_value=0.0, value=500.0, step=50.0, key="dd_inc"))
+            dd["overage_per_1k"] = float(st.number_input("Overage price per 1,000 prompts ($)", min_value=0.0, value=20.0, step=1.0, key="dd_ovp"))
+            dd["cap_pps"] = float(st.number_input("Hard cap on prompts per seat (0 = none)", min_value=0.0, value=0.0, step=100.0, key="dd_cap"))
+    pc1, pc2 = st.columns(2)
+    floor_pct = float(pc1.number_input("Margin floor (%)", min_value=0.0, max_value=100.0, value=float(margin_target), step=1.0, key="dd_floor",
+                                       help="Defaults to the sidebar target gross margin."))
+    band_pp = float(pc2.number_input("'Approve with conditions' band above the floor (percentage points)", min_value=0.0, max_value=30.0, value=5.0, step=1.0, key="dd_band"))
+
+    _derr = validate_deal(dd)
+    if _derr:
+        st.error(_derr)
+    else:
+        dpnl = deal_pnl(P, dd, df, h_mult_used)
+        dsum = deal_summary(dpnl)
+        verdict = deal_verdict(dsum["margin"], floor_pct, band_pp)
+        icon = {"Approve": "✅", "Approve with conditions": "🟡", "Escalate": "🔴"}[verdict]
+        st.markdown(f"### {icon} {verdict}")
+        m1, m2, m3, m4 = st.columns(4)
+        m1.metric("Deal gross margin (whole term)", "n/a" if pd.isna(dsum["margin"]) else f"{dsum['margin']:.1f}%", f"floor {floor_pct:.0f}%", delta_color="off")
+        m2.metric("Revenue / gross profit", f"${dsum['revenue']:,.0f}", f"${dsum['gp']:,.0f} gross profit", delta_color="off")
+        m3.metric("Lowest cumulative cash", f"${dsum['min_cash']:,.0f}", "cash positive from month " + (str(dsum["cash_ok_from"]) if dsum["cash_ok_from"] else "n/a (not within term)"), delta_color="off")
+        m4.metric("Main model paid-customer GM", "n/a" if pd.isna(tot["paid_gm"]) else f"{tot['paid_gm']:.1f}%",
+                  ("deal dilutes the plan" if (not pd.isna(dsum["margin"]) and not pd.isna(tot["paid_gm"]) and dsum["margin"] < tot["paid_gm"]) else "deal is at or above plan"), delta_color="off")
+
+        _cost_parts = {"Payment fees": dpnl["Payment fees ($)"].sum(), "AI inference": dpnl["AI inference ($)"].sum(), "Vector DB": dpnl["Vector DB ($)"].sum(),
+                       "Shared infra": dpnl["Allocated shared infra ($)"].sum(), "Dedicated infra": dpnl["Dedicated infra ($)"].sum(),
+                       "Support": dpnl["Support ($)"].sum(), "Implementation delivery": dpnl["Implementation delivery ($)"].sum()}
+        _big = max(_cost_parts, key=_cost_parts.get)
+        st.caption(f"Biggest cost driver: {_big} ({_cost_parts[_big] / dsum['cogs'] * 100:.0f}% of this deal's COGS)." if dsum["cogs"] > 0 else "No cost modeled for this deal.")
+        if dsum["blocked"] > 0:
+            st.warning(f"The hard cap blocks {dsum['blocked']:,.0f} requested prompts over the term. Check the customer accepts the cap.")
+        if dsum["revenue"] <= 0:
+            st.warning("This deal has no revenue, so margin is not meaningful.")
+        elif dsum["gp"] < 0:
+            st.warning("Gross profit is negative: every month of this deal loses money at these inputs.")
+        if dd["start_month"] + dd["term"] - 1 > len(df):
+            st.info(f"The deal runs past forecast month {len(df)}. Month-{len(df)} fixed infrastructure is reused after that; token growth and the AI cost path continue.")
+
+        _be = deal_breakevens(P, dd, df, h_mult_used, floor_pct)
+        st.markdown("#### Break-evens at the margin floor")
+        b1, b2, b3 = st.columns(3)
+        _mu, _su = _be["max_pps"]
+        b1.metric("Max typical prompts per seat", "none (fails even at zero usage)" if _su == "none" else ("no limit found" if _su == "unbounded" else f"{_mu:,.0f}"),
+                  f"asked: {dd['pps']:,.0f}", delta_color="off", help="Highest typical-user usage at which the whole-term margin still meets the floor, holding price and everything else.")
+        _mp, _sp = _be["min_net_price"]
+        b2.metric("Min net price per seat / month", "not reachable" if _sp == "none" else ("any price" if _sp == "free" else f"${_mp:,.2f}"),
+                  f"quoted: ${dd['list_price'] * (1 - dd['discount']):,.2f}", delta_color="off", help="Lowest net price (after discount) at the expected usage that meets the floor.")
+        _md, _sd = _be["max_discount"]
+        b3.metric("Max discount off list", "n/a" if _md is None else f"{_md * 100:.0f}%", f"quoted: {dd['discount'] * 100:.0f}%", delta_color="off")
+
+        st.markdown("#### What if the customer uses it more than they said?")
+        _sens = [("As quoted", dd, P), ("Usage 1.5x", {**dd, "pps": dd["pps"] * 1.5}, P), ("Usage 2x", {**dd, "pps": dd["pps"] * 2}, P),
+                 ("Frontier share +30 pts", {**dd, "front_mix": min(1.0, (P["front_mix"] if dd["front_mix"] is None else dd["front_mix"]) + 0.30)}, P),
+                 ("Vendor prices +20%", dd, {**P, "price_mult": P["price_mult"] * 1.2})]
+        _srows = []
+        for _lab, _dd2, _p2 in _sens:
+            _s2 = deal_summary(deal_pnl(_p2, _dd2, df, h_mult_used))
+            _srows.append({"Case": _lab, "Gross margin (%)": _s2["margin"], "Gross profit ($)": _s2["gp"], "Verdict": deal_verdict(_s2["margin"], floor_pct, band_pp)})
+        show_df(pd.DataFrame(_srows).style.format({"Gross margin (%)": "{:.1f}", "Gross profit ($)": "${:,.0f}"}, na_rep="n/a"), hide_index=True)
+
+        figd = make_subplots(specs=[[{"secondary_y": True}]])
+        figd.add_trace(go.Bar(x=dpnl["Deal month"], y=dpnl["Revenue ($)"], name="Revenue ($)", marker_color=tone("#3182ce", "#63b3ed")), secondary_y=False)
+        figd.add_trace(go.Bar(x=dpnl["Deal month"], y=dpnl["Total COGS ($)"], name="COGS ($)", marker_color=tone("#e53e3e", "#fc8181")), secondary_y=False)
+        figd.add_trace(go.Scatter(x=dpnl["Deal month"], y=dpnl["Gross margin (%)"], name="Gross margin (%)", mode="lines+markers",
+                                  line=dict(color=tone("#2d3748", "#e2e8f0"), width=2)), secondary_y=True)
+        figd.add_trace(go.Scatter(x=dpnl["Deal month"], y=[floor_pct] * len(dpnl), name="Margin floor (%)", mode="lines",
+                                  line=dict(color=tone("#805ad5", "#b794f4"), width=2, dash="dash")), secondary_y=True)
+        figd.update_layout(barmode="group", **CHART_KW, height=330, margin=dict(l=30, r=40, t=10, b=20), legend=dict(orientation="h", y=1.12))
+        figd.update_yaxes(title_text="$", secondary_y=False)
+        figd.update_yaxes(title_text="Gross margin (%)", secondary_y=True)
+        show_chart(figd)
+        with st.expander("Deal P&L and cash by month"):
+            show_df(safe_frame(dpnl).style.format("{:,.2f}", subset=[c for c in dpnl.columns if c != "Deal month"], na_rep="n/a"), hide_index=True)
+        _dsum_json = {"app": APP_NAME, "app_version": APP_VERSION, "generated_at_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                      "deal_inputs": dd, "margin_floor_pct": floor_pct, "verdict": verdict,
+                      "results": {k: (None if (not isinstance(v, str) and v is not None and pd.isna(v)) else v) for k, v in dsum.items()},
+                      "break_evens": {k: {"value": v[0], "status": v[1]} for k, v in _be.items()},
+                      "model_assumptions": {"price_mult": P["price_mult"], "front_mix": P["front_mix"], "cache_rate": P["cache_rate"],
+                                            "ai_cost_path": ai_path_text(P, H), "token_prices": "illustrative placeholders, unverified"}}
+        d1, d2 = st.columns(2)
+        d1.download_button("⬇️ Deal summary (JSON)", data=json.dumps(_dsum_json, indent=2, default=str).encode("utf-8"), file_name="deal_desk_summary.json", mime="application/json")
+        d2.download_button("⬇️ Deal P&L (CSV)", data=safe_frame(dpnl).to_csv(index=False).encode("utf-8"), file_name="deal_desk_pnl.csv", mime="text/csv")
+
 # ---------- tab 10: feedback ----------
 with tab10:
     st.subheader("💬 Feedback")
@@ -2207,6 +2635,16 @@ with tab10:
 st.markdown("---")
 SHOW_CHANGE_LOG = False
 CHANGE_LOG_MD = """
+**v2.9 changes**
+1. **Guided story view (default) and Analyst view.** The Guided story opens with a hero, Chapter 0 (pick a profile, see paid-customer, reported and fully loaded margin side by side) and Chapter 1 (what one prompt costs, with the prompts-per-day control). All remaining tabs sit under "Go deeper". Analyst view is the previous layout. Both views use the same engine, so the numbers are identical.
+2. **New visual theme** (light grey page, near-white cards, deep navy and one strong blue; matching dark mode). Status pills use separate green, amber and red.
+3. **Each setting has one home.** In the guided view the profile picker and the prompts-per-day slider live in the chapters, not the sidebar; in Analyst view they stay in the sidebar.
+
+**v2.8 changes**
+1. **Deal Desk tab.** Prices one customer deal (seats, discount, term, billing, usage, optional overage and cap, dedicated cost) with the same per-prompt AI cost as the main model, and returns Approve / Approve with conditions / Escalate against a margin floor.
+2. **Break-evens** for maximum prompts per seat, minimum net price and maximum discount, a usage / model-mix / vendor-price stress table, a monthly deal P&L and cash view, and JSON / CSV export.
+3. **One AI cost function.** The simulation and the Deal Desk now share `api_cost_for`, so they cannot drift apart. Main-model results are unchanged.
+
 **v2.7 changes**
 1. **Traffic mix.** Free-tier traffic can be split into trials and freemium (sidebar 3) and can be routed to a cheaper model mix; internal / eval traffic can be modeled and booked to R&D / G&A or COGS (Advanced > F). A traffic-by-type table shows paid vs trial vs freemium vs internal.
 2. **Sensitivity and goal seek.** A tornado shows which assumptions move your chosen metric most; goal seek solves for the lever value that hits a target margin; a usage-curve chart and sanity warnings flag implausible inputs.
@@ -2238,7 +2676,7 @@ CHANGE_LOG_MD = """
 2. **Expansion is no longer double counted.** Team / SMB expansion grows contract value, seats and prompts of existing accounts.
 """
 if SHOW_CHANGE_LOG:
-    with st.expander("Change log & limitations (v2.7)"):
+    with st.expander("Change log & limitations (v2.9)"):
         st.markdown(CHANGE_LOG_MD)
 else:
     _hidden = html.escape(CHANGE_LOG_MD.strip()).replace("\n\n", "<br>").replace("\n", "<br>")
