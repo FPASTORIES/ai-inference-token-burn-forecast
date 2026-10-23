@@ -134,22 +134,24 @@ div[data-testid="stMetric"] div[data-testid="stMetricValue"] {font-size:1.1rem !
 .assumption-flag b {color: var(--flag-b);}
 .assumption-flag ul {margin: 4px 0 0 0; padding-left: 16px;}
 .assumption-flag li {margin-bottom: 2px;}
-.hero {padding: 4px 4px 0 4px;}
+.hero {padding: 10px 4px 0 4px;}
 div.block-container {padding-top: 2.4rem !important; padding-bottom: 2rem !important;}
 header[data-testid="stHeader"] {background: transparent;}
 .eyebrow {font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing: .14em; text-transform: uppercase;
           font-size: .72rem; color: var(--accent); font-weight: 600;}
-.hero h1 {font-size: clamp(1.7rem, 2.9vw, 2.4rem) !important; line-height: 1.15 !important; font-weight: 600 !important; color: var(--text); margin: 4px 0 6px 0 !important; padding: 0 !important; letter-spacing: -0.02em;}
+.hero h1 {font-size: clamp(1.7rem, 2.9vw, 2.4rem) !important; line-height: 1.15 !important; font-weight: 600 !important; color: var(--text); margin: 10px 0 12px 0 !important; padding: 0 !important; letter-spacing: -0.02em;}
 .hero h1 .accent, .chapter h2 .accent {color: var(--accent);}
-.hero p.sub {font-size: 1rem; color: var(--label); max-width: 62rem; margin: 0 0 4px 0;}
-.skipbar {font-size: .8rem; color: var(--label); margin: 2px 0 2px 0;}
+.hero p.sub {font-size: 1rem; line-height: 1.55; color: var(--label); max-width: 62rem; margin: 0 0 12px 0;}
+.skipbar {font-size: .8rem; color: var(--label); margin: 4px 0 6px 0;}
 .skipbar a {color: var(--accent); text-decoration: none; margin-right: 14px; font-weight: 600;}
-.chapter {margin: 12px 0 0 0; padding-top: 8px; border-top: 1px solid var(--card-border);}
-.chapter h2 {font-size: 1.45rem !important; font-weight: 600 !important; padding: 0 !important; margin: 2px 0 2px 0 !important; color: var(--text); letter-spacing: -0.01em;}
-.chapter p.lede {font-size: .95rem; color: var(--label); margin: 0 0 4px 0; max-width: 62rem;}
-.kpi-card {border: 2px solid transparent; border-radius: 14px; padding: 14px 16px; margin-bottom: 8px;
+.chapter {margin: 26px 0 6px 0; padding-top: 18px; border-top: 1px solid var(--card-border);}
+.chapter h2 {font-size: 1.45rem !important; font-weight: 600 !important; padding: 0 !important; margin: 6px 0 8px 0 !important; color: var(--text); letter-spacing: -0.01em;}
+.chapter p.lede {font-size: .95rem; line-height: 1.5; color: var(--label); margin: 0 0 14px 0; max-width: 62rem;}
+.kpi-card {border: 1.5px solid transparent; border-radius: 14px; padding: 16px 18px; margin-bottom: 10px;
            background: linear-gradient(var(--card-bg), var(--card-bg)) padding-box, linear-gradient(135deg, var(--accent), var(--violet) 60%, var(--sky)) border-box;}
-.kpi-card svg {display: block; margin: 2px 0 2px 0;}
+.kpi-card .row {display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; margin: 2px 0 6px 0;}
+.kpi-card .row svg {flex: none;}
+.kpi-card .trend {font-size: .76rem; color: var(--metric-label); margin-bottom: 6px;}
 .kpi-card .delta {font-size: .78rem; font-weight: 600;} .kpi-card .delta.up {color: var(--good);} .kpi-card .delta.down {color: var(--bad);}
 .rank {list-style: none; margin: 6px 0 0 0; padding: 0;}
 .rank li {display: flex; align-items: center; gap: 10px; padding: 6px 0; border-top: 1px solid var(--card-border); font-size: .85rem;}
@@ -158,7 +160,7 @@ header[data-testid="stHeader"] {background: transparent;}
 .rank .amt {margin-left: auto; font-weight: 600;}
 .kpi-card .k {font-size: .74rem; font-weight: 600; color: var(--metric-label); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
               letter-spacing: .08em; text-transform: uppercase;}
-.kpi-card .v {font-size: 2.1rem; font-weight: 650; color: var(--text); line-height: 1.15; margin: 4px 0 4px 0;}
+.kpi-card .v {font-size: 2.1rem; font-weight: 650; color: var(--text); line-height: 1.15; margin: 0;}
 .kpi-card .d {font-size: .8rem; color: var(--label); min-height: 2.6em;}
 .pill {display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: .72rem; font-weight: 600; margin-bottom: 4px;
        background: var(--chip-bg); color: var(--chip-text);}
@@ -176,46 +178,61 @@ header[data-testid="stHeader"] {background: transparent;}
 .stButton > button[kind="primary"]:active {box-shadow: 0 1px 0 var(--accent-dark);}
 .st-key-chips .stButton > button {border-radius: 999px; background: var(--chip-bg); color: var(--chip-text); border: 0; box-shadow: none; padding: 4px 14px; font-size: .82rem;}
 .st-key-chips .stButton > button:active {transform: none;}
-.st-key-view_mode div[role="radiogroup"] {background: var(--seg-bg); border-radius: 999px; padding: 4px; display: inline-flex; gap: 0;}
-.st-key-view_mode label[data-baseweb="radio"] {margin: 0; padding: 6px 16px; border-radius: 999px; cursor: pointer;}
-.st-key-view_mode label[data-baseweb="radio"] > div:first-child {display: none;}
-.st-key-view_mode label[data-baseweb="radio"]:has(input:checked) {background: var(--seg-on); box-shadow: 0 1px 4px rgba(20,30,90,.18);}
-.st-key-view_mode label[data-baseweb="radio"]:has(input:checked) p {color: var(--accent); font-weight: 600;}
-.st-key-stage_story div[role="radiogroup"] {gap: 12px; flex-wrap: wrap;}
-.st-key-stage_story label[data-baseweb="radio"] {background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 14px; padding: 12px 18px; margin: 0; min-width: 220px; cursor: pointer;}
-.st-key-stage_story label[data-baseweb="radio"] > div:first-child {display: none;}
-.st-key-stage_story label[data-baseweb="radio"]:has(input:checked) {border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent), 0 0 0 5px var(--ring);}
+.st-key-profile .stButton > button {padding: 14px 10px; font-size: 1.02rem; width: 100%;}
+.st-key-profile [data-testid="stCaptionContainer"] {text-align: center;}
 """
 st.markdown(f"<style>{_ROOT_CSS}\n{_STATIC_CSS}</style>", unsafe_allow_html=True)
 
 
-VIEW = st.radio("View", ["Guided story", "Analyst view"], horizontal=True, key="view_mode", label_visibility="collapsed",
-                help="Guided story walks through the economics chapter by chapter. Analyst view is the full set of tabs.")
+_VIEWS = ["Guided story", "Analyst view"]
+_seg = getattr(st, "segmented_control", None)
+if _seg is not None:
+    _v = _seg("View", _VIEWS, default=st.session_state.get("_view", _VIEWS[0]), key="view_seg", label_visibility="collapsed")
+else:
+    _v = st.radio("View", _VIEWS, index=_VIEWS.index(st.session_state.get("_view", _VIEWS[0])), horizontal=True, key="view_radio", label_visibility="collapsed")
+VIEW = _v if _v in _VIEWS else st.session_state.get("_view", _VIEWS[0])     # a click on the active segment deselects it: keep the last view
+st.session_state["_view"] = VIEW
 GUIDED = VIEW == "Guided story"
 
 
-def _spark_svg(vals, color="var(--accent)"):
-    v = [float(x) for x in vals if x is not None and not pd.isna(x)]
+def _keyed_container(key):
+    try:
+        return st.container(key=key)
+    except TypeError:   # older Streamlit without container keys: still works, just unstyled
+        return st.container()
+
+
+def _finite(vals):
+    return [float(x) for x in vals if x is not None and not pd.isna(x)]
+
+
+def _spark_svg(vals, color="var(--accent)", w=120, h=44):
+    """Small trend line with a soft area and an end dot. Fixed size (never stretched), padded so the line is not clipped."""
+    v = _finite(vals)
     if len(v) < 2:
         return ""
     lo, hi = min(v), max(v)
     span = (hi - lo) or 1.0
-    pts = " ".join(f"{i / (len(v) - 1) * 160:.1f},{30 - (x - lo) / span * 26:.1f}" for i, x in enumerate(v))
-    return f'<svg width="100%" height="34" viewBox="0 0 160 34" preserveAspectRatio="none"><polyline fill="none" stroke="{color}" stroke-width="2.5" points="{pts}"/></svg>'
+    pad = 6
+    xy = [(pad + i / (len(v) - 1) * (w - 2 * pad), pad + (1 - (x - lo) / span) * (h - 2 * pad)) for i, x in enumerate(v)]
+    line = " ".join(f"{x:.1f},{y:.1f}" for x, y in xy)
+    area = f"{xy[0][0]:.1f},{h - pad} " + line + f" {xy[-1][0]:.1f},{h - pad}"
+    return (f'<svg width="{w}" height="{h}" viewBox="0 0 {w} {h}"><polygon points="{area}" fill="{color}" opacity="0.10"/>'
+            f'<polyline fill="none" stroke="{color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" points="{line}"/>'
+            f'<circle cx="{xy[-1][0]:.1f}" cy="{xy[-1][1]:.1f}" r="3" fill="{color}"/></svg>')
 
 
-def _delta_html(vals):
-    v = [float(x) for x in vals if x is not None and not pd.isna(x)]
-    if len(v) < 2:
-        return ""
-    d = v[-1] - v[0]
-    return f'<div class="delta {"up" if d >= 0 else "down"}">{"▲" if d >= 0 else "▼"} {abs(d):.1f} pts, first to last month</div>'
-
-
-def kpi_card(label, value, note="", pill=None, pill_kind="", series=None):
+def kpi_card(label, value, note="", pill=None, pill_kind="", series=None, trend_note=None):
     _p = f'<span class="pill {pill_kind}">{html.escape(pill)}</span><br>' if pill else ""
-    _sp = (_spark_svg(series) + _delta_html(series)) if series is not None else ""
-    return (f'<div class="kpi-card">{_p}<div class="k">{html.escape(label)}</div><div class="v">{html.escape(value)}</div>{_sp}'
+    v = _finite(series) if series is not None else []
+    _sp = _spark_svg(series) if len(v) >= 2 else ""
+    if trend_note is not None:
+        _tr = f'<div class="trend">{html.escape(trend_note)}</div>'
+    elif len(v) >= 2:
+        _tr = f'<div class="trend">Month 1: {v[0]:.1f}% &rarr; latest month: {v[-1]:.1f}%</div>'
+    else:
+        _tr = ""
+    return (f'<div class="kpi-card">{_p}<div class="k">{html.escape(label)}</div><div class="row"><div class="v">{html.escape(value)}</div>{_sp}</div>{_tr}'
             f'<div class="d">{html.escape(note)}</div></div>')
 
 
@@ -252,7 +269,7 @@ if GUIDED:
   Pick a starting point, then follow the story. Every number comes from the same model.</p>
   <div class="skipbar">Skip to: <a href="#ch1">1 · One prompt</a> <a href="#deeper">Go deeper (all tabs)</a></div>
 </div>
-""".replace("__VER__", APP_VERSION + " build 3"), unsafe_allow_html=True)
+""".replace("__VER__", APP_VERSION + " build 4"), unsafe_allow_html=True)
     st.markdown(f'<div class="chapter" id="ch0" style="border-top:0;margin-top:6px"><div class="eyebrow">Chapter 0 &middot; The hook</div>'
                 f'<h2>One business, <span class="accent">three margins</span></h2>'
                 f'<p class="lede">Choose where your business is today. The three cards below update from the same calculation as everything else.</p></div>',
@@ -497,12 +514,20 @@ FOUNDER_PRESETS = {
 
 _STAGE_DESC = {"Pre-launch": "testing the idea", "Early traction": "first paying customers", "Scaling": "growing usage and revenue"}
 _stage_default = st.session_state.get("_stage", "Early traction")
+def _set_stage(name):
+    st.session_state["_stage"] = name
+
+
 if GUIDED:
     with slot_pick:
-        founder_stage = st.radio("Choose a starting profile", ["Pre-launch", "Early traction", "Scaling"],
-                                 index=["Pre-launch", "Early traction", "Scaling"].index(_stage_default), horizontal=True, key="stage_story",
-                                 format_func=lambda x: f"**{x}**  :gray[{_STAGE_DESC[x]}]",
-                                 help="Presets populate starting values only. All assumptions remain editable in the sidebar.")
+        _cur = st.session_state.get("_stage", "Early traction")
+        with _keyed_container("profile"):
+            _pcols = st.columns(3)
+            for _pc, _nm in zip(_pcols, ["Pre-launch", "Early traction", "Scaling"]):
+                with _pc:
+                    st.button(_nm, key=f"stage_{_nm}", type="primary" if _nm == _cur else "secondary", on_click=_set_stage, args=(_nm,))
+                    st.caption(_STAGE_DESC[_nm])
+    founder_stage = st.session_state.get("_stage", "Early traction")
     st.sidebar.header("0. Timing")
 else:
     st.sidebar.header("0. Founder Onboarding")
@@ -1912,7 +1937,9 @@ if GUIDED:
         _cols = st.columns(3)
         for _c, (_lab, _v, _note, _ser) in zip(_cols, _vals):
             _pl, _pk = _status(_v)
-            _c.markdown(kpi_card(_lab, fmt_pct(_v), _note, _pl, _pk, series=_ser), unsafe_allow_html=True)
+            _dup = (_lab == "Fully loaded margin" and tot["other"] <= 0)
+            _c.markdown(kpi_card(_lab, fmt_pct(_v), _note, _pl, _pk, series=None if _dup else _ser,
+                                 trend_note="Add other COGS lines in the sidebar to see it move away from reported." if _dup else None), unsafe_allow_html=True)
         _known = [v for _, v, _, _ in _vals if not pd.isna(v)]
         if _known:
             _spread = max(_known) - min(_known)
@@ -2070,13 +2097,6 @@ def qa_answer(qid, p, dframe, t, target):
     return out
 
 lever_curve_cached = st.cache_data(show_spinner=False)(lever_curve)
-
-
-def _keyed_container(key):
-    try:
-        return st.container(key=key)
-    except TypeError:   # older Streamlit without container keys: still works, just unstyled
-        return st.container()
 
 
 if GUIDED:
