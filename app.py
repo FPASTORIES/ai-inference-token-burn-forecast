@@ -139,13 +139,13 @@ div.block-container {padding-top: 2.4rem !important; padding-bottom: 2rem !impor
 header[data-testid="stHeader"] {background: transparent;}
 .eyebrow {font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing: .14em; text-transform: uppercase;
           font-size: .72rem; color: var(--accent); font-weight: 600;}
-.hero h1 {font-size: clamp(1.7rem, 2.9vw, 2.4rem); line-height: 1.15; font-weight: 600; color: var(--text); margin: 4px 0 6px 0; letter-spacing: -0.02em;}
+.hero h1 {font-size: clamp(1.7rem, 2.9vw, 2.4rem) !important; line-height: 1.15 !important; font-weight: 600 !important; color: var(--text); margin: 4px 0 6px 0 !important; padding: 0 !important; letter-spacing: -0.02em;}
 .hero h1 .accent, .chapter h2 .accent {color: var(--accent);}
 .hero p.sub {font-size: 1rem; color: var(--label); max-width: 62rem; margin: 0 0 4px 0;}
 .skipbar {font-size: .8rem; color: var(--label); margin: 2px 0 2px 0;}
 .skipbar a {color: var(--accent); text-decoration: none; margin-right: 14px; font-weight: 600;}
 .chapter {margin: 12px 0 0 0; padding-top: 8px; border-top: 1px solid var(--card-border);}
-.chapter h2 {font-size: 1.45rem; font-weight: 600; margin: 2px 0 2px 0; color: var(--text); letter-spacing: -0.01em;}
+.chapter h2 {font-size: 1.45rem !important; font-weight: 600 !important; padding: 0 !important; margin: 2px 0 2px 0 !important; color: var(--text); letter-spacing: -0.01em;}
 .chapter p.lede {font-size: .95rem; color: var(--label); margin: 0 0 4px 0; max-width: 62rem;}
 .kpi-card {border: 2px solid transparent; border-radius: 14px; padding: 14px 16px; margin-bottom: 8px;
            background: linear-gradient(var(--card-bg), var(--card-bg)) padding-box, linear-gradient(135deg, var(--accent), var(--violet) 60%, var(--sky)) border-box;}
@@ -246,13 +246,13 @@ def chapter_head(anchor, num, label, question_html, lede):
 if GUIDED:
     st.markdown("""
 <div class="hero">
-  <div class="eyebrow">AI Deal Desk &middot; Guided story</div>
+  <div class="eyebrow">AI Deal Desk &middot; Guided story &middot; __VER__</div>
   <h1>Will my AI product <span class="accent">make money?</span></h1>
   <p class="sub">Every prompt costs something. Every free user adds a bill. And a customer who looks profitable can still lose you money.
   Pick a starting point, then follow the story. Every number comes from the same model.</p>
   <div class="skipbar">Skip to: <a href="#ch1">1 · One prompt</a> <a href="#deeper">Go deeper (all tabs)</a></div>
 </div>
-""", unsafe_allow_html=True)
+""".replace("__VER__", APP_VERSION + " build 3"), unsafe_allow_html=True)
     st.markdown(f'<div class="chapter" id="ch0" style="border-top:0;margin-top:6px"><div class="eyebrow">Chapter 0 &middot; The hook</div>'
                 f'<h2>One business, <span class="accent">three margins</span></h2>'
                 f'<p class="lede">Choose where your business is today. The three cards below update from the same calculation as everything else.</p></div>',
