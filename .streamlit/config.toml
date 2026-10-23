@@ -1,0 +1,4 @@
+# Save as .streamlit/config.toml next to app.py.
+# Only the accent colour is set, so light and dark mode still follow the viewer's theme.
+[theme]
+primaryColor = "#2f4fe0"
