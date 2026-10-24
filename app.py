@@ -261,32 +261,34 @@ def chapter_head(anchor, num, label, question_html, lede):
 
 
 if GUIDED:
-    st.markdown("""
+    # Presentation-only redesign: illustration and story copy. Calculation engine is unchanged.
+    _hero_text, _hero_art = st.columns([1.55, 0.75], gap="large", vertical_alignment="center")
+    with _hero_text:
+        st.markdown("""
 <div class="hero">
-  <div class="eyebrow">AI Deal Desk &middot; Founder guide &middot; __VER__</div>
+  <div class="eyebrow">AI Deal Desk &middot; Guided story &middot; __VER__</div>
   <h1>Will my AI product <span class="accent">make money?</span></h1>
-  <p class="sub">Let's work it out one step at a time. First, choose the stage that sounds most like your business. Then we'll look at what each AI prompt costs and whether your customer revenue covers it.</p>
+  <p class="sub">Alex has an AI product, a growing user base, and a bill that keeps changing. The question is not just whether customers pay — it is whether the product can earn a healthy margin as usage grows.</p>
+  <div class="skipbar">Follow the story: <a href="#ch0">Start with the margins</a> <a href="#ch1">Then price one prompt</a> <a href="#deeper">Explore the full model</a></div>
 </div>
-""".replace("__VER__", APP_VERSION + " build 4"), unsafe_allow_html=True)
-    st.markdown('<div class="chapter" id="ch0" style="border-top:0;margin-top:18px">'
-                '<div class="eyebrow">Step 1 &middot; Start here</div>'
-                '<h2>Where is your business <span class="accent">today?</span></h2>'
-                '<p class="lede">Choose the closest fit. This loads example starting assumptions, not an industry benchmark. You can change the numbers later.</p></div>',
+""".replace("__VER__", APP_VERSION + " build 5"), unsafe_allow_html=True)
+    with _hero_art:
+        st.image("https://cdn.undraw.co/illustration/business-chart.svg", use_container_width=True)
+        st.caption("The founder's question: can growth turn into profit?")
+    st.markdown(f'<div class="chapter" id="ch0" style="border-top:0;margin-top:6px"><div class="eyebrow">Chapter 0 &middot; Start here</div>'
+                f'<h2>More users. More revenue. <span class="accent">More profit?</span></h2>'
+                f'<p class="lede">Meet Alex, an AI product founder. Before changing prices or chasing growth, Alex needs to understand three different margin views. Choose a starting profile; the cards update using the model below.</p></div>',
                 unsafe_allow_html=True)
     slot_pick = st.container()
-    st.markdown(chapter_head("ch1", 1, "Unit economics", 'What does <span class="accent">one prompt</span> cost?',
-                             "We'll start with the cost of an AI response, then connect that cost to customer usage. You do not need to know the technical details yet."),
+    slot_cards = st.container()
+    st.markdown(chapter_head("ch1", 1, "The first bill", 'What does <span class="accent">one prompt</span> cost?',
+                             "Alex starts with a simple question: what happens when someone presses ‘Ask’? Input tokens, output tokens, model choice and usage discounts all affect the bill. Change the usage control below and see how the estimate moves."),
                 unsafe_allow_html=True)
     slot_ch1_ctl = st.container()
     slot_ch1_out = st.container()
-    st.markdown('<div class="chapter" id="ch2"><div class="eyebrow">Step 3 &middot; Profitability</div>'
-                '<h2>Is the business <span class="accent">making money?</span></h2>'
-                '<p class="lede">These three margins answer different questions. We will explain what each includes and why the answers can differ.</p></div>',
-                unsafe_allow_html=True)
-    slot_cards = st.container()
     slot_chat = st.container()
-    st.markdown('<div class="chapter" id="deeper"><div class="eyebrow">Reference &amp; deeper analysis</div><h2>The full model, <span class="accent">tab by tab</span></h2>'
-                '<p class="lede">When you are ready, open the tabs below for the forecast, free-user costs, cash and credits, scenarios, cost levers and customer Deal Desk.</p></div>',
+    st.markdown('<div class="chapter" id="deeper"><div class="eyebrow">The working model</div><h2>Now test the <span class="accent">business decisions</span></h2>'
+                '<p class="lede">The story starts with margins and the cost of one prompt. The tabs below let you investigate who is using the AI budget, forecast cost and cash, test pricing and usage levers, and evaluate a customer deal. These views use the same calculations.</p></div>',
                 unsafe_allow_html=True)
 else:
     st.markdown("""
@@ -524,18 +526,12 @@ def _set_stage(name):
 if GUIDED:
     with slot_pick:
         _cur = st.session_state.get("_stage", "Early traction")
-        _profile_copy = {
-            "Pre-launch": "I'm testing an idea; few or no users yet. Estimate costs before launch.",
-            "Early traction": "I have some users and paying customers. Check whether usage is profitable.",
-            "Scaling": "Usage and revenue are growing. Check whether margins hold as you scale.",
-        }
         with _keyed_container("profile"):
             _pcols = st.columns(3)
             for _pc, _nm in zip(_pcols, ["Pre-launch", "Early traction", "Scaling"]):
                 with _pc:
-                    st.button(_nm, key=f"stage_{_nm}", type="primary" if _nm == _cur else "secondary", on_click=_set_stage, args=(_nm,), use_container_width=True)
-                    st.caption(_profile_copy[_nm])
-        st.caption("Your choice only sets the starting values. It does not lock the model or change the calculation method.")
+                    st.button(_nm, key=f"stage_{_nm}", type="primary" if _nm == _cur else "secondary", on_click=_set_stage, args=(_nm,))
+                    st.caption(_STAGE_DESC[_nm])
     founder_stage = st.session_state.get("_stage", "Early traction")
     st.sidebar.header("0. Timing")
 else:
@@ -1939,9 +1935,9 @@ if GUIDED:
             return "On target", "good"
         return ("Close to target", "warn") if gm >= margin_target - 10 else ("Below target", "bad")
 
-    _vals = [("Paid-customer margin", tot["paid_gm"], "Question: do paying customers cover the costs of serving them?", df["Paid-Customer Gross Margin (%)"]),
-             ("Reported margin", tot["gm"], f"Question: what margin remains after free-tier cost is booked to {_treat_name}?", df["Modeled Gross Margin (%)"]),
-             ("Fully loaded margin", tot["fl_gm"], "Question: what remains after the extra costs you add?" if tot["other"] > 0 else "Question: what remains after other COGS? Add those costs to see the fuller picture.", df["Fully Loaded Gross Margin (%)"])]
+    _vals = [("Paid-customer margin", tot["paid_gm"], "Revenue less the cost of serving paying customers only.", df["Paid-Customer Gross Margin (%)"]),
+             ("Reported margin", tot["gm"], f"After booking free-tier cost to {_treat_name}.", df["Modeled Gross Margin (%)"]),
+             ("Fully loaded margin", tot["fl_gm"], "After the extra monthly costs you add." if tot["other"] > 0 else "Same as reported until you add other COGS lines.", df["Fully Loaded Gross Margin (%)"])]
     with slot_cards:
         _cols = st.columns(3)
         for _c, (_lab, _v, _note, _ser) in zip(_cols, _vals):
@@ -2822,6 +2818,11 @@ with tab10:
 st.markdown("---")
 SHOW_CHANGE_LOG = False
 CHANGE_LOG_MD = """
+**Presentation update (build 5; calculation engine unchanged)**
+1. **Founder-led opening.** Introduces Alex and frames the journey around whether growth can become profit.
+2. **Business Chart illustration.** Adds an unDraw visual to the guided-story hero; the illustration is decorative and does not feed any calculations.
+3. **Clearer chapter transitions.** Chapter 0 explains why three margin views matter; Chapter 1 starts with the cost of one prompt; the reference tabs are framed as the working model.
+
 **v2.9 changes**
 1. **Guided story view (default) and Analyst view.** The Guided story opens with a hero, Chapter 0 (pick a profile, see paid-customer, reported and fully loaded margin side by side) and Chapter 1 (what one prompt costs, with the prompts-per-day control). All remaining tabs sit under "Go deeper". Analyst view is the previous layout. Both views use the same engine, so the numbers are identical.
 2. **New visual theme** (light grey page, near-white cards, deep navy and one strong blue; matching dark mode). Status pills use separate green, amber and red.
