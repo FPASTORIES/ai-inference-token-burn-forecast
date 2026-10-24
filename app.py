@@ -178,8 +178,11 @@ header[data-testid="stHeader"] {background: transparent;}
 .stButton > button[kind="primary"]:active {box-shadow: 0 1px 0 var(--accent-dark);}
 .st-key-chips .stButton > button {border-radius: 999px; background: var(--chip-bg); color: var(--chip-text); border: 0; box-shadow: none; padding: 4px 14px; font-size: .82rem;}
 .st-key-chips .stButton > button:active {transform: none;}
-.st-key-profile .stButton > button {padding: 14px 10px; font-size: 1.02rem; width: 100%;}
-.st-key-profile [data-testid="stCaptionContainer"] {text-align: center;}
+.st-key-profile [data-testid="stHorizontalBlock"] {gap: 0.5rem !important; align-items: stretch !important;}
+.st-key-profile [data-testid="column"] {min-width: 0 !important;}
+.st-key-profile .stButton {width: 100%; margin-bottom: 0 !important;}
+.st-key-profile .stButton > button {padding: 12px 6px; font-size: 0.98rem; width: 100%; min-height: 46px; box-sizing: border-box; margin: 0 !important; white-space: nowrap;}
+.st-key-profile [data-testid="stCaptionContainer"] {text-align: center; min-height: 2.4rem;}
 """
 st.markdown(f"<style>{_ROOT_CSS}\n{_STATIC_CSS}</style>", unsafe_allow_html=True)
 
@@ -271,7 +274,7 @@ if GUIDED:
   <p class="sub">Alex has an AI product, a growing user base, and a bill that keeps changing. The question is not just whether customers pay — it is whether the product can earn a healthy margin as usage grows.</p>
   <div class="skipbar">Follow the story: <a href="#ch0">Start with the margins</a> <a href="#ch1">Then price one prompt</a> <a href="#deeper">Explore the full model</a></div>
 </div>
-""".replace("__VER__", APP_VERSION + " build 5"), unsafe_allow_html=True)
+""".replace("__VER__", APP_VERSION + " build 6"), unsafe_allow_html=True)
     with _hero_art:
         st.image("https://cdn.undraw.co/illustration/business-chart.svg", use_container_width=True)
         st.caption("The founder's question: can growth turn into profit?")
@@ -527,7 +530,7 @@ if GUIDED:
     with slot_pick:
         _cur = st.session_state.get("_stage", "Early traction")
         with _keyed_container("profile"):
-            _pcols = st.columns(3)
+            _pcols = st.columns(3, gap="small")
             for _pc, _nm in zip(_pcols, ["Pre-launch", "Early traction", "Scaling"]):
                 with _pc:
                     st.button(_nm, key=f"stage_{_nm}", type="primary" if _nm == _cur else "secondary", on_click=_set_stage, args=(_nm,))
@@ -2822,6 +2825,9 @@ CHANGE_LOG_MD = """
 1. **Founder-led opening.** Introduces Alex and frames the journey around whether growth can become profit.
 2. **Business Chart illustration.** Adds an unDraw visual to the guided-story hero; the illustration is decorative and does not feed any calculations.
 3. **Clearer chapter transitions.** Chapter 0 explains why three margin views matter; Chapter 1 starts with the cost of one prompt; the reference tabs are framed as the working model.
+
+**UX build 6 changes**
+1. **Stable startup-stage buttons.** Reduced horizontal spacing, fixed button height and aligned captions so the three profile choices stay visually consistent after selection. Chapter 0 remains labeled “Start here.”
 
 **v2.9 changes**
 1. **Guided story view (default) and Analyst view.** The Guided story opens with a hero, Chapter 0 (pick a profile, see paid-customer, reported and fully loaded margin side by side) and Chapter 1 (what one prompt costs, with the prompts-per-day control). All remaining tabs sit under "Go deeper". Analyst view is the previous layout. Both views use the same engine, so the numbers are identical.
