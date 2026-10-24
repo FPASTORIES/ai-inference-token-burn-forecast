@@ -182,7 +182,7 @@ header[data-testid="stHeader"] {background: transparent;}
 .st-key-profile [data-testid="column"] {min-width: 0 !important;}
 .st-key-profile .stButton {width: 100%; margin-bottom: 0 !important;}
 .st-key-profile .stButton > button {padding: 12px 6px; font-size: 0.98rem; width: 100%; min-height: 46px; box-sizing: border-box; margin: 0 !important; white-space: nowrap;}
-.st-key-profile [data-testid="stCaptionContainer"] {text-align: center; min-height: 2.4rem;}
+.st-key-profile .stage-story {text-align: left; font-size: 0.84rem; line-height: 1.4; min-height: 5.2rem; padding: 8px 4px 0; color: var(--label); overflow-wrap: anywhere;}
 """
 st.markdown(f"<style>{_ROOT_CSS}\n{_STATIC_CSS}</style>", unsafe_allow_html=True)
 
@@ -274,11 +274,11 @@ if GUIDED:
   <p class="sub">Alex has an AI product, a growing user base, and a bill that keeps changing. The question is not just whether customers pay — it is whether the product can earn a healthy margin as usage grows.</p>
   <div class="skipbar">Follow the story: <a href="#ch0">Start with the margins</a> <a href="#ch1">Then price one prompt</a> <a href="#deeper">Explore the full model</a></div>
 </div>
-""".replace("__VER__", APP_VERSION + " build 6"), unsafe_allow_html=True)
+""".replace("__VER__", APP_VERSION + " build 7"), unsafe_allow_html=True)
     with _hero_art:
         st.image("https://cdn.undraw.co/illustration/business-chart.svg", use_container_width=True)
         st.caption("The founder's question: can growth turn into profit?")
-    st.markdown(f'<div class="chapter" id="ch0" style="border-top:0;margin-top:6px"><div class="eyebrow">Chapter 0 &middot; Start here</div>'
+    st.markdown(f'<div class="chapter" id="ch0" style="border-top:0;margin-top:6px"><div class="eyebrow">Step 1 &middot; Start here</div>'
                 f'<h2>More users. More revenue. <span class="accent">More profit?</span></h2>'
                 f'<p class="lede">Meet Alex, an AI product founder. Before changing prices or chasing growth, Alex needs to understand three different margin views. Choose a starting profile; the cards update using the model below.</p></div>',
                 unsafe_allow_html=True)
@@ -520,7 +520,11 @@ FOUNDER_PRESETS = {
     },
 }
 
-_STAGE_DESC = {"Pre-launch": "testing the idea", "Early traction": "first paying customers", "Scaling": "growing usage and revenue"}
+_STAGE_DESC = {
+    "Pre-launch": "Alex is testing the idea. There may be little or no revenue yet, but every prompt still has a cost.",
+    "Early traction": "Alex has first paying customers. Now the question is whether subscription revenue covers the cost of serving them.",
+    "Scaling": "Alex is growing usage and revenue. The challenge is making sure AI and infrastructure costs do not grow faster than sales.",
+}
 _stage_default = st.session_state.get("_stage", "Early traction")
 def _set_stage(name):
     st.session_state["_stage"] = name
@@ -534,7 +538,7 @@ if GUIDED:
             for _pc, _nm in zip(_pcols, ["Pre-launch", "Early traction", "Scaling"]):
                 with _pc:
                     st.button(_nm, key=f"stage_{_nm}", type="primary" if _nm == _cur else "secondary", on_click=_set_stage, args=(_nm,))
-                    st.caption(_STAGE_DESC[_nm])
+                    st.markdown(f'<div class="stage-story">{html.escape(_STAGE_DESC[_nm])}</div>', unsafe_allow_html=True)
     founder_stage = st.session_state.get("_stage", "Early traction")
     st.sidebar.header("0. Timing")
 else:
@@ -2827,7 +2831,7 @@ CHANGE_LOG_MD = """
 3. **Clearer chapter transitions.** Chapter 0 explains why three margin views matter; Chapter 1 starts with the cost of one prompt; the reference tabs are framed as the working model.
 
 **UX build 6 changes**
-1. **Stable startup-stage buttons.** Reduced horizontal spacing, fixed button height and aligned captions so the three profile choices stay visually consistent after selection. Chapter 0 remains labeled “Start here.”
+1. **Stable startup-stage buttons and story copy.** Kept the three profile choices aligned, restored “Step 1 · Start here,” and gave each profile a persistent explanatory story rather than a short caption.
 
 **v2.9 changes**
 1. **Guided story view (default) and Analyst view.** The Guided story opens with a hero, Chapter 0 (pick a profile, see paid-customer, reported and fully loaded margin side by side) and Chapter 1 (what one prompt costs, with the prompts-per-day control). All remaining tabs sit under "Go deeper". Analyst view is the previous layout. Both views use the same engine, so the numbers are identical.
