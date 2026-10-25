@@ -179,10 +179,11 @@ header[data-testid="stHeader"] {background: transparent;}
 .st-key-chips .stButton > button {border-radius: 999px; background: var(--chip-bg); color: var(--chip-text); border: 0; box-shadow: none; padding: 4px 14px; font-size: .82rem;}
 .st-key-chips .stButton > button:active {transform: none;}
 .st-key-profile [data-testid="stHorizontalBlock"] {gap: 0.5rem !important; align-items: stretch !important;}
-.st-key-profile [data-testid="column"] {min-width: 0 !important;}
-.st-key-profile .stButton {width: 100%; margin-bottom: 0 !important;}
-.st-key-profile .stButton > button {padding: 12px 6px; font-size: 0.98rem; width: 100%; min-height: 46px; box-sizing: border-box; margin: 0 !important; white-space: nowrap;}
-.st-key-profile .stage-story {text-align: left; font-size: 0.84rem; line-height: 1.4; min-height: 5.2rem; padding: 8px 4px 0; color: var(--label); overflow-wrap: anywhere;}
+.st-key-profile [data-testid="column"] {min-width: 0 !important; flex: 1 1 0% !important;}
+.st-key-profile .stButton {width: 100% !important; margin-bottom: 0 !important;}
+.st-key-profile [data-testid="stButton"] {width: 100% !important; display: block !important;}
+.st-key-profile .stButton > button {display: flex !important; align-items: center !important; justify-content: center !important; width: 100% !important; max-width: 100% !important; min-width: 0 !important; padding: 15px 8px !important; font-size: 1.02rem !important; min-height: 54px !important; box-sizing: border-box !important; margin: 0 !important; white-space: normal !important;}
+.st-key-profile .stage-story {display: block; width: 100%; text-align: center; font-size: 0.84rem; line-height: 1.4; min-height: 5.2rem; padding: 8px 4px 0; color: var(--label); overflow-wrap: anywhere; box-sizing: border-box;}
 """
 st.markdown(f"<style>{_ROOT_CSS}\n{_STATIC_CSS}</style>", unsafe_allow_html=True)
 
@@ -537,7 +538,7 @@ if GUIDED:
             _pcols = st.columns(3, gap="small")
             for _pc, _nm in zip(_pcols, ["Pre-launch", "Early traction", "Scaling"]):
                 with _pc:
-                    st.button(_nm, key=f"stage_{_nm}", type="primary" if _nm == _cur else "secondary", on_click=_set_stage, args=(_nm,))
+                    st.button(_nm, key=f"stage_{_nm}", type="primary" if _nm == _cur else "secondary", on_click=_set_stage, args=(_nm,), use_container_width=True)
                     st.markdown(f'<div class="stage-story">{html.escape(_STAGE_DESC[_nm])}</div>', unsafe_allow_html=True)
     founder_stage = st.session_state.get("_stage", "Early traction")
     st.sidebar.header("0. Timing")
@@ -2830,8 +2831,11 @@ CHANGE_LOG_MD = """
 2. **Business Chart illustration.** Adds an unDraw visual to the guided-story hero; the illustration is decorative and does not feed any calculations.
 3. **Clearer chapter transitions.** Chapter 0 explains why three margin views matter; Chapter 1 starts with the cost of one prompt; the reference tabs are framed as the working model.
 
-**UX build 6 changes**
-1. **Stable startup-stage buttons and story copy.** Kept the three profile choices aligned, restored “Step 1 · Start here,” and gave each profile a persistent explanatory story rather than a short caption.
+**UX build 8 changes**
+1. **Equal-width stage buttons.** Explicitly made each stage button fill its own equal-width column, with centered descriptions beneath each button. This is presentation-only; calculations are unchanged.
+
+**UX build 7 changes**
+1. **Restored full-width startup-stage buttons and preserved story copy.** Kept the three profile choices aligned, restored “Step 1 · Start here,” and gave each profile a persistent explanatory story rather than a short caption.
 
 **v2.9 changes**
 1. **Guided story view (default) and Analyst view.** The Guided story opens with a hero, Chapter 0 (pick a profile, see paid-customer, reported and fully loaded margin side by side) and Chapter 1 (what one prompt costs, with the prompts-per-day control). All remaining tabs sit under "Go deeper". Analyst view is the previous layout. Both views use the same engine, so the numbers are identical.
