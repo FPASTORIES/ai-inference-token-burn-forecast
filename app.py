@@ -35,7 +35,7 @@ APP_NAME = "The AI Unit Economics Deal Desk"
 APP_VERSION = "v2.9"
 
 st.set_page_config(
-    page_title="The AI Unit Economics Deal Desk",
+    page_title="AI Deal Desk | Will my AI product make money?",
     page_icon="⚡",
     layout="wide",
 )
@@ -147,7 +147,7 @@ header[data-testid="stHeader"] {background: transparent;}
 .chapter {margin: 26px 0 6px 0; padding-top: 18px; border-top: 1px solid var(--card-border);}
 .chapter h2 {font-size: 1.45rem !important; font-weight: 600 !important; padding: 0 !important; margin: 6px 0 8px 0 !important; color: var(--text); letter-spacing: -0.01em;}
 .chapter p.lede {font-size: .95rem; line-height: 1.5; color: var(--label); margin: 0 0 14px 0; max-width: 62rem;}
-.kpi-card {border: 1.5px solid transparent; border-radius: 14px; padding: 16px 18px; margin-bottom: 10px;
+.kpi-card {height: 100%; min-height: 238px; box-sizing: border-box; display: flex; flex-direction: column; border: 1.5px solid transparent; border-radius: 14px; padding: 16px 18px; margin-bottom: 10px;
            background: linear-gradient(var(--card-bg), var(--card-bg)) padding-box, linear-gradient(135deg, var(--accent), var(--violet) 60%, var(--sky)) border-box;}
 .kpi-card .row {display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; margin: 2px 0 6px 0;}
 .kpi-card .row svg {flex: none;}
@@ -161,7 +161,12 @@ header[data-testid="stHeader"] {background: transparent;}
 .kpi-card .k {font-size: .74rem; font-weight: 600; color: var(--metric-label); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
               letter-spacing: .08em; text-transform: uppercase;}
 .kpi-card .v {font-size: 2.1rem; font-weight: 650; color: var(--text); line-height: 1.15; margin: 0;}
-.kpi-card .d {font-size: .8rem; color: var(--label); min-height: 2.6em;}
+.kpi-card .d {font-size: .8rem; color: var(--label); min-height: 3.2em; margin-top: auto; padding-top: 8px;}
+.founder-art {max-width: 320px; margin: 4px auto 0; padding: 8px;}
+.founder-art svg {display:block; width:100%; height:auto; overflow:visible;}
+.founder-question {text-align:center; color:var(--label); font-size:.9rem; line-height:1.45; margin-top:2px;}
+.chapter h2 em {font-family: Georgia, 'Times New Roman', serif; font-weight:500;}
+@media (max-width: 900px) {.founder-art {max-width:230px;} .kpi-card {min-height:220px;}}
 .pill {display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: .72rem; font-weight: 600; margin-bottom: 4px;
        background: var(--chip-bg); color: var(--chip-text);}
 .pill.good {background: var(--good-bg); color: var(--good);} .pill.warn {background: var(--warn-bg); color: var(--warn);}
@@ -270,17 +275,25 @@ if GUIDED:
     with _hero_text:
         st.markdown("""
 <div class="hero">
-  <div class="eyebrow">AI Deal Desk &middot; Guided story &middot; __VER__</div>
+  <div class="eyebrow">AI Deal Desk &middot; A founder's guide to AI unit economics</div>
   <h1>Will my AI product <span class="accent">make money?</span></h1>
   <p class="sub">Alex has an AI product, a growing user base, and a bill that keeps changing. The question is not just whether customers pay — it is whether the product can earn a healthy margin as usage grows.</p>
   <div class="skipbar">Follow the story: <a href="#ch0">Start with the margins</a> <a href="#ch1">Then price one prompt</a> <a href="#deeper">Explore the full model</a></div>
 </div>
-""".replace("__VER__", APP_VERSION + " build 7"), unsafe_allow_html=True)
+""", unsafe_allow_html=True)
     with _hero_art:
-        st.image("https://cdn.undraw.co/illustration/business-chart.svg", use_container_width=True)
-        st.caption("The founder's question: can growth turn into profit?")
+        st.markdown("""
+<div class="founder-art" role="img" aria-label="Illustration of a founder reviewing growth and profit charts">
+<svg viewBox="0 0 320 230" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+<rect x="34" y="20" width="252" height="178" rx="18" fill="var(--card-bg)" stroke="var(--card-border)" stroke-width="2"/>
+<rect x="56" y="43" width="90" height="10" rx="5" fill="var(--seg-bg)"/><rect x="56" y="61" width="54" height="7" rx="3.5" fill="var(--seg-bg)"/>
+<path d="M58 157 L95 132 L126 141 L161 99 L193 113 L236 76" fill="none" stroke="var(--accent)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><circle cx="236" cy="76" r="7" fill="var(--accent)"/>
+<path d="M58 170 H258" stroke="var(--card-border)" stroke-width="2"/><rect x="185" y="140" width="20" height="30" rx="4" fill="var(--chip-bg)"/><rect x="213" y="123" width="20" height="47" rx="4" fill="var(--chip-bg)"/><rect x="241" y="104" width="17" height="66" rx="4" fill="var(--accent)" opacity=".8"/>
+<circle cx="58" cy="204" r="13" fill="var(--chip-bg)"/><path d="M52 204 l4 4 8 -9" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round"/><text x="80" y="209" font-size="12" fill="var(--label)" font-family="sans-serif">Growth → profit?</text>
+</svg></div><div class="founder-question"><em>The founder's question: can growth turn into profit?</em></div>
+""", unsafe_allow_html=True)
     st.markdown(f'<div class="chapter" id="ch0" style="border-top:0;margin-top:6px"><div class="eyebrow">Step 1 &middot; Start here</div>'
-                f'<h2>More users. More revenue. <span class="accent">More profit?</span></h2>'
+                f'<h2>More users. More revenue. <span class="accent"><em>More profit?</em></span></h2>'
                 f'<p class="lede">Meet Alex, an AI product founder. Before changing prices or chasing growth, Alex needs to understand three different margin views. Choose a starting profile; the cards update using the model below.</p></div>',
                 unsafe_allow_html=True)
     slot_pick = st.container()
@@ -541,7 +554,7 @@ if GUIDED:
                     st.button(_nm, key=f"stage_{_nm}", type="primary" if _nm == _cur else "secondary", on_click=_set_stage, args=(_nm,), use_container_width=True)
                     st.markdown(f'<div class="stage-story">{html.escape(_STAGE_DESC[_nm])}</div>', unsafe_allow_html=True)
     founder_stage = st.session_state.get("_stage", "Early traction")
-    st.sidebar.header("0. Timing")
+    st.sidebar.header("Forecast setup")
 else:
     st.sidebar.header("0. Founder Onboarding")
     founder_stage = st.sidebar.selectbox(
@@ -591,7 +604,8 @@ DEFAULTS = {
 }
 cfg = dict(DEFAULTS)
 
-st.sidebar.header("1. Core Growth & Funnel")
+st.sidebar.header("Key assumptions")
+st.sidebar.caption("Start with these five inputs. Other settings are tucked below.")
 starting_dau = st.sidebar.number_input(
     "Month-1 Daily Active Users (DAU)", min_value=0, value=preset["dau"], step=500, key=f"dau_{founder_stage}",
     help="DAU in the FIRST forecast month, exactly as entered. DAU growth applies from month 2, so month 1 reconciles to your actual DAU.",
@@ -613,34 +627,36 @@ if GUIDED:
 else:
     baseline_prompts = st.sidebar.slider("Baseline Prompts / Active Paid User / Day", 1, 20, int(preset["prompts"]), key=f"prompts_{founder_stage}", help=_prompts_help)
 
-st.sidebar.header("2. Targets")
-margin_target = st.sidebar.slider("Target Gross Margin (%)", 0, 90, 60)
-budget_monthly = st.sidebar.number_input("Monthly COGS Budget Cap ($; 0 = none)", min_value=0.0, value=0.0, step=1000.0)
+with st.expander("More assumptions · targets and cost treatment", expanded=False):
+    st.header("2. Targets")
+    margin_target = st.slider("Target Gross Margin (%)", 0, 90, 60)
+    budget_monthly = st.number_input("Monthly COGS Budget Cap ($; 0 = none)", min_value=0.0, value=0.0, step=1000.0)
 
-st.sidebar.header("3. Cost Treatment & AI Cost Path")
-_treat_opts = {"All in COGS": "COGS", "All in sales & marketing": "S&M", "Trials in S&M, freemium in COGS": "SPLIT"}
-_treat = st.sidebar.radio(
-    "Free / trial inference cost is booked to", list(_treat_opts), index=0,
-    help="Free and trial traffic earns no revenue. Many companies book its inference cost to sales & marketing (it is acquisition spend); others keep it in COGS, "
-         "ideally as its own sub-line; some book trials to S&M and the perpetual free tier to COGS. Either way it is a real cost: this switch only moves it. "
-         "Paying customers' margin never carries it. The third option uses the trial share set just below.",
-)
-cfg["free_treatment"] = _treat_opts[_treat]
-cfg["trial_share"] = st.sidebar.slider("Trials as share of free-tier traffic (%)", 0, 100, 25, 5,
-    help="Illustrative placeholder. Share of free-tier prompts that come from time-limited trials of a paid plan (the rest is the perpetual free tier). "
-         "Drives the trial vs freemium cost split, and what moves to S&M under 'Trials in S&M, freemium in COGS'. Replace it with your own funnel data.") / 100
-with st.sidebar.expander("📉 AI cost path (efficiency & vendor pricing)"):
-    st.caption("Optional. Leave at 0 for flat token prices. These are planning assumptions: efficiency gains must be delivered, and vendor prices can move either way.")
-    cfg["eff_mom"] = st.slider("MoM reduction in AI cost per prompt (%)", 0.0, 10.0, 0.0, 0.5,
-                               help="Right-sizing, model routing, caching, prompt trimming. Applies to AI inference (API) cost only, compounding monthly from the start month.") / 100
-    cfg["eff_start"] = int(st.slider("Reduction starts in forecast month", 1, 36, 13,
-                                     help="1 = first forecast month. The first reduction lands in this month."))
-    cfg["eff_cap"] = st.slider("Maximum cumulative reduction (%)", 0, 90, 50, 5,
-                               help="Floor on the efficiency path: cost per prompt never falls below (1 - cap) of its starting level.") / 100
-    cfg["price_step_pct"] = st.slider("One-time vendor price change (%)", -50, 100, 0, 5,
-                                      help="A step change in vendor list prices (OpenAI, Anthropic, etc.): negative = price cut, positive = increase. Applies on top of the efficiency path.") / 100
-    cfg["price_step_month"] = int(st.slider("Vendor price change takes effect in forecast month", 1, 36, 13))
-    st.caption(f"Net AI unit-cost index at month {forecast_horizon}: **x{ai_unit_cost_index(cfg, forecast_horizon):.2f}** (1.00 = today's prices)")
+    st.header("3. Cost Treatment & AI Cost Path")
+    _treat_opts = {"All in COGS": "COGS", "All in sales & marketing": "S&M", "Trials in S&M, freemium in COGS": "SPLIT"}
+    _treat = st.radio(
+        "Free / trial inference cost is booked to", list(_treat_opts), index=0,
+        help="Free and trial traffic earns no revenue. Many companies book its inference cost to sales & marketing (it is acquisition spend); others keep it in COGS, "
+             "ideally as its own sub-line; some book trials to S&M and the perpetual free tier to COGS. Either way it is a real cost: this switch only moves it. "
+             "Paying customers' margin never carries it. The third option uses the trial share set just below.",
+    )
+    cfg["free_treatment"] = _treat_opts[_treat]
+    cfg["trial_share"] = st.slider("Trials as share of free-tier traffic (%)", 0, 100, 25, 5,
+        help="Illustrative placeholder. Share of free-tier prompts that come from time-limited trials of a paid plan (the rest is the perpetual free tier). "
+             "Drives the trial vs freemium cost split, and what moves to S&M under 'Trials in S&M, freemium in COGS'. Replace it with your own funnel data.") / 100
+    with st.expander("📉 AI cost path (efficiency & vendor pricing)"):
+        st.caption("Optional. Leave at 0 for flat token prices. These are planning assumptions: efficiency gains must be delivered, and vendor prices can move either way.")
+        cfg["eff_mom"] = st.slider("MoM reduction in AI cost per prompt (%)", 0.0, 10.0, 0.0, 0.5,
+                                   help="Right-sizing, model routing, caching, prompt trimming. Applies to AI inference (API) cost only, compounding monthly from the start month.") / 100
+        cfg["eff_start"] = int(st.slider("Reduction starts in forecast month", 1, 36, 13,
+                                         help="1 = first forecast month. The first reduction lands in this month."))
+        cfg["eff_cap"] = st.slider("Maximum cumulative reduction (%)", 0, 90, 50, 5,
+                                   help="Floor on the efficiency path: cost per prompt never falls below (1 - cap) of its starting level.") / 100
+        cfg["price_step_pct"] = st.slider("One-time vendor price change (%)", -50, 100, 0, 5,
+                                          help="A step change in vendor list prices (OpenAI, Anthropic, etc.): negative = price cut, positive = increase. Applies on top of the efficiency path.") / 100
+        cfg["price_step_month"] = int(st.slider("Vendor price change takes effect in forecast month", 1, 36, 13))
+        st.caption(f"Net AI unit-cost index at month {forecast_horizon}: **x{ai_unit_cost_index(cfg, forecast_horizon):.2f}** (1.00 = today's prices)")
+
 
 if advanced_mode:
     with st.sidebar.expander("📂 A. Subscriber Funnel & Revenue"):
@@ -1954,6 +1970,12 @@ if GUIDED:
             _c.markdown(kpi_card(_lab, fmt_pct(_v), _note, _pl, _pk, series=None if _dup else _ser,
                                  trend_note="Add other COGS lines in the sidebar to see it move away from reported." if _dup else None), unsafe_allow_html=True)
         _known = [v for _, v, _, _ in _vals if not pd.isna(v)]
+        if not pd.isna(tot["paid_gm"]) and not pd.isna(tot["gm"]):
+            _paid_reported_gap = tot["paid_gm"] - tot["gm"]
+            _direction = "lower" if _paid_reported_gap >= 0 else "higher"
+            _context_line = (f"Reported margin is {abs(_paid_reported_gap):.1f} percentage points {_direction} than paid-customer margin. "
+                             f"That difference reflects how free-tier costs are classified ({_treat_name}); it does not make those costs disappear.")
+            st.markdown(f'<div class="takeaway"><b>What this means:</b> {_context_line}</div>', unsafe_allow_html=True)
         if _known:
             _spread = max(_known) - min(_known)
             st.markdown(f'<div class="takeaway"><b>Takeaway:</b> one business, three answers, {_spread:.1f} points apart. '
@@ -2834,7 +2856,13 @@ CHANGE_LOG_MD = """
 **UX build 8 changes**
 1. **Equal-width stage buttons.** Explicitly made each stage button fill its own equal-width column, with centered descriptions beneath each button. This is presentation-only; calculations are unchanged.
 
-**UX build 7 changes**
+**UX design update (presentation only; calculation engine unchanged)**
+1. Removed internal build/version text from the public hero and renamed the sidebar timing section to “Forecast setup.”
+2. Compact key-input layout: the five primary growth/usage assumptions remain visible; target and cost-treatment settings are grouped under “More assumptions.”
+2. Replaced the externally hosted hero image with a self-contained illustration to avoid broken-image dependencies.
+3. Added selective editorial italics, equal-height margin cards, and contextual commentary explaining the paid-customer vs reported margin difference.
+
+**UX updates**
 1. **Restored full-width startup-stage buttons and preserved story copy.** Kept the three profile choices aligned, restored “Step 1 · Start here,” and gave each profile a persistent explanatory story rather than a short caption.
 
 **v2.9 changes**
