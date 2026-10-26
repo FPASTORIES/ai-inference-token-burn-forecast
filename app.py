@@ -61,8 +61,8 @@ def _detect_dark_theme():
 
 
 IS_DARK = _detect_dark_theme()
-_LIGHT = dict(app_bg="#f2f2f2", text="#2c2f39", side_bg="#f8f8fa", side_border="#dfe1ea", label="#4a4e5c",
-              card_bg="#fcfcfd", card_border="#dfe1ea", metric_label="#5b5f6e", hdr_from="#fcfcfd", hdr_to="#eef0f7",
+_LIGHT = dict(app_bg="#ffffff", text="#252936", side_bg="#fbfcff", side_border="#dfe1ea", label="#4a4e5c",
+              card_bg="#ffffff", card_border="#e2e7f0", metric_label="#5b5f6e", hdr_from="#ffffff", hdr_to="#f6f8fd",
               hdr_text="#2c2f39", hdr_sub="#5b5f6e", note_bg="#fcfcfd", note_border="#dfe1ea", note_accent="#1834c6",
               note_h4="#0b2cbc", note_text="#3d4150", flag_bg="#fffaf0", flag_border="#f6d6a8", flag_accent="#dd6b20",
               flag_b="#c05621", flag_text="#4a5568",
@@ -101,13 +101,20 @@ def tone(light, dark):
 
 
 _STATIC_CSS = """
-.stApp {background:var(--app-bg);color:var(--text);font-family:'Inter', sans-serif;}
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
+.stApp {background:var(--app-bg);color:var(--text);font-family:'DM Sans', sans-serif;}
 section[data-testid="stSidebar"] {background:var(--side-bg) !important; border-right: 1px solid var(--side-border);}
 section[data-testid="stSidebar"] h2, section[data-testid="stSidebar"] h3 {
     font-size: 0.95rem !important; margin-top: 6px !important; margin-bottom: 2px !important;
     padding-bottom: 0px !important; font-weight: 700 !important;
 }
-section[data-testid="stSidebar"] label {font-size: 0.78rem !important; color: var(--label) !important;}
+section[data-testid="stSidebar"] label {font-size: 0.75rem !important; color: var(--label) !important;}
+section[data-testid="stSidebar"] [data-testid="stVerticalBlock"] {gap: .45rem !important;}
+section[data-testid="stSidebar"] [data-testid="stWidgetLabel"] {margin-bottom: .12rem !important;}
+section[data-testid="stSidebar"] [data-testid="stNumberInput"] button {min-height: 1.9rem !important;}
+section[data-testid="stSidebar"] [data-testid="stNumberInput"] input {min-height: 1.9rem !important;}
+section[data-testid="stSidebar"] [data-testid="stSlider"] {padding-top: 0 !important; padding-bottom: 0 !important;}
+section[data-testid="stSidebar"] hr {margin: .45rem 0 !important;}
 div[data-testid="stMetric"] {
     background:var(--card-bg); border:1px solid var(--card-border); padding:6px 10px !important;
     border-radius:6px; box-shadow: 0 1px 2px rgba(0,0,0,0.02);
@@ -165,7 +172,8 @@ header[data-testid="stHeader"] {background: transparent;}
 .founder-art {max-width: 320px; margin: 4px auto 0; padding: 8px;}
 .founder-art svg {display:block; width:100%; height:auto; overflow:visible;}
 .founder-question {text-align:center; color:var(--label); font-size:.9rem; line-height:1.45; margin-top:2px;}
-.chapter h2 em {font-family: Georgia, 'Times New Roman', serif; font-weight:500;}
+.chapter h2 em {font-family: Georgia, 'Times New Roman', serif; font-weight:500; font-style:italic; letter-spacing:-.025em;}
+.hero h1, .chapter h2, .hero p.sub, .chapter p.lede {font-family:'DM Sans', sans-serif;}
 @media (max-width: 900px) {.founder-art {max-width:230px;} .kpi-card {min-height:220px;}}
 .pill {display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: .72rem; font-weight: 600; margin-bottom: 4px;
        background: var(--chip-bg); color: var(--chip-text);}
@@ -565,9 +573,12 @@ else:
 st.session_state["_stage"] = founder_stage
 preset = FOUNDER_PRESETS[founder_stage]
 current_now = datetime.datetime.now()
-start_year = int(st.sidebar.number_input("Forecast Start Year", min_value=2024, max_value=2035, value=current_now.year))
-start_month = int(st.sidebar.slider("Forecast Start Month", 1, 12, current_now.month))
-forecast_horizon = int(st.sidebar.slider("Forecast Horizon (Months)", 1, 36, 12))
+_setup_a, _setup_b = st.sidebar.columns(2, gap="small")
+with _setup_a:
+    start_year = int(st.number_input("Start year", min_value=2024, max_value=2035, value=current_now.year))
+with _setup_b:
+    start_month = int(st.selectbox("Start month", list(range(1, 13)), index=current_now.month - 1, format_func=lambda m: calendar.month_abbr[m]))
+forecast_horizon = int(st.sidebar.select_slider("Forecast horizon", options=[3, 6, 9, 12, 18, 24, 36], value=12, format_func=lambda m: f"{m} months"))
 
 st.sidebar.markdown("---")
 advanced_mode = st.sidebar.toggle(
@@ -605,30 +616,29 @@ DEFAULTS = {
 cfg = dict(DEFAULTS)
 
 st.sidebar.header("Key assumptions")
-st.sidebar.caption("Start with these five inputs. Other settings are tucked below.")
-starting_dau = st.sidebar.number_input(
-    "Month-1 Daily Active Users (DAU)", min_value=0, value=preset["dau"], step=500, key=f"dau_{founder_stage}",
-    help="DAU in the FIRST forecast month, exactly as entered. DAU growth applies from month 2, so month 1 reconciles to your actual DAU.",
-)
-starting_pro_subs = st.sidebar.number_input("Starting Pro Subscribers", min_value=0, value=preset["pro"], step=50, key=f"pro_{founder_stage}")
-starting_ent_accounts = st.sidebar.number_input("Starting Team / SMB Accounts (contracts)", min_value=0, value=preset["ent"], step=10, key=f"ent_{founder_stage}")
-dau_monthly_growth = st.sidebar.slider(
-    "Total DAU Monthly Growth (%)", 0.0, 25.0, float(preset["growth"]), 0.5, key=f"growth_{founder_stage}",
-    help="Growth of total daily active users (free + paid), applied from month 2 onward. Net new DAU feeds new-user conversion. Month 1 has no new-user conversions; free-pool conversions still occur.",
-) / 100
-net_new_ent_contracts = st.sidebar.number_input(
-    "Net New Team / SMB Deals / Month", min_value=0.0, value=float(preset["deals"]), step=0.5, key=f"deals_{founder_stage}",
-    help="Sales-led pipeline velocity, independent of PLG traffic. Fractional values allowed (e.g. 2.5 = 5 deals every 2 months).",
-)
-_prompts_help = "Typical paying user's prompts per day. More usage means a higher inference bill, so this is the first lever to try."
-if GUIDED:
-    with slot_ch1_ctl:
-        baseline_prompts = st.slider("Baseline Prompts / Active Paid User / Day", 1, 20, int(preset["prompts"]), key=f"prompts_{founder_stage}", help=_prompts_help)
-else:
-    baseline_prompts = st.sidebar.slider("Baseline Prompts / Active Paid User / Day", 1, 20, int(preset["prompts"]), key=f"prompts_{founder_stage}", help=_prompts_help)
+st.sidebar.caption("Five high-impact inputs. Open More assumptions for the rest.")
+_key_left, _key_right = st.sidebar.columns(2, gap="small")
+with _key_left:
+    starting_dau = st.number_input(
+        "Daily active users", min_value=0, value=preset["dau"], step=500, key=f"dau_{founder_stage}",
+        help="DAU in the first forecast month. Growth applies from month 2 onward.",
+    )
+    starting_ent_accounts = st.number_input("Team / SMB accounts", min_value=0, value=preset["ent"], step=10, key=f"ent_{founder_stage}")
+    net_new_ent_contracts = st.number_input(
+        "New team deals / month", min_value=0.0, value=float(preset["deals"]), step=0.5, key=f"deals_{founder_stage}",
+        help="Sales-led pipeline velocity. Fractional values are allowed.",
+    )
+with _key_right:
+    starting_pro_subs = st.number_input("Pro subscribers", min_value=0, value=preset["pro"], step=50, key=f"pro_{founder_stage}")
+    dau_monthly_growth = st.slider(
+        "Monthly DAU growth", 0.0, 25.0, float(preset["growth"]), 0.5, key=f"growth_{founder_stage}",
+        help="Growth of total daily active users, applied from month 2 onward.",
+    ) / 100
+    _prompts_help = "Typical paying user's prompts per day. Higher usage means a higher inference bill."
+    baseline_prompts = st.slider("Prompts / paid user / day", 1, 20, int(preset["prompts"]), key=f"prompts_{founder_stage}", help=_prompts_help)
 
-with st.expander("More assumptions · targets and cost treatment", expanded=False):
-    st.header("2. Targets")
+with st.sidebar.expander("More assumptions · targets and cost treatment", expanded=False):
+    st.header("Targets")
     margin_target = st.slider("Target Gross Margin (%)", 0, 90, 60)
     budget_monthly = st.number_input("Monthly COGS Budget Cap ($; 0 = none)", min_value=0.0, value=0.0, step=1000.0)
 
@@ -2859,6 +2869,7 @@ CHANGE_LOG_MD = """
 **UX design update (presentation only; calculation engine unchanged)**
 1. Removed internal build/version text from the public hero and renamed the sidebar timing section to “Forecast setup.”
 2. Compact key-input layout: the five primary growth/usage assumptions remain visible; target and cost-treatment settings are grouped under “More assumptions.”
+4. UX revision: clean white canvas, DM Sans interface typography, compact paired sidebar inputs, and target/cost-treatment controls moved into the sidebar More assumptions expander. Forecast calculations intentionally unchanged.
 2. Replaced the externally hosted hero image with a self-contained illustration to avoid broken-image dependencies.
 3. Added selective editorial italics, equal-height margin cards, and contextual commentary explaining the paid-customer vs reported margin difference.
 
