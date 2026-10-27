@@ -102,14 +102,17 @@ def tone(light, dark):
 
 _STATIC_CSS = """
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
-.stApp {background:var(--app-bg);color:var(--text);font-family:'DM Sans', sans-serif;}
-section[data-testid="stSidebar"] {background:var(--side-bg) !important; border-right: 1px solid var(--side-border);}
+.stApp {background:#FFFFFF;color:var(--text);font-family:'DM Sans', sans-serif;}
+.main .block-container {background:#FFFFFF;}
+section[data-testid="stSidebar"] {background:#FFFFFF !important; border-right: 1px solid #DCE3EF;}
 section[data-testid="stSidebar"] h2, section[data-testid="stSidebar"] h3 {
     font-size: 0.95rem !important; margin-top: 6px !important; margin-bottom: 2px !important;
     padding-bottom: 0px !important; font-weight: 700 !important;
 }
 section[data-testid="stSidebar"] label {font-size: 0.75rem !important; color: var(--label) !important;}
-section[data-testid="stSidebar"] [data-testid="stVerticalBlock"] {gap: .45rem !important;}
+section[data-testid="stSidebar"] [data-testid="stVerticalBlock"] {gap: .32rem !important;}
+section[data-testid="stSidebar"] input, section[data-testid="stSidebar"] [data-baseweb="select"] > div, section[data-testid="stSidebar"] [data-testid="stNumberInput"] > div {border:1px solid #C9D4E5 !important; border-radius:7px !important; background:#FFFFFF !important;}
+section[data-testid="stSidebar"] [data-testid="stExpander"] {border:1px solid #D7DFEC !important; border-radius:8px !important;}
 section[data-testid="stSidebar"] [data-testid="stWidgetLabel"] {margin-bottom: .12rem !important;}
 section[data-testid="stSidebar"] [data-testid="stNumberInput"] button {min-height: 1.9rem !important;}
 section[data-testid="stSidebar"] [data-testid="stNumberInput"] input {min-height: 1.9rem !important;}
@@ -142,10 +145,10 @@ div[data-testid="stMetric"] div[data-testid="stMetricValue"] {font-size:1.1rem !
 .assumption-flag ul {margin: 4px 0 0 0; padding-left: 16px;}
 .assumption-flag li {margin-bottom: 2px;}
 .hero {padding: 10px 4px 0 4px;}
-div.block-container {padding-top: 2.4rem !important; padding-bottom: 2rem !important;}
+div.block-container {padding-top: 1.7rem !important; padding-bottom: 2rem !important;}
 header[data-testid="stHeader"] {background: transparent;}
-.eyebrow {font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; letter-spacing: .14em; text-transform: uppercase;
-          font-size: .72rem; color: var(--accent); font-weight: 600;}
+.eyebrow {font-family:'DM Sans', sans-serif; letter-spacing:.035em; text-transform:uppercase;
+          font-size:.68rem; color:var(--accent); font-weight:700;}
 .hero h1 {font-size: clamp(1.7rem, 2.9vw, 2.4rem) !important; line-height: 1.15 !important; font-weight: 600 !important; color: var(--text); margin: 10px 0 12px 0 !important; padding: 0 !important; letter-spacing: -0.02em;}
 .hero h1 .accent, .chapter h2 .accent {color: var(--accent);}
 .hero p.sub {font-size: 1rem; line-height: 1.55; color: var(--label); max-width: 62rem; margin: 0 0 12px 0;}
@@ -154,7 +157,7 @@ header[data-testid="stHeader"] {background: transparent;}
 .chapter {margin: 26px 0 6px 0; padding-top: 18px; border-top: 1px solid var(--card-border);}
 .chapter h2 {font-size: 1.45rem !important; font-weight: 600 !important; padding: 0 !important; margin: 6px 0 8px 0 !important; color: var(--text); letter-spacing: -0.01em;}
 .chapter p.lede {font-size: .95rem; line-height: 1.5; color: var(--label); margin: 0 0 14px 0; max-width: 62rem;}
-.kpi-card {height: 100%; min-height: 238px; box-sizing: border-box; display: flex; flex-direction: column; border: 1.5px solid transparent; border-radius: 14px; padding: 16px 18px; margin-bottom: 10px;
+.kpi-card {height: 100%; min-height: 158px; box-sizing: border-box; display: flex; flex-direction: column; border: 1px solid var(--card-border); border-radius: 10px; padding: 12px 14px; margin-bottom: 8px;
            background: linear-gradient(var(--card-bg), var(--card-bg)) padding-box, linear-gradient(135deg, var(--accent), var(--violet) 60%, var(--sky)) border-box;}
 .kpi-card .row {display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; margin: 2px 0 6px 0;}
 .kpi-card .row svg {flex: none;}
@@ -165,15 +168,19 @@ header[data-testid="stHeader"] {background: transparent;}
 .rank .n {width: 20px; height: 20px; border-radius: 50%; background: var(--text); color: var(--app-bg); font-size: .7rem; display: flex; align-items: center; justify-content: center; flex: none;}
 .rank .bar {height: 6px; border-radius: 9px; background: var(--seg-bg); flex: 1; max-width: 110px;} .rank .bar i {display: block; height: 100%; border-radius: 9px; background: var(--accent);}
 .rank .amt {margin-left: auto; font-weight: 600;}
-.kpi-card .k {font-size: .74rem; font-weight: 600; color: var(--metric-label); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-              letter-spacing: .08em; text-transform: uppercase;}
-.kpi-card .v {font-size: 2.1rem; font-weight: 650; color: var(--text); line-height: 1.15; margin: 0;}
-.kpi-card .d {font-size: .8rem; color: var(--label); min-height: 3.2em; margin-top: auto; padding-top: 8px;}
+.kpi-card .k {font-size:.72rem; font-weight:700; color:var(--metric-label); font-family:'DM Sans',sans-serif;
+              letter-spacing:.015em; text-transform:none; line-height:1.3;}
+.kpi-card .v {font-size:clamp(1.35rem, 1.8vw, 1.75rem); font-weight:700; color:var(--text); line-height:1.15; margin:0; overflow-wrap:anywhere;}
+.kpi-card .d {font-size:.78rem; color:var(--label); min-height:2.5em; margin-top:auto; padding-top:7px; line-height:1.4;}
 .founder-art {max-width: 320px; margin: 4px auto 0; padding: 8px;}
 .founder-art svg {display:block; width:100%; height:auto; overflow:visible;}
 .founder-question {text-align:center; color:var(--label); font-size:.9rem; line-height:1.45; margin-top:2px;}
 .chapter h2 em {font-family: Georgia, 'Times New Roman', serif; font-weight:500; font-style:italic; letter-spacing:-.025em;}
 .hero h1, .chapter h2, .hero p.sub, .chapter p.lede {font-family:'DM Sans', sans-serif;}
+.chapter h2 em {font-family:Georgia,'Times New Roman',serif; font-style:italic; font-weight:400;}
+.stage-story {line-height:1.42; font-size:.8rem; padding:4px 3px 0; color:var(--label); min-height:4.5em;}
+.st-key-profile .stButton > button {border:1px solid #BFCDE2 !important; border-radius:8px !important; box-shadow:none !important; padding:10px 8px !important;}
+.st-key-profile .stButton > button[kind="primary"] {border:1px solid #1739C6 !important; box-shadow:none !important;}
 @media (max-width: 900px) {.founder-art {max-width:230px;} .kpi-card {min-height:220px;}}
 .pill {display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: .72rem; font-weight: 600; margin-bottom: 4px;
        background: var(--chip-bg); color: var(--chip-text);}
@@ -273,7 +280,7 @@ def drivers_card(label, items):
 
 
 def chapter_head(anchor, num, label, question_html, lede):
-    return (f'<div class="chapter" id="{anchor}"><div class="eyebrow">Chapter {num} &middot; {html.escape(label)}</div>'
+    return (f'<div class="chapter" id="{anchor}"><div class="eyebrow">{num:02d} / {html.escape(label)}</div>'
             f'<h2>{question_html}</h2><p class="lede">{html.escape(lede)}</p></div>')
 
 
@@ -283,7 +290,7 @@ if GUIDED:
     with _hero_text:
         st.markdown("""
 <div class="hero">
-  <div class="eyebrow">AI Deal Desk &middot; A founder's guide to AI unit economics</div>
+  <div class="eyebrow">AI Deal Desk</div>
   <h1>Will my AI product <span class="accent">make money?</span></h1>
   <p class="sub">Alex has an AI product, a growing user base, and a bill that keeps changing. The question is not just whether customers pay — it is whether the product can earn a healthy margin as usage grows.</p>
   <div class="skipbar">Follow the story: <a href="#ch0">Start with the margins</a> <a href="#ch1">Then price one prompt</a> <a href="#deeper">Explore the full model</a></div>
@@ -300,17 +307,17 @@ if GUIDED:
 <circle cx="58" cy="204" r="13" fill="var(--chip-bg)"/><path d="M52 204 l4 4 8 -9" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round"/><text x="80" y="209" font-size="12" fill="var(--label)" font-family="sans-serif">Growth → profit?</text>
 </svg></div><div class="founder-question"><em>The founder's question: can growth turn into profit?</em></div>
 """, unsafe_allow_html=True)
-    st.markdown(f'<div class="chapter" id="ch0" style="border-top:0;margin-top:6px"><div class="eyebrow">Step 1 &middot; Start here</div>'
+    st.markdown(f'<div class="chapter" id="ch0" style="border-top:0;margin-top:6px"><div class="eyebrow">01 / Start here</div>'
                 f'<h2>More users. More revenue. <span class="accent"><em>More profit?</em></span></h2>'
                 f'<p class="lede">Meet Alex, an AI product founder. Before changing prices or chasing growth, Alex needs to understand three different margin views. Choose a starting profile; the cards update using the model below.</p></div>',
                 unsafe_allow_html=True)
     slot_pick = st.container()
-    slot_cards = st.container()
     st.markdown(chapter_head("ch1", 1, "The first bill", 'What does <span class="accent">one prompt</span> cost?',
                              "Alex starts with a simple question: what happens when someone presses ‘Ask’? Input tokens, output tokens, model choice and usage discounts all affect the bill. Change the usage control below and see how the estimate moves."),
                 unsafe_allow_html=True)
     slot_ch1_ctl = st.container()
     slot_ch1_out = st.container()
+    slot_cards = st.container()
     slot_chat = st.container()
     st.markdown('<div class="chapter" id="deeper"><div class="eyebrow">The working model</div><h2>Now test the <span class="accent">business decisions</span></h2>'
                 '<p class="lede">The story starts with margins and the cost of one prompt. The tabs below let you investigate who is using the AI budget, forecast cost and cash, test pricing and usage levers, and evaluate a customer deal. These views use the same calculations.</p></div>',
@@ -2022,7 +2029,7 @@ if GUIDED:
             ("Paying customers (inference + infra)", df["Paid-Customer Inference & Infra ($)"].sum()), ("Free tier", df["Free-Tier Inference Cost ($)"].sum()),
             ("Internal traffic", df["Internal Traffic Cost ($)"].sum()), ("Payment fees", df["Payment Processing ($)"].sum()),
             ("Implementation delivery", df["Implementation Cost ($)"].sum())]), unsafe_allow_html=True)
-        st.markdown('<div class="bridge">But most of your users do not pay you. Who is using your AI budget? That is the next chapter, in the Value &amp; Pricing and Revenue &amp; Margin tabs.</div>',
+        st.markdown('<div class="bridge">Now connect unit cost to margin, then investigate who drives the AI bill in the Value &amp; Pricing and Monthly Detail tabs.</div>',
                     unsafe_allow_html=True)
 
 _flags = health_flags(df, P, tot, h_mult_used)
@@ -2179,6 +2186,7 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab_deal, tab10 = st.tabs(
 
 with tab1:
     st.subheader("Forecast Recognized Revenue, COGS & Gross Margin")
+    st.caption("Story 2 · Connect customer revenue to serving costs. Compare paid-customer, reported and fully loaded margin; the charts and bridge retain the full analysis.")
     fig = make_subplots(specs=[[{"secondary_y": True}]])
     fig.add_trace(go.Bar(x=df["Month"], y=df["Recognized Revenue ($)"], name="Recognized Revenue ($)", marker_color="#3182ce"), secondary_y=False)
     fig.add_trace(go.Scatter(x=df["Month"], y=df["Total Modeled COGS ($)"], name="Reported COGS ($)", mode="lines+markers", line=dict(color="#e53e3e", width=3)), secondary_y=False)
@@ -2305,6 +2313,7 @@ with tab1:
 
 with tab2:
     st.subheader("Credit Drawdown Velocity, Cash Payable & Cash Paid")
+    st.caption("Story 4 · Positive margin does not guarantee enough cash. Review credits, invoice timing and vendor bills.")
     fig2 = make_subplots(specs=[[{"secondary_y": True}]])
     fig2.add_trace(go.Bar(x=df["Month"], y=df["AI Credits Applied ($)"], name="AI Credits Applied ($)", marker_color="#38a169"), secondary_y=False)
     fig2.add_trace(go.Bar(x=df["Month"], y=df["Cloud Credits Applied ($)"], name="Cloud Credits Applied ($)", marker_color="#4fd1c5"), secondary_y=False)
@@ -2327,12 +2336,14 @@ with tab2:
 
 with tab3:
     st.subheader("Monthly Roll-Forward Detail")
+    st.caption("Supporting analysis · Follow monthly usage, revenue, costs and margin behind the headline results.")
     show_df(style_frame(df), hide_index=True)
     st.download_button("Download Full Audit CSV", data=df.to_csv(index=False).encode("utf-8"),
                        file_name="ai_inference_deal_desk_model.csv", mime="text/csv")
 
 with tab4:
     st.subheader("📈 Multi-Scenario Comparative Analysis Matrix")
+    st.caption("Story 5 · Compare plausible futures before deciding which assumptions or operating levers to change.")
     st.caption("Each scenario moves one driver family unless labeled combined. Prompt intensity scales ALL segments, including team/SMB. Deal counts are not rounded. "
                "These are simplified sensitivities on one operating plan, not independent plans. "
                "Scenarios 8-9 apply a flat price change to every month of the horizon; they are not a price-decline trajectory. "
@@ -2365,6 +2376,7 @@ with tab4:
 
 with tab5:
     st.subheader("📑 Assumptions & Audit Register (Data Governance)")
+    st.caption("Story 7 · Check assumptions, data quality and model-health flags before relying on a result.")
     st.caption("Generated from the live inputs, so values cannot drift from the model. 'Status' is an honest label: nothing here has been verified against actuals by this tool.")
     PRESET_EST = "Founder-profile preset (estimate) — replace with actuals"
     ASSUME = "Model assumption — verify"
@@ -2466,6 +2478,7 @@ with tab5:
 
 with tab6:
     st.subheader("🎯 Value-Creation Anchor & Hybrid Pricing Strategy")
+    st.caption("Stories 2–3 · Explore how customer value, pricing and usage patterns influence unit economics and who drives cost.")
     col_v1, col_v2 = st.columns(2)
 
     with col_v1:
@@ -2533,6 +2546,7 @@ with tab6:
 # ---------- tab 7: levers & goal-seek ----------
 with tab7:
     st.subheader("🎛️ What Moves Margin? Sensitivity & Goal-Seek")
+    st.caption("Story 5 · Test what-if changes and goal-seek toward a target, keeping the changed assumptions visible.")
     lc1, lc2 = st.columns(2)
     sens_metric_label = lc1.selectbox("Margin measure", list(METRIC_OPTIONS), index=0)
     sens_pct = lc2.slider("Move each input by ± (%)", 5, 50, 25, 5) / 100
@@ -2593,6 +2607,7 @@ with tab7:
 # ---------- tab 8: CAC, LTV & payback ----------
 with tab8:
     st.subheader("💰 CAC, LTV & Payback (free-tier cost counted as acquisition cost)")
+    st.caption("Story 6 · Add acquisition cost and lifetime economics when assessing customer profitability.")
     ac1, ac2 = st.columns(2)
     sm_monthly = ac1.number_input("Monthly sales & marketing spend ($, excluding free-tier inference)", min_value=0.0, value=0.0, step=500.0,
                                   help="Ads, sales salaries and commissions, tools, content. The model has no sales & marketing spend of its own, so enter yours.")
@@ -2622,6 +2637,7 @@ with tab8:
 # ---------- tab 9: save, compare & export ----------
 with tab9:
     st.subheader("🧪 Save, Compare & Export")
+    st.caption("Story 7 · Compare and export results for review, keeping assumptions and limitations with the numbers.")
     if "saved_scenarios" not in st.session_state:
         st.session_state["saved_scenarios"] = {}
     saved = st.session_state["saved_scenarios"]
@@ -2683,6 +2699,7 @@ with tab9:
 # ---------- tab: deal desk ----------
 with tab_deal:
     st.subheader("🤝 Deal Desk: does this customer deal clear the margin floor?")
+    st.caption("Story 6 · Pressure-test an individual customer deal against usage, price, cost-to-serve and contract assumptions.")
     st.caption("Prices one customer deal with the same per-prompt AI cost, token prices, caching, batch and AI cost path as the rest of the model. "
                "Token prices are illustrative placeholders, so treat the verdict as a planning view and confirm against your vendor rate card.")
     dd = dict(DEAL_DEFAULTS)
@@ -2801,6 +2818,7 @@ with tab_deal:
 # ---------- tab 10: feedback ----------
 with tab10:
     st.subheader("💬 Feedback")
+    st.caption("Utility · Share feedback or report an issue with the simulator.")
     st.markdown(FEEDBACK_WELCOME)
     _fb = feedback_config()
     _fallbacks = []
@@ -2939,3 +2957,6 @@ st.markdown(f"""
 """, unsafe_allow_html=True)
 
 st.caption("© 2026. The AI Unit Economics Deal Desk. All rights reserved.")
+
+# UX revision: story-led tab introductions, compact outlined controls, editorial typography and compact KPI cards.
+# Financial calculations and core engine were not intentionally modified.
