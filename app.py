@@ -2202,6 +2202,21 @@ if GUIDED:
                     show_df(_ans["table"], hide_index=True)
                 st.caption(f"Settings changed: {_ans['changed']} Same engine as the rest of the app; token prices are illustrative placeholders.")
 
+if GUIDED:
+    st.markdown('<div class="chapter" id="chapter-journey"><div class="eyebrow">THE STORY CONTINUES</div><h2>Follow the decisions, <span class="accent">chapter by chapter</span></h2><p class="lede">These chapters are now visible in the main page scroll. Use the analysis tabs underneath to explore the matching charts, controls and detailed outputs. The model calculations are unchanged.</p></div>', unsafe_allow_html=True)
+    for _story in [
+        story_note(2, "The margin reality", "Is growth actually making money?", "Alex can see revenue growing, but the answer changes depending on which costs are counted. Separate the margin earned on paying customers from reported margin and the fuller cost-to-serve view.", "Find out which users and product choices are putting pressure on margin."),
+        story_note(3, "Who drives the bill?", "Which customers and usage patterns consume the margin?", "Average cost can hide very different customer behaviors. Explore how value, pricing and usage patterns interact—and whether the way Alex charges customers reflects the cost of serving them.", "Pressure-test one customer deal before changing the overall pricing model."),
+        story_note(4, "Credits and cash", "Can the business afford the bill when it arrives?", "Credits can make current cash payments look small while underlying usage costs continue to build. Alex needs to understand credit drawdown, payable timing and actual cash paid—not just margin.", "Check the monthly roll-forward, then test a few different futures."),
+        story_note(5, "Forecast the fork in the road", "What if usage or pricing moves against us?", "A single forecast is only one possible future. Compare scenarios to see how usage intensity, customer mix, pricing and vendor costs could change the result before committing to a plan.", "Identify the biggest controllable lever and test it directly."),
+        story_note(6, "Find a lever", "What can Alex change to improve margin?", "Use sensitivity analysis to rank the assumptions that move margin most, then goal-seek to estimate what one lever would need to reach the target. This is a directional test, not a promise that the target is achievable in practice.", "Check customer lifetime economics before deciding how much acquisition spend is sustainable."),
+        story_note(7, "Beyond gross margin", "Does each new customer pay back the cost to win them?", "A customer can look profitable after serving costs and still be expensive to acquire. Add sales and marketing spend, then review CAC, lifetime value and payback as directional checks—not universal pass/fail rules.", "Test the economics of a specific deal and its usage commitments."),
+        story_note(8, "The customer deal", "Should we sign this deal at this price?", "A deal can bring in revenue and still destroy margin if usage is heavy, discounts are too deep or contract terms shift the cost burden. Test the expected customer profile and price against the same serving-cost assumptions used elsewhere in the model.", "Compare the deal with acquisition economics and record the assumptions behind the verdict."),
+        story_note(9, "Make the decision reviewable", "Can someone else reproduce this recommendation?", "Save a named scenario to preserve the model outputs and assumptions side by side. This gives Alex a clearer record of what was tested and makes comparisons easier to discuss with finance, product and engineering.", "Review the audit register before treating any scenario as a commitment."),
+        story_note(10, "Can we trust the answer?", "Which inputs are estimates—and which have been checked?", "A useful model should make uncertainty visible. Review the assumptions, flags and data-quality notes before sharing a forecast or using it to justify a commercial decision.", "Save a scenario with its assumptions so the decision can be reviewed later."),
+    ]:
+        st.markdown(_story, unsafe_allow_html=True)
+
 tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab_deal, tab10 = st.tabs([
     "📊 Revenue & Margin", "💳 Credits & Cash", "📋 Monthly Detail",
     "📈 Scenario Matrix", "📑 Audit Register", "🎯 Value & Pricing Strategy",
@@ -2210,8 +2225,7 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab_deal, tab10 = st.tabs(
 
 with tab1:
     st.subheader("Forecast Recognized Revenue, COGS & Gross Margin")
-    if GUIDED: st.markdown(story_note(2, "The margin reality", "Is growth actually making money?", "Alex can see revenue growing, but the answer changes depending on which costs are counted. Separate the margin earned on paying customers from reported margin and the fuller cost-to-serve view.", "Find out which users and product choices are putting pressure on margin."), unsafe_allow_html=True)
-    else: st.caption("Connect customer revenue to serving costs. Compare paid-customer, reported and fully loaded margin.")
+    if not GUIDED: st.caption("Connect customer revenue to serving costs. Compare paid-customer, reported and fully loaded margin.")
     fig = make_subplots(specs=[[{"secondary_y": True}]])
     fig.add_trace(go.Bar(x=df["Month"], y=df["Recognized Revenue ($)"], name="Recognized Revenue ($)", marker_color="#3182ce"), secondary_y=False)
     fig.add_trace(go.Scatter(x=df["Month"], y=df["Total Modeled COGS ($)"], name="Reported COGS ($)", mode="lines+markers", line=dict(color="#e53e3e", width=3)), secondary_y=False)
@@ -2338,8 +2352,7 @@ with tab1:
 
 with tab2:
     st.subheader("Credit Drawdown Velocity, Cash Payable & Cash Paid")
-    if GUIDED: st.markdown(story_note(4, "Credits and cash", "Can the business afford the bill when it arrives?", "Credits can make current cash payments look small while underlying usage costs continue to build. Alex needs to understand credit drawdown, payable timing and actual cash paid—not just margin.", "Check the monthly roll-forward, then test a few different futures."), unsafe_allow_html=True)
-    else: st.caption("Positive margin does not guarantee enough cash. Review credits, invoice timing and vendor bills.")
+    if not GUIDED: st.caption("Positive margin does not guarantee enough cash. Review credits, invoice timing and vendor bills.")
     fig2 = make_subplots(specs=[[{"secondary_y": True}]])
     fig2.add_trace(go.Bar(x=df["Month"], y=df["AI Credits Applied ($)"], name="AI Credits Applied ($)", marker_color="#38a169"), secondary_y=False)
     fig2.add_trace(go.Bar(x=df["Month"], y=df["Cloud Credits Applied ($)"], name="Cloud Credits Applied ($)", marker_color="#4fd1c5"), secondary_y=False)
@@ -2362,16 +2375,14 @@ with tab2:
 
 with tab3:
     st.subheader("Monthly Roll-Forward Detail")
-    if GUIDED: st.markdown(story_note("Reference", "Under the hood", "Where did that number come from?", "Use the monthly roll-forward to trace usage, revenue, costs and margin period by period. This is the detail behind the headline story—not a separate set of calculations.", "Use the scenario views to challenge the assumptions driving the forecast."), unsafe_allow_html=True)
-    else: st.caption("Supporting analysis · Follow monthly usage, revenue, costs and margin behind the headline results.")
+    if not GUIDED: st.caption("Supporting analysis · Follow monthly usage, revenue, costs and margin behind the headline results.")
     show_df(style_frame(df), hide_index=True)
     st.download_button("Download Full Audit CSV", data=df.to_csv(index=False).encode("utf-8"),
                        file_name="ai_inference_deal_desk_model.csv", mime="text/csv")
 
 with tab4:
     st.subheader("📈 Multi-Scenario Comparative Analysis Matrix")
-    if GUIDED: st.markdown(story_note(5, "Forecast the fork in the road", "What if usage or pricing moves against us?", "A single forecast is only one possible future. Compare scenarios to see how usage intensity, customer mix, pricing and vendor costs could change the result before committing to a plan.", "Identify the biggest controllable lever and test it directly."), unsafe_allow_html=True)
-    else: st.caption("Compare plausible futures before deciding which assumptions or operating levers to change.")
+    if not GUIDED: st.caption("Compare plausible futures before deciding which assumptions or operating levers to change.")
     st.caption("Each scenario moves one driver family unless labeled combined. Prompt intensity scales ALL segments, including team/SMB. Deal counts are not rounded. "
                "These are simplified sensitivities on one operating plan, not independent plans. "
                "Scenarios 8-9 apply a flat price change to every month of the horizon; they are not a price-decline trajectory. "
@@ -2404,8 +2415,7 @@ with tab4:
 
 with tab5:
     st.subheader("📑 Assumptions & Audit Register (Data Governance)")
-    if GUIDED: st.markdown(story_note(10, "Can we trust the answer?", "Which inputs are estimates—and which have been checked?", "A useful model should make uncertainty visible. Review the assumptions, flags and data-quality notes before sharing a forecast or using it to justify a commercial decision.", "Save a scenario with its assumptions so the decision can be reviewed later."), unsafe_allow_html=True)
-    else: st.caption("Check assumptions, data quality and model-health flags before relying on a result.")
+    if not GUIDED: st.caption("Check assumptions, data quality and model-health flags before relying on a result.")
     st.caption("Generated from the live inputs, so values cannot drift from the model. 'Status' is an honest label: nothing here has been verified against actuals by this tool.")
     PRESET_EST = "Founder-profile preset (estimate) — replace with actuals"
     ASSUME = "Model assumption — verify"
@@ -2507,8 +2517,7 @@ with tab5:
 
 with tab6:
     st.subheader("🎯 Value-Creation Anchor & Hybrid Pricing Strategy")
-    if GUIDED: st.markdown(story_note(3, "Who drives the bill?", "Which customers and usage patterns consume the margin?", "Average cost can hide very different customer behaviors. Explore how value, pricing and usage patterns interact—and whether the way Alex charges customers reflects the cost of serving them.", "Pressure-test one customer deal before changing the overall pricing model."), unsafe_allow_html=True)
-    else: st.caption("Explore how customer value, pricing and usage patterns influence unit economics and who drives cost.")
+    if not GUIDED: st.caption("Explore how customer value, pricing and usage patterns influence unit economics and who drives cost.")
     col_v1, col_v2 = st.columns(2)
 
     with col_v1:
@@ -2576,8 +2585,7 @@ with tab6:
 # ---------- tab 7: levers & goal-seek ----------
 with tab7:
     st.subheader("🎛️ What Moves Margin? Sensitivity & Goal-Seek")
-    if GUIDED: st.markdown(story_note(6, "Find a lever", "What can Alex change to improve margin?", "Use sensitivity analysis to rank the assumptions that move margin most, then goal-seek to estimate what one lever would need to reach the target. This is a directional test, not a promise that the target is achievable in practice.", "Check customer lifetime economics before deciding how much acquisition spend is sustainable."), unsafe_allow_html=True)
-    else: st.caption("Test what-if changes and goal-seek toward a target, keeping the changed assumptions visible.")
+    if not GUIDED: st.caption("Test what-if changes and goal-seek toward a target, keeping the changed assumptions visible.")
     lc1, lc2 = st.columns(2)
     sens_metric_label = lc1.selectbox("Margin measure", list(METRIC_OPTIONS), index=0)
     sens_pct = lc2.slider("Move each input by ± (%)", 5, 50, 25, 5) / 100
@@ -2638,8 +2646,7 @@ with tab7:
 # ---------- tab 8: CAC, LTV & payback ----------
 with tab8:
     st.subheader("💰 CAC, LTV & Payback (free-tier cost counted as acquisition cost)")
-    if GUIDED: st.markdown(story_note(7, "Beyond gross margin", "Does each new customer pay back the cost to win them?", "A customer can look profitable after serving costs and still be expensive to acquire. Add sales and marketing spend, then review CAC, lifetime value and payback as directional checks—not universal pass/fail rules.", "Test the economics of a specific deal and its usage commitments."), unsafe_allow_html=True)
-    else: st.caption("Add acquisition cost and lifetime economics when assessing customer profitability.")
+    if not GUIDED: st.caption("Add acquisition cost and lifetime economics when assessing customer profitability.")
     ac1, ac2 = st.columns(2)
     sm_monthly = ac1.number_input("Monthly sales & marketing spend ($, excluding free-tier inference)", min_value=0.0, value=0.0, step=500.0,
                                   help="Ads, sales salaries and commissions, tools, content. The model has no sales & marketing spend of its own, so enter yours.")
@@ -2669,8 +2676,7 @@ with tab8:
 # ---------- tab 9: save, compare & export ----------
 with tab9:
     st.subheader("🧪 Save, Compare & Export")
-    if GUIDED: st.markdown(story_note(9, "Make the decision reviewable", "Can someone else reproduce this recommendation?", "Save a named scenario to preserve the model outputs and assumptions side by side. This gives Alex a clearer record of what was tested and makes comparisons easier to discuss with finance, product and engineering.", "Review the audit register before treating any scenario as a commitment."), unsafe_allow_html=True)
-    else: st.caption("Compare and export results for review, keeping assumptions and limitations with the numbers.")
+    if not GUIDED: st.caption("Compare and export results for review, keeping assumptions and limitations with the numbers.")
     if "saved_scenarios" not in st.session_state:
         st.session_state["saved_scenarios"] = {}
     saved = st.session_state["saved_scenarios"]
@@ -2732,8 +2738,7 @@ with tab9:
 # ---------- tab: deal desk ----------
 with tab_deal:
     st.subheader("🤝 Deal Desk: does this customer deal clear the margin floor?")
-    if GUIDED: st.markdown(story_note(8, "The customer deal", "Should we sign this deal at this price?", "A deal can bring in revenue and still destroy margin if usage is heavy, discounts are too deep or contract terms shift the cost burden. Test the expected customer profile and price against the same serving-cost assumptions used elsewhere in the model.", "Compare the deal with acquisition economics and record the assumptions behind the verdict."), unsafe_allow_html=True)
-    else: st.caption("Pressure-test an individual customer deal against usage, price, cost-to-serve and contract assumptions.")
+    if not GUIDED: st.caption("Pressure-test an individual customer deal against usage, price, cost-to-serve and contract assumptions.")
     st.caption("Prices one customer deal with the same per-prompt AI cost, token prices, caching, batch and AI cost path as the rest of the model. "
                "Token prices are illustrative placeholders, so treat the verdict as a planning view and confirm against your vendor rate card.")
     dd = dict(DEAL_DEFAULTS)
