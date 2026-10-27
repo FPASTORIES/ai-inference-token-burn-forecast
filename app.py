@@ -106,18 +106,29 @@ _STATIC_CSS = """
 .main .block-container {background:#FFFFFF;}
 section[data-testid="stSidebar"] {background:#FFFFFF !important; border-right: 1px solid #DCE3EF;}
 section[data-testid="stSidebar"] h2, section[data-testid="stSidebar"] h3 {
-    font-size: 0.95rem !important; margin-top: 6px !important; margin-bottom: 2px !important;
-    padding-bottom: 0px !important; font-weight: 700 !important;
+    font-size: 0.95rem !important; line-height: 1.25 !important;
+    margin-top: .35rem !important; margin-bottom: .15rem !important;
+    padding-bottom: 0 !important; font-weight: 700 !important;
 }
-section[data-testid="stSidebar"] label {font-size: 0.75rem !important; color: var(--label) !important;}
-section[data-testid="stSidebar"] [data-testid="stVerticalBlock"] {gap: .32rem !important;}
+/* A consistent rhythm for sidebar sections: heading, helper copy, then controls. */
+section[data-testid="stSidebar"] label {font-size: 0.78rem !important; line-height: 1.3 !important; color: var(--label) !important;}
+section[data-testid="stSidebar"] [data-testid="stVerticalBlock"] {gap: .42rem !important;}
+section[data-testid="stSidebar"] [data-testid="stWidgetLabel"] {margin-bottom: .18rem !important;}
+section[data-testid="stSidebar"] [data-testid="stCaptionContainer"] {margin-top: -.12rem !important; margin-bottom: .18rem !important;}
+section[data-testid="stSidebar"] [data-testid="stHorizontalBlock"] {align-items: start !important; gap: .7rem !important;}
+section[data-testid="stSidebar"] [data-testid="stNumberInput"],
+section[data-testid="stSidebar"] [data-testid="stSelectbox"],
+section[data-testid="stSidebar"] [data-testid="stSlider"] {margin-bottom: .12rem !important;}
 section[data-testid="stSidebar"] input, section[data-testid="stSidebar"] [data-baseweb="select"] > div, section[data-testid="stSidebar"] [data-testid="stNumberInput"] > div {border:1px solid #C9D4E5 !important; border-radius:7px !important; background:#FFFFFF !important;}
 section[data-testid="stSidebar"] [data-testid="stExpander"] {border:1px solid #D7DFEC !important; border-radius:8px !important;}
-section[data-testid="stSidebar"] [data-testid="stWidgetLabel"] {margin-bottom: .12rem !important;}
 section[data-testid="stSidebar"] [data-testid="stNumberInput"] button {min-height: 1.9rem !important;}
 section[data-testid="stSidebar"] [data-testid="stNumberInput"] input {min-height: 1.9rem !important;}
 section[data-testid="stSidebar"] [data-testid="stSlider"] {padding-top: 0 !important; padding-bottom: 0 !important;}
-section[data-testid="stSidebar"] hr {margin: .45rem 0 !important;}
+section[data-testid="stSidebar"] hr {margin: .7rem 0 .55rem !important; border-color: #DCE3EF !important;}
+section[data-testid="stSidebar"] [data-testid="stToggle"] {padding: .12rem 0 .2rem !important;}
+section[data-testid="stSidebar"] [data-testid="stToggle"] label {font-size: .84rem !important; font-weight: 600 !important; line-height: 1.35 !important;}
+section[data-testid="stSidebar"] [data-testid="stExpander"] {margin: .2rem 0 .35rem !important;}
+section[data-testid="stSidebar"] [data-testid="stExpander"] summary {padding: .55rem .7rem !important;}
 div[data-testid="stMetric"] {
     background:var(--card-bg); border:1px solid var(--card-border); padding:6px 10px !important;
     border-radius:6px; box-shadow: 0 1px 2px rgba(0,0,0,0.02);
@@ -589,7 +600,7 @@ forecast_horizon = int(st.sidebar.select_slider("Forecast horizon", options=[3, 
 
 st.sidebar.markdown("---")
 advanced_mode = st.sidebar.toggle(
-    "🛠️ Enable Advanced Deal Desk Parameters", value=False,
+    "Advanced Deal Desk Parameters", value=False,
     help="Start with the simpler founder view. Turn this on to edit every model assumption.",
 )
 
@@ -649,7 +660,8 @@ with st.sidebar.expander("More assumptions · targets and cost treatment", expan
     margin_target = st.slider("Target Gross Margin (%)", 0, 90, 60)
     budget_monthly = st.number_input("Monthly COGS Budget Cap ($; 0 = none)", min_value=0.0, value=0.0, step=1000.0)
 
-    st.header("3. Cost Treatment & AI Cost Path")
+    st.markdown("**Cost treatment & AI cost path**")
+    st.caption("Choose where free-tier costs are booked and whether unit costs change over time.")
     _treat_opts = {"All in COGS": "COGS", "All in sales & marketing": "S&M", "Trials in S&M, freemium in COGS": "SPLIT"}
     _treat = st.radio(
         "Free / trial inference cost is booked to", list(_treat_opts), index=0,
