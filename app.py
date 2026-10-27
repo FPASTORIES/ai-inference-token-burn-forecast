@@ -330,7 +330,7 @@ if GUIDED:
 <circle cx="58" cy="204" r="13" fill="var(--chip-bg)"/><path d="M52 204 l4 4 8 -9" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round"/><text x="80" y="209" font-size="12" fill="var(--label)" font-family="sans-serif">Growth → profit?</text>
 </svg></div><div class="founder-question"><em>The founder's question: can growth turn into profit?</em></div>
 """, unsafe_allow_html=True)
-    st.markdown(f'<div class="chapter" id="ch0" style="border-top:0;margin-top:6px"><div class="eyebrow">01 / Start here</div>'
+    st.markdown(f'<div class="chapter" id="ch0" style="border-top:0;margin-top:6px"><div class="eyebrow">00 / Start here</div>'
                 f'<h2>More users. More revenue. <span class="accent"><em>More profit?</em></span></h2>'
                 f'<p class="lede">Meet Alex, an AI product founder. Before changing prices or chasing growth, Alex needs to understand three different margin views. Choose a starting profile; the cards update using the model below.</p></div>',
                 unsafe_allow_html=True)
@@ -343,7 +343,7 @@ if GUIDED:
     slot_cards = st.container()
     slot_chat = st.container()
     st.markdown('<div class="chapter" id="deeper"><div class="eyebrow">The working model</div><h2>Now test the <span class="accent">business decisions</span></h2>'
-                '<p class="lede">The story now moves from prompt cost to margin, cost drivers, cash timing, forecast risk, a customer deal, customer lifetime economics and model trust. Open any tab to investigate the question in detail; the existing analyst views, controls and visualizations remain available.</p></div>',
+                '<p class="lede">The story now moves from prompt cost to margin, cost drivers, cash timing, forecast risk, controllable levers, customer lifetime economics, a customer deal and model trust. Open any tab to investigate the question in detail; the existing analyst views, controls and visualizations remain available.</p></div>',
                 unsafe_allow_html=True)
 else:
     st.markdown("""
@@ -2362,7 +2362,7 @@ with tab2:
 
 with tab3:
     st.subheader("Monthly Roll-Forward Detail")
-    if GUIDED: st.markdown(story_note("—", "Under the hood", "Where did that number come from?", "Use the monthly roll-forward to trace usage, revenue, costs and margin period by period. This is the detail behind the headline story—not a separate set of calculations.", "Use the scenario views to challenge the assumptions driving the forecast."), unsafe_allow_html=True)
+    if GUIDED: st.markdown(story_note("Reference", "Under the hood", "Where did that number come from?", "Use the monthly roll-forward to trace usage, revenue, costs and margin period by period. This is the detail behind the headline story—not a separate set of calculations.", "Use the scenario views to challenge the assumptions driving the forecast."), unsafe_allow_html=True)
     else: st.caption("Supporting analysis · Follow monthly usage, revenue, costs and margin behind the headline results.")
     show_df(style_frame(df), hide_index=True)
     st.download_button("Download Full Audit CSV", data=df.to_csv(index=False).encode("utf-8"),
@@ -2404,7 +2404,7 @@ with tab4:
 
 with tab5:
     st.subheader("📑 Assumptions & Audit Register (Data Governance)")
-    if GUIDED: st.markdown(story_note(8, "Can we trust the answer?", "Which inputs are estimates—and which have been checked?", "A useful model should make uncertainty visible. Review the assumptions, flags and data-quality notes before sharing a forecast or using it to justify a commercial decision.", "Save a scenario with its assumptions so the decision can be reviewed later."), unsafe_allow_html=True)
+    if GUIDED: st.markdown(story_note(10, "Can we trust the answer?", "Which inputs are estimates—and which have been checked?", "A useful model should make uncertainty visible. Review the assumptions, flags and data-quality notes before sharing a forecast or using it to justify a commercial decision.", "Save a scenario with its assumptions so the decision can be reviewed later."), unsafe_allow_html=True)
     else: st.caption("Check assumptions, data quality and model-health flags before relying on a result.")
     st.caption("Generated from the live inputs, so values cannot drift from the model. 'Status' is an honest label: nothing here has been verified against actuals by this tool.")
     PRESET_EST = "Founder-profile preset (estimate) — replace with actuals"
@@ -2576,7 +2576,7 @@ with tab6:
 # ---------- tab 7: levers & goal-seek ----------
 with tab7:
     st.subheader("🎛️ What Moves Margin? Sensitivity & Goal-Seek")
-    if GUIDED: st.markdown(story_note(5, "Find a lever", "What can Alex change to improve margin?", "Use sensitivity analysis to rank the assumptions that move margin most, then goal-seek to estimate what one lever would need to reach the target. This is a directional test, not a promise that the target is achievable in practice.", "Check customer lifetime economics before deciding how much acquisition spend is sustainable."), unsafe_allow_html=True)
+    if GUIDED: st.markdown(story_note(6, "Find a lever", "What can Alex change to improve margin?", "Use sensitivity analysis to rank the assumptions that move margin most, then goal-seek to estimate what one lever would need to reach the target. This is a directional test, not a promise that the target is achievable in practice.", "Check customer lifetime economics before deciding how much acquisition spend is sustainable."), unsafe_allow_html=True)
     else: st.caption("Test what-if changes and goal-seek toward a target, keeping the changed assumptions visible.")
     lc1, lc2 = st.columns(2)
     sens_metric_label = lc1.selectbox("Margin measure", list(METRIC_OPTIONS), index=0)
@@ -2669,7 +2669,7 @@ with tab8:
 # ---------- tab 9: save, compare & export ----------
 with tab9:
     st.subheader("🧪 Save, Compare & Export")
-    if GUIDED: st.markdown(story_note(8, "Make the decision reviewable", "Can someone else reproduce this recommendation?", "Save a named scenario to preserve the model outputs and assumptions side by side. This gives Alex a clearer record of what was tested and makes comparisons easier to discuss with finance, product and engineering.", "Review the audit register before treating any scenario as a commitment."), unsafe_allow_html=True)
+    if GUIDED: st.markdown(story_note(9, "Make the decision reviewable", "Can someone else reproduce this recommendation?", "Save a named scenario to preserve the model outputs and assumptions side by side. This gives Alex a clearer record of what was tested and makes comparisons easier to discuss with finance, product and engineering.", "Review the audit register before treating any scenario as a commitment."), unsafe_allow_html=True)
     else: st.caption("Compare and export results for review, keeping assumptions and limitations with the numbers.")
     if "saved_scenarios" not in st.session_state:
         st.session_state["saved_scenarios"] = {}
@@ -2732,7 +2732,7 @@ with tab9:
 # ---------- tab: deal desk ----------
 with tab_deal:
     st.subheader("🤝 Deal Desk: does this customer deal clear the margin floor?")
-    if GUIDED: st.markdown(story_note(6, "The customer deal", "Should we sign this deal at this price?", "A deal can bring in revenue and still destroy margin if usage is heavy, discounts are too deep or contract terms shift the cost burden. Test the expected customer profile and price against the same serving-cost assumptions used elsewhere in the model.", "Compare the deal with acquisition economics and record the assumptions behind the verdict."), unsafe_allow_html=True)
+    if GUIDED: st.markdown(story_note(8, "The customer deal", "Should we sign this deal at this price?", "A deal can bring in revenue and still destroy margin if usage is heavy, discounts are too deep or contract terms shift the cost burden. Test the expected customer profile and price against the same serving-cost assumptions used elsewhere in the model.", "Compare the deal with acquisition economics and record the assumptions behind the verdict."), unsafe_allow_html=True)
     else: st.caption("Pressure-test an individual customer deal against usage, price, cost-to-serve and contract assumptions.")
     st.caption("Prices one customer deal with the same per-prompt AI cost, token prices, caching, batch and AI cost path as the rest of the model. "
                "Token prices are illustrative placeholders, so treat the verdict as a planning view and confirm against your vendor rate card.")
