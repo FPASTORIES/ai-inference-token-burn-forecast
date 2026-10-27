@@ -2203,19 +2203,99 @@ if GUIDED:
                 st.caption(f"Settings changed: {_ans['changed']} Same engine as the rest of the app; token prices are illustrative placeholders.")
 
 if GUIDED:
-    st.markdown('<div class="chapter" id="chapter-journey"><div class="eyebrow">THE STORY CONTINUES</div><h2>Follow the decisions, <span class="accent">chapter by chapter</span></h2><p class="lede">These chapters are now visible in the main page scroll. Use the analysis tabs underneath to explore the matching charts, controls and detailed outputs. The model calculations are unchanged.</p></div>', unsafe_allow_html=True)
-    for _story in [
-        story_note(2, "The margin reality", "Is growth actually making money?", "Alex can see revenue growing, but the answer changes depending on which costs are counted. Separate the margin earned on paying customers from reported margin and the fuller cost-to-serve view.", "Find out which users and product choices are putting pressure on margin."),
-        story_note(3, "Who drives the bill?", "Which customers and usage patterns consume the margin?", "Average cost can hide very different customer behaviors. Explore how value, pricing and usage patterns interact—and whether the way Alex charges customers reflects the cost of serving them.", "Pressure-test one customer deal before changing the overall pricing model."),
-        story_note(4, "Credits and cash", "Can the business afford the bill when it arrives?", "Credits can make current cash payments look small while underlying usage costs continue to build. Alex needs to understand credit drawdown, payable timing and actual cash paid—not just margin.", "Check the monthly roll-forward, then test a few different futures."),
-        story_note(5, "Forecast the fork in the road", "What if usage or pricing moves against us?", "A single forecast is only one possible future. Compare scenarios to see how usage intensity, customer mix, pricing and vendor costs could change the result before committing to a plan.", "Identify the biggest controllable lever and test it directly."),
-        story_note(6, "Find a lever", "What can Alex change to improve margin?", "Use sensitivity analysis to rank the assumptions that move margin most, then goal-seek to estimate what one lever would need to reach the target. This is a directional test, not a promise that the target is achievable in practice.", "Check customer lifetime economics before deciding how much acquisition spend is sustainable."),
-        story_note(7, "Beyond gross margin", "Does each new customer pay back the cost to win them?", "A customer can look profitable after serving costs and still be expensive to acquire. Add sales and marketing spend, then review CAC, lifetime value and payback as directional checks—not universal pass/fail rules.", "Test the economics of a specific deal and its usage commitments."),
-        story_note(8, "The customer deal", "Should we sign this deal at this price?", "A deal can bring in revenue and still destroy margin if usage is heavy, discounts are too deep or contract terms shift the cost burden. Test the expected customer profile and price against the same serving-cost assumptions used elsewhere in the model.", "Compare the deal with acquisition economics and record the assumptions behind the verdict."),
-        story_note(9, "Make the decision reviewable", "Can someone else reproduce this recommendation?", "Save a named scenario to preserve the model outputs and assumptions side by side. This gives Alex a clearer record of what was tested and makes comparisons easier to discuss with finance, product and engineering.", "Review the audit register before treating any scenario as a commitment."),
-        story_note(10, "Can we trust the answer?", "Which inputs are estimates—and which have been checked?", "A useful model should make uncertainty visible. Review the assumptions, flags and data-quality notes before sharing a forecast or using it to justify a commercial decision.", "Save a scenario with its assumptions so the decision can be reviewed later."),
-    ]:
-        st.markdown(_story, unsafe_allow_html=True)
+    st.markdown('<div class="chapter" id="chapter-journey"><div class="eyebrow">THE STORY CONTINUES</div><h2>Follow the decisions, <span class="accent">chapter by chapter</span></h2><p class="lede">These chapters now use live outputs from the current model settings. The detailed tabs below contain the supporting charts, controls and exports. Change the inputs above or in the sidebar and these numbers update with the model.</p></div>', unsafe_allow_html=True)
+
+    def _story_chapter(num, label, question, lede, next_step, metrics, detail_tab):
+        st.markdown(story_note(num, label, question, lede, f'{next_step} Detailed view: {detail_tab}.'), unsafe_allow_html=True)
+        cols = st.columns(len(metrics))
+        for col, (metric_label, metric_value, metric_help) in zip(cols, metrics):
+            col.metric(metric_label, metric_value, help=metric_help, delta_color="off")
+        st.markdown('<div class="story-spacer"></div>', unsafe_allow_html=True)
+
+    _below_target = int((df["Modeled Gross Margin (%)"] < margin_target).sum())
+    _free_share_pct = 100 * free_share
+    _prompt_total = float(df["Monthly Prompts"].sum())
+    _free_prompt_pct = 100 * float(df["Free Prompts"].sum()) / _prompt_total if _prompt_total > 0 else 0.0
+    _remaining_ai = float(df["Remaining AI Credits ($)"].iloc[-1])
+    _remaining_cloud = float(df["Remaining Cloud Credits ($)"].iloc[-1])
+    _cash_payable = float(df["Estimated Cash Payable ($)"].sum()) if "Estimated Cash Payable ($)" in df else np.nan
+    _cash_paid = float(df["Estimated Cash Paid This Month ($)"].sum()) if "Estimated Cash Paid This Month ($)" in df else np.nan
+    _api_per_1k = float(df["API Cost ($)"].sum() / _prompt_total * 1000) if _prompt_total > 0 else np.nan
+    _scenario_count = len(st.session_state.get("saved_scenarios", {}))
+    _check_count = sum(1 for flag in _flags if flag[0] == "check")
+
+    _story_chapter(2, "The margin reality", "Is growth actually making money?",
+        "Revenue and margin are different questions. Compare what the paying customers earn, what the P&L reports, and what remains after the extra costs you have entered.",
+        "Explore how free users and usage mix affect the answer.",
+        [("Forecast revenue", f"${tot['rev']:,.0f}", "Recognized revenue across the selected forecast horizon."),
+         ("Reported gross margin", fmt_pct(tot["gm"]), "Uses the current free-tier accounting treatment."),
+         ("Fully loaded margin", fmt_pct(tot["fl_gm"]), "Includes other COGS lines entered above, if any.")], "Revenue & Margin")
+
+    _story_chapter(3, "Who drives the bill?", "Which customers and usage patterns consume the margin?",
+        "Averages can hide the cost of free traffic, heavy users and infrastructure. These figures show how much demand is flowing through the model and the direct inference bill associated with it.",
+        "Compare traffic types and pricing assumptions.",
+        [("Free share of prompts", f"{_free_prompt_pct:.1f}%", "Free prompts divided by all modeled prompts over the horizon."),
+         ("Free-tier inference cost", f"${tot['free_cost']:,.0f}", "Free and trial inference cost over the forecast horizon."),
+         ("API cost / 1,000 prompts", "n/a" if pd.isna(_api_per_1k) else f"${_api_per_1k:,.2f}", "Aggregate API cost divided by total prompts; a blended estimate.")], "Value & Pricing Strategy")
+
+    _story_chapter(4, "Credits and cash", "Can the business afford the bill when it arrives?",
+        "Credits reduce cash payable but do not make usage economically free. Cash paid also depends on invoice timing, so look at balances and cash timing alongside gross margin.",
+        "Inspect the monthly roll-forward and payment lag.",
+        [("AI credits remaining", f"${_remaining_ai:,.0f}", "Modeled remaining AI credit balance at the end of the horizon."),
+         ("Cloud credits remaining", f"${_remaining_cloud:,.0f}", "Modeled remaining cloud credit balance at the end of the horizon."),
+         ("Estimated cash paid", "n/a" if pd.isna(_cash_paid) else f"${_cash_paid:,.0f}", "Modeled vendor cash paid during the horizon; not total company cash flow.")], "Credits & Cash")
+
+    _story_chapter(5, "Forecast the fork in the road", "What if usage or pricing moves against us?",
+        "This is the current base case, not a promise. The ending run-rate, ending margin and number of months below target show what the current assumptions imply before you stress them.",
+        "Compare explicit scenario sensitivities before committing to a plan.",
+        [("Ending ARR run-rate", f"${tot['arr']:,.0f}", "Annualized recurring revenue run-rate in the ending month."),
+         ("Ending-month margin", fmt_pct(last_margin), "Reported gross margin in the final modeled month."),
+         ("Months below target", f"{_below_target} of {H}", f"Months where reported margin is below the current {margin_target}% target.")], "Scenario Matrix")
+
+    try:
+        _story_base, _story_tornado = tornado_cached(P, 0.25, "gm")
+        _story_top_lever = _story_tornado.iloc[0] if not _story_tornado.empty else None
+    except Exception:
+        _story_top_lever = None
+    _lever_label = str(_story_top_lever["Driver"]) if _story_top_lever is not None else "No margin lever available"
+    _lever_swing = f"{float(_story_top_lever['Δ Swing (pp)']):.1f} pp" if _story_top_lever is not None else "n/a"
+    _story_chapter(6, "Find a lever", "What can Alex change to improve margin?",
+        "A lever is useful only if it moves the result enough to matter. The model's existing sensitivity method tests one assumption at a time while holding the others constant.",
+        "Use goal-seek to test what a target would require; treat it as directional.",
+        [("Current reported margin", fmt_pct(tot["gm"]), "Forecast-period reported gross margin."),
+         ("Largest tested driver", _lever_label, "Top driver from the existing ±25% reported-margin sensitivity, when available."),
+         ("Largest swing", _lever_swing, "Margin swing reported by the existing sensitivity analysis.")], "Levers & Goal-Seek")
+
+    _story_cl = cac_ltv(df, P, tot, 0.0, True)
+    _story_ltv_cac = "n/a" if pd.isna(_story_cl["ltv_cac"]) else f"{_story_cl['ltv_cac']:.1f}x"
+    _story_payback = "n/a" if pd.isna(_story_cl["payback"]) else f"{_story_cl['payback']:.1f} mo"
+    _story_chapter(7, "Beyond gross margin", "Does each new customer pay back the cost to win them?",
+        "The lifetime-value view adds acquisition economics to serving cost. This quick read includes free-tier inference as acquisition cost but assumes zero additional sales-and-marketing spend; enter real spend in the detailed view before relying on the ratio.",
+        "Add sales-and-marketing spend and review payback assumptions.",
+        [("New paying customers", f"{_story_cl['n_new']:,.0f}", "Modeled new Pro conversions plus new Team / SMB deals over the horizon."),
+         ("LTV / CAC (before S&M spend)", _story_ltv_cac, "Directional only; no additional sales-and-marketing spend is included in this story summary."),
+         ("CAC payback", _story_payback, "Directional model output; see assumptions in the detailed CAC & LTV tab.")], "CAC & LTV")
+
+    _story_chapter(8, "The customer deal", "Should we sign this deal at this price?",
+        "The company-wide margin is context, not a deal verdict. The Deal Desk lets you set seats, discount, term, billing and usage, then evaluates that specific deal against the configured margin floor.",
+        "Set the actual commercial terms and usage profile before interpreting a verdict.",
+        [("Main-model paid margin", fmt_pct(tot["paid_gm"]), "Company-wide paid-customer margin; not the deal's own margin."),
+         ("Current margin target", f"{margin_target:.0f}%", "The model's current target used for planning."),
+         ("Ending paid accounts", f"{float(m_last['Ending Paid Accounts']):,.0f}", "Modeled paid accounts at the end of the forecast horizon.")], "Deal Desk")
+
+    _story_chapter(9, "Make the decision reviewable", "Can someone else reproduce this recommendation?",
+        "A scenario comparison is only useful if the assumptions and outputs are preserved. Saved scenarios are held in the current browser session; export them if you need a durable record.",
+        "Save the current setup and compare it with a named alternative.",
+        [("Saved scenarios", f"{_scenario_count} of 8", "Saved scenarios currently available in this browser session."),
+         ("Forecast horizon", f"{H} months", "Current model forecast length."),
+         ("AI cost path", "Flat" if ai_path_is_flat(P) else "Active", ai_path_text(P, H))], "Compare & Export")
+
+    _story_chapter(10, "Can we trust the answer?", "Which inputs are estimates—and which have been checked?",
+        "The model is only as reliable as its inputs. Review sanity flags and the illustrative token prices before treating a forecast as a commitment. A flag is a prompt to investigate, not automatically proof of an error.",
+        "Review the audit register and verify assumptions against actual vendor and product data.",
+        [("Input checks", f"{_check_count}", "Number of current flags classified as checks, rather than informational notes."),
+         ("All health flags", f"{len(_flags)}", "Includes both checks and informational flags."),
+         ("Token prices", "Illustrative", "The model's token prices are placeholders, not live vendor quotes.")], "Audit Register")
 
 tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab_deal, tab10 = st.tabs([
     "📊 Revenue & Margin", "💳 Credits & Cash", "📋 Monthly Detail",
