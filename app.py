@@ -112,8 +112,16 @@ section[data-testid="stSidebar"] h2, section[data-testid="stSidebar"] h3 {
 }
 /* A consistent rhythm for sidebar sections: heading, helper copy, then controls. */
 section[data-testid="stSidebar"] label {font-size: 0.78rem !important; line-height: 1.3 !important; color: var(--label) !important;}
-section[data-testid="stSidebar"] [data-testid="stVerticalBlock"] {gap: .42rem !important;}
+section[data-testid="stSidebar"] [data-testid="stVerticalBlock"] {gap: .58rem !important;}
+section[data-testid="stSidebar"] h1, section[data-testid="stSidebar"] h2, section[data-testid="stSidebar"] h3 {margin-bottom: .55rem !important;}
+section[data-testid="stSidebar"] [data-testid="stCaptionContainer"] {margin-top: .05rem !important; margin-bottom: .35rem !important;}
+section[data-testid="stSidebar"] [data-testid="stHorizontalBlock"] {align-items: end !important; gap: .7rem !important;}
+section[data-testid="stSidebar"] [data-testid="stSlider"] [data-baseweb="slider"] {padding-left: .15rem !important; padding-right: .15rem !important;}
+section[data-testid="stSidebar"] [data-testid="stNumberInput"] input {border:1px solid #C9D4E5 !important; border-radius:7px !important; background:#FFFFFF !important;}
+
 section[data-testid="stSidebar"] [data-testid="stWidgetLabel"] {margin-bottom: .18rem !important;}
+section[data-testid="stSidebar"] [data-testid="stCaptionContainer"] {margin-top: .04rem !important; margin-bottom: .35rem !important;}
+section[data-testid="stSidebar"] h1, section[data-testid="stSidebar"] h2, section[data-testid="stSidebar"] h3 {margin-bottom: .55rem !important;}
 section[data-testid="stSidebar"] [data-testid="stCaptionContainer"] {margin-top: -.12rem !important; margin-bottom: .18rem !important;}
 section[data-testid="stSidebar"] [data-testid="stHorizontalBlock"] {align-items: start !important; gap: .7rem !important;}
 section[data-testid="stSidebar"] [data-testid="stNumberInput"],
@@ -660,12 +668,45 @@ with _key_left:
     )
 with _key_right:
     starting_pro_subs = st.number_input("Pro subscribers", min_value=0, value=preset["pro"], step=50, key=f"pro_{founder_stage}")
-    dau_monthly_growth = st.slider(
-        "Monthly DAU growth", 0.0, 25.0, float(preset["growth"]), 0.5, key=f"growth_{founder_stage}",
-        help="Growth of total daily active users, applied from month 2 onward.",
-    ) / 100
+    # Paired slider + numeric input. Callbacks only synchronize presentation state; model inputs are unchanged.
+    _growth_slider_key = f"growth_slider_{founder_stage}"
+    _growth_number_key = f"growth_number_{founder_stage}"
+    _prompts_slider_key = f"prompts_slider_{founder_stage}"
+    _prompts_number_key = f"prompts_number_{founder_stage}"
+    if _growth_slider_key not in st.session_state:
+        st.session_state[_growth_slider_key] = float(preset["growth"])
+    if _growth_number_key not in st.session_state:
+        st.session_state[_growth_number_key] = float(preset["growth"])
+    if _prompts_slider_key not in st.session_state:
+        st.session_state[_prompts_slider_key] = int(preset["prompts"])
+    if _prompts_number_key not in st.session_state:
+        st.session_state[_prompts_number_key] = int(preset["prompts"])
+    def _sync_growth_slider():
+        st.session_state[_growth_number_key] = st.session_state[_growth_slider_key]
+    def _sync_growth_number():
+        st.session_state[_growth_slider_key] = st.session_state[_growth_number_key]
+    def _sync_prompts_slider():
+        st.session_state[_prompts_number_key] = st.session_state[_prompts_slider_key]
+    def _sync_prompts_number():
+        st.session_state[_prompts_slider_key] = st.session_state[_prompts_number_key]
+    st.caption("Forecast assumptions")
+    _growth_cols = st.columns([1.55, 0.8], gap="small")
+    with _growth_cols[0]:
+        st.slider("Monthly DAU growth (%)", 0.0, 25.0, step=0.5, key=_growth_slider_key,
+                  on_change=_sync_growth_slider, help="Growth of total daily active users, applied from month 2 onward.")
+    with _growth_cols[1]:
+        st.number_input("Value", min_value=0.0, max_value=25.0, step=0.5, key=_growth_number_key,
+                        on_change=_sync_growth_number, label_visibility="collapsed", help="Enter monthly DAU growth as a percentage.")
+    dau_monthly_growth = float(st.session_state[_growth_slider_key]) / 100
     _prompts_help = "Typical paying user's prompts per day. Higher usage means a higher inference bill."
-    baseline_prompts = st.slider("Prompts / paid user / day", 1, 20, int(preset["prompts"]), key=f"prompts_{founder_stage}", help=_prompts_help)
+    _prompt_cols = st.columns([1.55, 0.8], gap="small")
+    with _prompt_cols[0]:
+        st.slider("Prompts / paid user / day", 1, 20, step=1, key=_prompts_slider_key,
+                  on_change=_sync_prompts_slider, help=_prompts_help)
+    with _prompt_cols[1]:
+        st.number_input("Value", min_value=1, max_value=20, step=1, key=_prompts_number_key,
+                        on_change=_sync_prompts_number, label_visibility="collapsed", help="Enter prompts per paid user per day.")
+    baseline_prompts = int(st.session_state[_prompts_slider_key])
 
 with st.sidebar.expander("More assumptions · targets and cost treatment", expanded=False):
     st.header("Targets")
@@ -2203,13 +2244,116 @@ if GUIDED:
                 st.caption(f"Settings changed: {_ans['changed']} Same engine as the rest of the app; token prices are illustrative placeholders.")
 
 if GUIDED:
-    st.markdown('<div class="chapter" id="chapter-journey"><div class="eyebrow">THE STORY CONTINUES</div><h2>Follow the decisions, <span class="accent">chapter by chapter</span></h2><p class="lede">These chapters now use live outputs from the current model settings. The detailed tabs below contain the supporting charts, controls and exports. Change the inputs above or in the sidebar and these numbers update with the model.</p></div>', unsafe_allow_html=True)
+    st.markdown('<div class="chapter" id="chapter-journey"><div class="eyebrow">THE STORY CONTINUES</div><h2>Follow the decisions, <span class="accent">chapter by chapter</span></h2><p class="lede">Each chapter brings the question, live model evidence and interpretation together. Expand the technical details when you want the underlying rows. The detailed analysis tabs remain available below.</p></div>', unsafe_allow_html=True)
 
     def _story_chapter(num, label, question, lede, next_step, metrics, detail_tab):
         st.markdown(story_note(num, label, question, lede, f'{next_step} Detailed view: {detail_tab}.'), unsafe_allow_html=True)
         cols = st.columns(len(metrics))
         for col, (metric_label, metric_value, metric_help) in zip(cols, metrics):
             col.metric(metric_label, metric_value, help=metric_help, delta_color="off")
+        # Each chapter puts supporting evidence in the narrative flow, using the already-computed model dataframe.
+        fig = None
+        detail_cols = []
+        if num == 2:
+            fig = make_subplots(specs=[[{"secondary_y": True}]])
+            fig.add_trace(go.Bar(x=df["Month"], y=df["Recognized Revenue ($)"], name="Revenue ($)"), secondary_y=False)
+            fig.add_trace(go.Scatter(x=df["Month"], y=df["Total Modeled COGS ($)"], name="Reported COGS ($)", mode="lines+markers"), secondary_y=False)
+            fig.add_trace(go.Scatter(x=df["Month"], y=df["Modeled Gross Margin (%)"], name="Reported margin (%)", mode="lines+markers"), secondary_y=True)
+            fig.add_trace(go.Scatter(x=df["Month"], y=df["Paid-Customer Gross Margin (%)"], name="Paid-customer margin (%)", mode="lines"), secondary_y=True)
+            fig.update_yaxes(title_text="$ / month", secondary_y=False, rangemode="tozero")
+            fig.update_yaxes(title_text="Margin (%)", secondary_y=True)
+            detail_cols = ["Month", "Recognized Revenue ($)", "Total Modeled COGS ($)", "Modeled Gross Margin (%)", "Paid-Customer Gross Margin (%)", "Fully Loaded Gross Margin (%)"]
+        elif num == 3:
+            fig = go.Figure()
+            fig.add_trace(go.Bar(x=df["Month"], y=df["Free Prompts"], name="Free prompts"))
+            if "Monthly Prompts" in df:
+                _paid_prompts = (df["Monthly Prompts"] - df["Free Prompts"]).clip(lower=0)
+                fig.add_trace(go.Bar(x=df["Month"], y=_paid_prompts, name="Paid / other prompts"))
+            fig.update_layout(barmode="stack", yaxis_title="Prompts / month")
+            detail_cols = ["Month", "Monthly Prompts", "Free Prompts", "Free-Tier Inference Cost ($)", "API Cost ($)"]
+        elif num == 4:
+            fig = go.Figure()
+            for colname, name in [("Estimated Cash Payable ($)", "Cash payable"), ("Estimated Cash Paid This Month ($)", "Cash paid"), ("AI Credits Applied ($)", "AI credits applied"), ("Cloud Credits Applied ($)", "Cloud credits applied")]:
+                if colname in df: fig.add_trace(go.Scatter(x=df["Month"], y=df[colname], name=name, mode="lines+markers"))
+            fig.update_layout(yaxis_title="$ / month")
+            detail_cols = ["Month", "Estimated Cash Payable ($)", "Estimated Cash Paid This Month ($)", "AI Credits Applied ($)", "Cloud Credits Applied ($)", "Remaining AI Credits ($)", "Remaining Cloud Credits ($)"]
+        elif num == 5:
+            fig = go.Figure()
+            fig.add_trace(go.Scatter(x=df["Month"], y=df["Modeled Gross Margin (%)"], name="Reported margin", mode="lines+markers"))
+            fig.add_trace(go.Scatter(x=df["Month"], y=[margin_target] * len(df), name=f"Target ({margin_target}%)", mode="lines", line=dict(dash="dash")))
+            fig.add_trace(go.Scatter(x=df["Month"], y=df["Recognized Revenue ($)"], name="Revenue ($)", mode="lines", yaxis="y2"))
+            fig.update_layout(yaxis_title="Margin (%)", yaxis2=dict(title="Revenue ($)", overlaying="y", side="right"))
+            detail_cols = ["Month", "Recognized Revenue ($)", "Modeled Gross Margin (%)", "Ending ARR ($)"]
+        elif num == 6:
+            try:
+                _story_base, _story_tornado_local = tornado_cached(P, 0.25, "gm")
+                _st = _story_tornado_local.head(8).copy()
+                if not _st.empty:
+                    fig = go.Figure(go.Bar(x=_st["Δ Swing (pp)"], y=_st["Driver"], orientation="h"))
+                    fig.update_layout(yaxis=dict(autorange="reversed"), xaxis_title="Gross-margin swing (percentage points)")
+            except Exception:
+                _st = pd.DataFrame()
+            detail_cols = ["Month", "Modeled Gross Margin (%)", "Recognized Revenue ($)", "Total Modeled COGS ($)"]
+        elif num == 7:
+            # Monthly customer growth is the existing forecast output; CAC/LTV ratios remain in the headline metrics.
+            _customer_col = "Ending Paid Accounts" if "Ending Paid Accounts" in df else None
+            if _customer_col:
+                fig = go.Figure(go.Scatter(x=df["Month"], y=df[_customer_col], name="Ending paid accounts", mode="lines+markers"))
+                fig.update_layout(yaxis_title="Paid accounts")
+            detail_cols = [c for c in ["Month", "New Pro Subscribers", "New Team Accounts", "Ending Paid Accounts", "Recognized Revenue ($)"] if c in df]
+        elif num == 8:
+            fig = go.Figure()
+            for colname, name in [("Paid-Customer Gross Margin (%)", "Paid-customer margin"), ("Modeled Gross Margin (%)", "Reported margin"), ("Fully Loaded Gross Margin (%)", "Fully loaded margin")]:
+                if colname in df: fig.add_trace(go.Scatter(x=df["Month"], y=df[colname], name=name, mode="lines+markers"))
+            fig.add_trace(go.Scatter(x=df["Month"], y=[margin_target] * len(df), name=f"Planning target ({margin_target}%)", mode="lines", line=dict(dash="dash")))
+            fig.update_layout(yaxis_title="Margin (%)")
+            detail_cols = ["Month", "Ending Paid Accounts", "Paid-Customer Gross Margin (%)", "Modeled Gross Margin (%)"]
+        elif num == 9:
+            _assumption_rows = [{"Assumption": "Starting DAU", "Value": f"{starting_dau:,.0f}"},
+                                {"Assumption": "Starting Pro subscribers", "Value": f"{starting_pro_subs:,.0f}"},
+                                {"Assumption": "Monthly DAU growth", "Value": f"{dau_monthly_growth*100:.1f}%"},
+                                {"Assumption": "Prompts / paid user / day", "Value": f"{baseline_prompts}"},
+                                {"Assumption": "Forecast horizon", "Value": f"{H} months"},
+                                {"Assumption": "AI cost path", "Value": ai_path_text(P, H)}]
+            st.dataframe(pd.DataFrame(_assumption_rows), hide_index=True, use_container_width=True)
+            detail_cols = ["Month", "Recognized Revenue ($)", "Total Modeled COGS ($)", "Modeled Gross Margin (%)"]
+        elif num == 10:
+            _flag_rows = [{"Type": f[0], "Flag": f[1], "Detail": f[2]} for f in _flags]
+            if _flag_rows:
+                st.dataframe(pd.DataFrame(_flag_rows), hide_index=True, use_container_width=True)
+            else:
+                st.success("No model-health flags were raised by the current checks. This does not validate the underlying assumptions.")
+            detail_cols = ["Month", "Recognized Revenue ($)", "Total Modeled COGS ($)", "Modeled Gross Margin (%)"]
+        if fig is not None:
+            fig.update_layout(**CHART_KW, height=300, margin=dict(l=20, r=25, t=15, b=25), legend=dict(orientation="h", y=1.12))
+            show_chart(fig)
+        # Short interpretation belongs beside the evidence, and is derived only from existing outputs.
+        if num == 2:
+            st.markdown(f"**What to notice:** reported margin is {fmt_pct(tot['gm'])}; fully loaded margin is {fmt_pct(tot['fl_gm'])}. The difference depends on the additional COGS lines entered, so an equal result does not prove that all indirect costs are captured.")
+        elif num == 3:
+            st.markdown(f"**What to notice:** free traffic represents { _free_prompt_pct:.1f}% of modeled prompts. Compare that share with its inference cost before deciding whether free usage is working as acquisition spend.")
+        elif num == 4:
+            st.markdown(f"**What to notice:** the model ends with ${_remaining_ai:,.0f} in AI credits and ${_remaining_cloud:,.0f} in cloud credits. Credits affect cash payable, not the underlying economic cost of serving usage.")
+        elif num == 5:
+            st.markdown(f"**What to notice:** { _below_target} of {H} forecast months fall below the current {margin_target}% margin target. This is the base case; use the scenario analysis to test what changes the outcome.")
+        elif num == 6:
+            st.markdown(f"**What to notice:** the largest driver in the current one-at-a-time sensitivity is **{_lever_label}** (reported swing {_lever_swing}). A sensitivity is not a forecast of what will happen; it measures exposure to a changed assumption.")
+        elif num == 7:
+            st.markdown("**What to notice:** the LTV/CAC and payback figures are directional until actual acquisition spend is entered. A ratio calculated with zero additional S&M spend can overstate acquisition efficiency.")
+        elif num == 8:
+            st.markdown("**What to notice:** these are company-wide paid-customer economics, not a verdict on a specific contract. Enter the proposed seats, discount, term and usage in Deal Desk before approving a deal.")
+        elif num == 9:
+            st.markdown(f"**What to notice:** { _scenario_count} scenario(s) are saved in this browser session. Export the assumptions and outputs if the decision needs a durable, shareable record.")
+        elif num == 10:
+            st.markdown(f"**What to notice:** { _check_count} input check(s) and {len(_flags)} total health flag(s) are present. No flag can validate a vendor rate card or replace reconciliation to actual product and billing data.")
+        with st.expander(f"Technical details · Chapter {num}", expanded=False):
+            st.caption(f"Source: the current model forecast used by the {detail_tab} analysis. No separate chapter calculations are used for these figures.")
+            _available_detail_cols = [c for c in detail_cols if c in df.columns]
+            if _available_detail_cols:
+                show_df(df[_available_detail_cols], hide_index=True)
+            if num == 6 and '_st' in locals() and isinstance(_st, pd.DataFrame) and not _st.empty:
+                show_df(_st, hide_index=True)
+            st.caption(f"For interactive controls, sensitivities and exports, continue to the {detail_tab} tab below.")
         st.markdown('<div class="story-spacer"></div>', unsafe_allow_html=True)
 
     _below_target = int((df["Modeled Gross Margin (%)"] < margin_target).sum())
@@ -2224,34 +2368,10 @@ if GUIDED:
     _scenario_count = len(st.session_state.get("saved_scenarios", {}))
     _check_count = sum(1 for flag in _flags if flag[0] == "check")
 
-    _story_chapter(2, "The margin reality", "Is growth actually making money?",
-        "Revenue and margin are different questions. Compare what the paying customers earn, what the P&L reports, and what remains after the extra costs you have entered.",
-        "Explore how free users and usage mix affect the answer.",
-        [("Forecast revenue", f"${tot['rev']:,.0f}", "Recognized revenue across the selected forecast horizon."),
-         ("Reported gross margin", fmt_pct(tot["gm"]), "Uses the current free-tier accounting treatment."),
-         ("Fully loaded margin", fmt_pct(tot["fl_gm"]), "Includes other COGS lines entered above, if any.")], "Revenue & Margin")
-
-    _story_chapter(3, "Who drives the bill?", "Which customers and usage patterns consume the margin?",
-        "Averages can hide the cost of free traffic, heavy users and infrastructure. These figures show how much demand is flowing through the model and the direct inference bill associated with it.",
-        "Compare traffic types and pricing assumptions.",
-        [("Free share of prompts", f"{_free_prompt_pct:.1f}%", "Free prompts divided by all modeled prompts over the horizon."),
-         ("Free-tier inference cost", f"${tot['free_cost']:,.0f}", "Free and trial inference cost over the forecast horizon."),
-         ("API cost / 1,000 prompts", "n/a" if pd.isna(_api_per_1k) else f"${_api_per_1k:,.2f}", "Aggregate API cost divided by total prompts; a blended estimate.")], "Value & Pricing Strategy")
-
-    _story_chapter(4, "Credits and cash", "Can the business afford the bill when it arrives?",
-        "Credits reduce cash payable but do not make usage economically free. Cash paid also depends on invoice timing, so look at balances and cash timing alongside gross margin.",
-        "Inspect the monthly roll-forward and payment lag.",
-        [("AI credits remaining", f"${_remaining_ai:,.0f}", "Modeled remaining AI credit balance at the end of the horizon."),
-         ("Cloud credits remaining", f"${_remaining_cloud:,.0f}", "Modeled remaining cloud credit balance at the end of the horizon."),
-         ("Estimated cash paid", "n/a" if pd.isna(_cash_paid) else f"${_cash_paid:,.0f}", "Modeled vendor cash paid during the horizon; not total company cash flow.")], "Credits & Cash")
-
-    _story_chapter(5, "Forecast the fork in the road", "What if usage or pricing moves against us?",
-        "This is the current base case, not a promise. The ending run-rate, ending margin and number of months below target show what the current assumptions imply before you stress them.",
-        "Compare explicit scenario sensitivities before committing to a plan.",
-        [("Ending ARR run-rate", f"${tot['arr']:,.0f}", "Annualized recurring revenue run-rate in the ending month."),
-         ("Ending-month margin", fmt_pct(last_margin), "Reported gross margin in the final modeled month."),
-         ("Months below target", f"{_below_target} of {H}", f"Months where reported margin is below the current {margin_target}% target.")], "Scenario Matrix")
-
+    _story_chapter(2, "The margin reality", "Is growth actually making money?", "Revenue and margin are different questions. Compare what the paying customers earn, what the P&L reports, and what remains after the extra costs you have entered.", "Explore how free users and usage mix affect the answer.", [("Forecast revenue", f"${tot['rev']:,.0f}", "Recognized revenue across the selected forecast horizon."), ("Reported gross margin", fmt_pct(tot["gm"]), "Uses the current free-tier accounting treatment."), ("Fully loaded margin", fmt_pct(tot["fl_gm"]), "Includes other COGS lines entered above, if any.")], "Revenue & Margin")
+    _story_chapter(3, "Who drives the bill?", "Which customers and usage patterns consume the margin?", "Averages can hide the cost of free traffic, heavy users and infrastructure. These figures show how much demand is flowing through the model and the direct inference bill associated with it.", "Compare traffic types and pricing assumptions.", [("Free share of prompts", f"{_free_prompt_pct:.1f}%", "Free prompts divided by all modeled prompts over the horizon."), ("Free-tier inference cost", f"${tot['free_cost']:,.0f}", "Free and trial inference cost over the forecast horizon."), ("API cost / 1,000 prompts", "n/a" if pd.isna(_api_per_1k) else f"${_api_per_1k:,.2f}", "Aggregate API cost divided by total prompts; a blended estimate.")], "Value & Pricing Strategy")
+    _story_chapter(4, "Credits and cash", "Can the business afford the bill when it arrives?", "Credits reduce cash payable but do not make usage economically free. Cash paid also depends on invoice timing, so look at balances and cash timing alongside gross margin.", "Inspect the monthly roll-forward and payment lag.", [("AI credits remaining", f"${_remaining_ai:,.0f}", "Modeled remaining AI credit balance at the end of the horizon."), ("Cloud credits remaining", f"${_remaining_cloud:,.0f}", "Modeled remaining cloud credit balance at the end of the horizon."), ("Estimated cash paid", "n/a" if pd.isna(_cash_paid) else f"${_cash_paid:,.0f}", "Modeled vendor cash paid during the horizon; not total company cash flow.")], "Credits & Cash")
+    _story_chapter(5, "Forecast the fork in the road", "What if usage or pricing moves against us?", "This is the current base case, not a promise. The ending run-rate, ending margin and number of months below target show what the current assumptions imply before you stress them.", "Compare explicit scenario sensitivities before committing to a plan.", [("Ending ARR run-rate", f"${tot['arr']:,.0f}", "Annualized recurring revenue run-rate in the ending month."), ("Ending-month margin", fmt_pct(last_margin), "Reported gross margin in the final modeled month."), ("Months below target", f"{_below_target} of {H}", f"Months where reported margin is below the current {margin_target}% target.")], "Scenario Matrix")
     try:
         _story_base, _story_tornado = tornado_cached(P, 0.25, "gm")
         _story_top_lever = _story_tornado.iloc[0] if not _story_tornado.empty else None
@@ -2259,43 +2379,14 @@ if GUIDED:
         _story_top_lever = None
     _lever_label = str(_story_top_lever["Driver"]) if _story_top_lever is not None else "No margin lever available"
     _lever_swing = f"{float(_story_top_lever['Δ Swing (pp)']):.1f} pp" if _story_top_lever is not None else "n/a"
-    _story_chapter(6, "Find a lever", "What can Alex change to improve margin?",
-        "A lever is useful only if it moves the result enough to matter. The model's existing sensitivity method tests one assumption at a time while holding the others constant.",
-        "Use goal-seek to test what a target would require; treat it as directional.",
-        [("Current reported margin", fmt_pct(tot["gm"]), "Forecast-period reported gross margin."),
-         ("Largest tested driver", _lever_label, "Top driver from the existing ±25% reported-margin sensitivity, when available."),
-         ("Largest swing", _lever_swing, "Margin swing reported by the existing sensitivity analysis.")], "Levers & Goal-Seek")
-
+    _story_chapter(6, "Find a lever", "What can Alex change to improve margin?", "A lever is useful only if it moves the result enough to matter. The model's existing sensitivity method tests one assumption at a time while holding the others constant.", "Use goal-seek to test what a target would require; treat it as directional.", [("Current reported margin", fmt_pct(tot["gm"]), "Forecast-period reported gross margin."), ("Largest tested driver", _lever_label, "Top driver from the existing ±25% reported-margin sensitivity, when available."), ("Largest swing", _lever_swing, "Margin swing reported by the existing sensitivity analysis.")], "Levers & Goal-Seek")
     _story_cl = cac_ltv(df, P, tot, 0.0, True)
     _story_ltv_cac = "n/a" if pd.isna(_story_cl["ltv_cac"]) else f"{_story_cl['ltv_cac']:.1f}x"
     _story_payback = "n/a" if pd.isna(_story_cl["payback"]) else f"{_story_cl['payback']:.1f} mo"
-    _story_chapter(7, "Beyond gross margin", "Does each new customer pay back the cost to win them?",
-        "The lifetime-value view adds acquisition economics to serving cost. This quick read includes free-tier inference as acquisition cost but assumes zero additional sales-and-marketing spend; enter real spend in the detailed view before relying on the ratio.",
-        "Add sales-and-marketing spend and review payback assumptions.",
-        [("New paying customers", f"{_story_cl['n_new']:,.0f}", "Modeled new Pro conversions plus new Team / SMB deals over the horizon."),
-         ("LTV / CAC (before S&M spend)", _story_ltv_cac, "Directional only; no additional sales-and-marketing spend is included in this story summary."),
-         ("CAC payback", _story_payback, "Directional model output; see assumptions in the detailed CAC & LTV tab.")], "CAC & LTV")
-
-    _story_chapter(8, "The customer deal", "Should we sign this deal at this price?",
-        "The company-wide margin is context, not a deal verdict. The Deal Desk lets you set seats, discount, term, billing and usage, then evaluates that specific deal against the configured margin floor.",
-        "Set the actual commercial terms and usage profile before interpreting a verdict.",
-        [("Main-model paid margin", fmt_pct(tot["paid_gm"]), "Company-wide paid-customer margin; not the deal's own margin."),
-         ("Current margin target", f"{margin_target:.0f}%", "The model's current target used for planning."),
-         ("Ending paid accounts", f"{float(m_last['Ending Paid Accounts']):,.0f}", "Modeled paid accounts at the end of the forecast horizon.")], "Deal Desk")
-
-    _story_chapter(9, "Make the decision reviewable", "Can someone else reproduce this recommendation?",
-        "A scenario comparison is only useful if the assumptions and outputs are preserved. Saved scenarios are held in the current browser session; export them if you need a durable record.",
-        "Save the current setup and compare it with a named alternative.",
-        [("Saved scenarios", f"{_scenario_count} of 8", "Saved scenarios currently available in this browser session."),
-         ("Forecast horizon", f"{H} months", "Current model forecast length."),
-         ("AI cost path", "Flat" if ai_path_is_flat(P) else "Active", ai_path_text(P, H))], "Compare & Export")
-
-    _story_chapter(10, "Can we trust the answer?", "Which inputs are estimates—and which have been checked?",
-        "The model is only as reliable as its inputs. Review sanity flags and the illustrative token prices before treating a forecast as a commitment. A flag is a prompt to investigate, not automatically proof of an error.",
-        "Review the audit register and verify assumptions against actual vendor and product data.",
-        [("Input checks", f"{_check_count}", "Number of current flags classified as checks, rather than informational notes."),
-         ("All health flags", f"{len(_flags)}", "Includes both checks and informational flags."),
-         ("Token prices", "Illustrative", "The model's token prices are placeholders, not live vendor quotes.")], "Audit Register")
+    _story_chapter(7, "Beyond gross margin", "Does each new customer pay back the cost to win them?", "The lifetime-value view adds acquisition economics to serving cost. This quick read includes free-tier inference as acquisition cost but assumes zero additional sales-and-marketing spend; enter real spend in the detailed view before relying on the ratio.", "Add sales-and-marketing spend and review payback assumptions.", [("New paying customers", f"{_story_cl['n_new']:,.0f}", "Modeled new Pro conversions plus new Team / SMB deals over the horizon."), ("LTV / CAC (before S&M spend)", _story_ltv_cac, "Directional only; no additional sales-and-marketing spend is included in this story summary."), ("CAC payback", _story_payback, "Directional model output; see assumptions in the detailed CAC & LTV tab.")], "CAC & LTV")
+    _story_chapter(8, "The customer deal", "Should we sign this deal at this price?", "The company-wide margin is context, not a deal verdict. The Deal Desk lets you set seats, discount, term, billing and usage, then evaluates that specific deal against the configured margin floor.", "Set the actual commercial terms and usage profile before interpreting a verdict.", [("Main-model paid margin", fmt_pct(tot["paid_gm"]), "Company-wide paid-customer margin; not the deal's own margin."), ("Current margin target", f"{margin_target:.0f}%", "The model's current target used for planning."), ("Ending paid accounts", f"{float(m_last['Ending Paid Accounts']):,.0f}", "Modeled paid accounts at the end of the forecast horizon.")], "Deal Desk")
+    _story_chapter(9, "Make the decision reviewable", "Can someone else reproduce this recommendation?", "A scenario comparison is only useful if the assumptions and outputs are preserved. Saved scenarios are held in the current browser session; export them if you need a durable record.", "Save the current setup and compare it with a named alternative.", [("Saved scenarios", f"{_scenario_count} of 8", "Saved scenarios currently available in this browser session."), ("Forecast horizon", f"{H} months", "Current model forecast length."), ("AI cost path", "Flat" if ai_path_is_flat(P) else "Active", ai_path_text(P, H))], "Compare & Export")
+    _story_chapter(10, "Can we trust the answer?", "Which inputs are estimates—and which have been checked?", "The model is only as reliable as its inputs. Review sanity flags and the illustrative token prices before treating a forecast as a commitment. A flag is a prompt to investigate, not automatically proof of an error.", "Review the audit register and verify assumptions against actual vendor and product data.", [("Input checks", f"{_check_count}", "Number of current flags classified as checks, rather than informational notes."), ("All health flags", f"{len(_flags)}", "Includes both checks and informational flags."), ("Token prices", "Illustrative", "The model's token prices are placeholders, not live vendor quotes.")], "Audit Register")
 
 tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab_deal, tab10 = st.tabs([
     "📊 Revenue & Margin", "💳 Credits & Cash", "📋 Monthly Detail",
