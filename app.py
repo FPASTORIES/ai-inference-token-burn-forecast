@@ -119,14 +119,14 @@ section[data-testid="stSidebar"] [data-testid="stHorizontalBlock"] {align-items:
 section[data-testid="stSidebar"] [data-testid="stSlider"] [data-baseweb="slider"] {padding-left: .15rem !important; padding-right: .15rem !important;}
 section[data-testid="stSidebar"] [data-testid="stNumberInput"] input {border:1px solid #C9D4E5 !important; border-radius:7px !important; background:#FFFFFF !important;}
 
-section[data-testid="stSidebar"] [data-testid="stWidgetLabel"] {margin-bottom: .18rem !important;}
-section[data-testid="stSidebar"] [data-testid="stCaptionContainer"] {margin-top: .04rem !important; margin-bottom: .35rem !important;}
-section[data-testid="stSidebar"] h1, section[data-testid="stSidebar"] h2, section[data-testid="stSidebar"] h3 {margin-bottom: .55rem !important;}
-section[data-testid="stSidebar"] [data-testid="stCaptionContainer"] {margin-top: -.12rem !important; margin-bottom: .18rem !important;}
-section[data-testid="stSidebar"] [data-testid="stHorizontalBlock"] {align-items: start !important; gap: .7rem !important;}
+section[data-testid="stSidebar"] [data-testid="stWidgetLabel"] {margin-bottom: .28rem !important;}
+/* Do not pull subtitles up under section headings; keep a visible heading → helper → control rhythm. */
+section[data-testid="stSidebar"] [data-testid="stCaptionContainer"] {margin-top: .10rem !important; margin-bottom: .42rem !important;}
+section[data-testid="stSidebar"] h1, section[data-testid="stSidebar"] h2, section[data-testid="stSidebar"] h3 {margin-top: .55rem !important; margin-bottom: .38rem !important;}
+section[data-testid="stSidebar"] [data-testid="stHorizontalBlock"] {align-items: stretch !important; gap: .7rem !important;}
 section[data-testid="stSidebar"] [data-testid="stNumberInput"],
 section[data-testid="stSidebar"] [data-testid="stSelectbox"],
-section[data-testid="stSidebar"] [data-testid="stSlider"] {margin-bottom: .12rem !important;}
+section[data-testid="stSidebar"] [data-testid="stSlider"] {margin-bottom: .28rem !important;}
 section[data-testid="stSidebar"] input, section[data-testid="stSidebar"] [data-baseweb="select"] > div, section[data-testid="stSidebar"] [data-testid="stNumberInput"] > div {border:1px solid #C9D4E5 !important; border-radius:7px !important; background:#FFFFFF !important;}
 section[data-testid="stSidebar"] [data-testid="stExpander"] {border:1px solid #D7DFEC !important; border-radius:8px !important;}
 section[data-testid="stSidebar"] [data-testid="stNumberInput"] button {min-height: 1.9rem !important;}
@@ -695,8 +695,8 @@ with _key_right:
         st.slider("Monthly DAU growth (%)", 0.0, 25.0, step=0.5, key=_growth_slider_key,
                   on_change=_sync_growth_slider, help="Growth of total daily active users, applied from month 2 onward.")
     with _growth_cols[1]:
-        st.number_input("Value", min_value=0.0, max_value=25.0, step=0.5, key=_growth_number_key,
-                        on_change=_sync_growth_number, label_visibility="collapsed", help="Enter monthly DAU growth as a percentage.")
+        st.number_input("Exact value (%)", min_value=0.0, max_value=25.0, step=0.5, key=_growth_number_key,
+                        on_change=_sync_growth_number, help="Enter monthly DAU growth as a percentage.")
     dau_monthly_growth = float(st.session_state[_growth_slider_key]) / 100
     _prompts_help = "Typical paying user's prompts per day. Higher usage means a higher inference bill."
     _prompt_cols = st.columns([1.55, 0.8], gap="small")
@@ -704,8 +704,8 @@ with _key_right:
         st.slider("Prompts / paid user / day", 1, 20, step=1, key=_prompts_slider_key,
                   on_change=_sync_prompts_slider, help=_prompts_help)
     with _prompt_cols[1]:
-        st.number_input("Value", min_value=1, max_value=20, step=1, key=_prompts_number_key,
-                        on_change=_sync_prompts_number, label_visibility="collapsed", help="Enter prompts per paid user per day.")
+        st.number_input("Exact prompts / day", min_value=1, max_value=20, step=1, key=_prompts_number_key,
+                        on_change=_sync_prompts_number, help="Enter prompts per paid user per day.")
     baseline_prompts = int(st.session_state[_prompts_slider_key])
 
 with st.sidebar.expander("More assumptions · targets and cost treatment", expanded=False):
@@ -2309,6 +2309,13 @@ if GUIDED:
             fig.update_layout(yaxis_title="Margin (%)")
             detail_cols = ["Month", "Ending Paid Accounts", "Paid-Customer Gross Margin (%)", "Modeled Gross Margin (%)"]
         elif num == 9:
+            # Decision review: show the monthly operating outputs that should be saved alongside assumptions.
+            fig = make_subplots(specs=[[{"secondary_y": True}]])
+            fig.add_trace(go.Bar(x=df["Month"], y=df["Recognized Revenue ($)"], name="Recognized revenue ($)"), secondary_y=False)
+            fig.add_trace(go.Scatter(x=df["Month"], y=df["Total Modeled COGS ($)"], name="Modeled COGS ($)", mode="lines+markers"), secondary_y=False)
+            fig.add_trace(go.Scatter(x=df["Month"], y=df["Modeled Gross Margin (%)"], name="Reported margin (%)", mode="lines+markers"), secondary_y=True)
+            fig.update_yaxes(title_text="$ / month", secondary_y=False, rangemode="tozero")
+            fig.update_yaxes(title_text="Margin (%)", secondary_y=True)
             _assumption_rows = [{"Assumption": "Starting DAU", "Value": f"{starting_dau:,.0f}"},
                                 {"Assumption": "Starting Pro subscribers", "Value": f"{starting_pro_subs:,.0f}"},
                                 {"Assumption": "Monthly DAU growth", "Value": f"{dau_monthly_growth*100:.1f}%"},
@@ -2319,6 +2326,12 @@ if GUIDED:
             detail_cols = ["Month", "Recognized Revenue ($)", "Total Modeled COGS ($)", "Modeled Gross Margin (%)"]
         elif num == 10:
             _flag_rows = [{"Type": f[0], "Flag": f[1], "Detail": f[2]} for f in _flags]
+            _flag_counts = pd.Series([f[0] for f in _flags], dtype="object").value_counts()
+            _flag_types = ["check", "info"]
+            _flag_values = [int(_flag_counts.get(t, 0)) for t in _flag_types]
+            fig = go.Figure(go.Bar(x=["Needs review", "Informational"], y=_flag_values,
+                                   text=_flag_values, textposition="outside"))
+            fig.update_layout(yaxis_title="Number of flags", showlegend=False, yaxis=dict(rangemode="tozero", dtick=1))
             if _flag_rows:
                 st.dataframe(pd.DataFrame(_flag_rows), hide_index=True, use_container_width=True)
             else:
