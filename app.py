@@ -32,7 +32,7 @@ from plotly.subplots import make_subplots
 import streamlit as st
 
 APP_NAME = "The AI Unit Economics Deal Desk"
-APP_VERSION = "v2.9"
+APP_VERSION = "v3.0 UX refinement"
 
 st.set_page_config(
     page_title="AI Deal Desk | Will my AI product make money?",
@@ -163,7 +163,9 @@ div[data-testid="stMetric"] div[data-testid="stMetricValue"] {font-size:1.1rem !
 .assumption-flag b {color: var(--flag-b);}
 .assumption-flag ul {margin: 4px 0 0 0; padding-left: 16px;}
 .assumption-flag li {margin-bottom: 2px;}
-.hero {padding: 10px 4px 0 4px;}
+.hero {padding: 2px 4px 0 4px;}
+.hero .skipbar {display:flex; flex-wrap:wrap; gap:8px 18px; align-items:center;}
+.hero .skipbar a {margin-right:0; padding:3px 0;}
 div.block-container {padding-top: 1.7rem !important; padding-bottom: 2rem !important;}
 header[data-testid="stHeader"] {background: transparent;}
 .eyebrow {font-family:'DM Sans', sans-serif; letter-spacing:.035em; text-transform:uppercase;
@@ -173,10 +175,10 @@ header[data-testid="stHeader"] {background: transparent;}
 .hero p.sub {font-size: 1rem; line-height: 1.55; color: var(--label); max-width: 62rem; margin: 0 0 12px 0;}
 .skipbar {font-size: .8rem; color: var(--label); margin: 4px 0 6px 0;}
 .skipbar a {color: var(--accent); text-decoration: none; margin-right: 14px; font-weight: 600;}
-.chapter {margin: 26px 0 6px 0; padding-top: 18px; border-top: 1px solid var(--card-border);}
+.chapter {margin: 20px 0 6px 0; padding-top: 14px; border-top: 1px solid var(--card-border);}
 .chapter h2 {font-size: 1.45rem !important; font-weight: 600 !important; padding: 0 !important; margin: 6px 0 8px 0 !important; color: var(--text); letter-spacing: -0.01em;}
 .chapter p.lede {font-size: .95rem; line-height: 1.5; color: var(--label); margin: 0 0 14px 0; max-width: 62rem;}
-.kpi-card {height: 100%; min-height: 158px; box-sizing: border-box; display: flex; flex-direction: column; border: 1px solid var(--card-border); border-radius: 10px; padding: 12px 14px; margin-bottom: 8px;
+.kpi-card {height: 100%; min-height: 116px; box-sizing: border-box; display: flex; flex-direction: column; border: 1px solid var(--card-border); border-radius: 10px; padding: 11px 13px; margin-bottom: 7px;
            background: linear-gradient(var(--card-bg), var(--card-bg)) padding-box, linear-gradient(135deg, var(--accent), var(--violet) 60%, var(--sky)) border-box;}
 .kpi-card .row {display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; margin: 2px 0 6px 0;}
 .kpi-card .row svg {flex: none;}
@@ -190,7 +192,20 @@ header[data-testid="stHeader"] {background: transparent;}
 .kpi-card .k {font-size:.72rem; font-weight:700; color:var(--metric-label); font-family:'DM Sans',sans-serif;
               letter-spacing:.015em; text-transform:none; line-height:1.3;}
 .kpi-card .v {font-size:clamp(1.35rem, 1.8vw, 1.75rem); font-weight:700; color:var(--text); line-height:1.15; margin:0; overflow-wrap:anywhere;}
-.kpi-card .d {font-size:.78rem; color:var(--label); min-height:2.5em; margin-top:auto; padding-top:7px; line-height:1.4;}
+.kpi-card .d {font-size:.78rem; color:var(--label); min-height:1.5em; margin-top:auto; padding-top:6px; line-height:1.4;}
+.kpi-card .trend {margin:2px 0 0; font-size:.72rem;}
+.story-spacer {height:8px;}
+.story-note {margin:18px 0 10px; padding:11px 15px;}
+.stage-story {min-height:4.2rem !important;}
+.st-key-profile .stButton > button[kind="primary"] {background:#1236c7 !important; color:#fff !important; border-color:#1236c7 !important;}
+.st-key-profile .stButton > button[kind="secondary"] {background:#fff !important; color:#252936 !important; border-color:#c7d3e6 !important;}
+.story-insight {background:#f7f9ff; border:1px solid #dce5f7; border-left:4px solid #1739c6; border-radius:9px; padding:11px 14px; margin:10px 0 14px; color:#303747; font-size:.88rem; line-height:1.5;}
+.story-insight b {color:#1739c6;}
+section[data-testid="stSidebar"] .sidebar-section-note {font-size:.78rem; color:#687083; line-height:1.4;}
+section[data-testid="stSidebar"] [data-testid="stSlider"] {padding-bottom:.25rem !important;}
+section[data-testid="stSidebar"] [data-testid="stNumberInput"] {width:100% !important;}
+section[data-testid="stSidebar"] [data-testid="stNumberInput"] input {min-height:2.25rem !important;}
+section[data-testid="stSidebar"] [data-testid="stWidgetLabel"] label {white-space:normal !important; line-height:1.35 !important;}
 .founder-art {max-width: 320px; margin: 4px auto 0; padding: 8px;}
 .founder-art svg {display:block; width:100%; height:auto; overflow:visible;}
 .founder-question {text-align:center; color:var(--label); font-size:.9rem; line-height:1.45; margin-top:2px;}
@@ -205,7 +220,7 @@ header[data-testid="stHeader"] {background: transparent;}
 .stage-story {line-height:1.42; font-size:.8rem; padding:4px 3px 0; color:var(--label); min-height:4.5em;}
 .st-key-profile .stButton > button {border:1px solid #BFCDE2 !important; border-radius:8px !important; box-shadow:none !important; padding:10px 8px !important;}
 .st-key-profile .stButton > button[kind="primary"] {border:1px solid #1739C6 !important; box-shadow:none !important;}
-@media (max-width: 900px) {.founder-art {max-width:230px;} .kpi-card {min-height:220px;}}
+@media (max-width: 900px) {.founder-art {max-width:230px;} .kpi-card {min-height:116px;}}
 .pill {display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: .72rem; font-weight: 600; margin-bottom: 4px;
        background: var(--chip-bg); color: var(--chip-text);}
 .pill.good {background: var(--good-bg); color: var(--good);} .pill.warn {background: var(--warn-bg); color: var(--warn);}
@@ -227,7 +242,7 @@ header[data-testid="stHeader"] {background: transparent;}
 .st-key-profile .stButton {width: 100% !important; margin-bottom: 0 !important;}
 .st-key-profile [data-testid="stButton"] {width: 100% !important; display: block !important;}
 .st-key-profile .stButton > button {display: flex !important; align-items: center !important; justify-content: center !important; width: 100% !important; max-width: 100% !important; min-width: 0 !important; padding: 15px 8px !important; font-size: 1.02rem !important; min-height: 54px !important; box-sizing: border-box !important; margin: 0 !important; white-space: normal !important;}
-.st-key-profile .stage-story {display: block; width: 100%; text-align: center; font-size: 0.84rem; line-height: 1.4; min-height: 5.2rem; padding: 8px 4px 0; color: var(--label); overflow-wrap: anywhere; box-sizing: border-box;}
+.st-key-profile .stage-story {display: block; width: 100%; text-align: center; font-size: 0.84rem; line-height: 1.4; min-height: 4.2rem; padding: 8px 4px 0; color: var(--label); overflow-wrap: anywhere; box-sizing: border-box;}
 """
 st.markdown(f"<style>{_ROOT_CSS}\n{_STATIC_CSS}</style>", unsafe_allow_html=True)
 
@@ -655,58 +670,62 @@ cfg = dict(DEFAULTS)
 
 st.sidebar.header("Key assumptions")
 st.sidebar.caption("Five high-impact inputs. Open More assumptions for the rest.")
-_key_left, _key_right = st.sidebar.columns(2, gap="small")
-with _key_left:
-    starting_dau = st.number_input(
-        "Daily active users", min_value=0, value=preset["dau"], step=500, key=f"dau_{founder_stage}",
-        help="DAU in the first forecast month. Growth applies from month 2 onward.",
-    )
-    starting_ent_accounts = st.number_input("Team / SMB accounts", min_value=0, value=preset["ent"], step=10, key=f"ent_{founder_stage}")
-    net_new_ent_contracts = st.number_input(
-        "New team deals / month", min_value=0.0, value=float(preset["deals"]), step=0.5, key=f"deals_{founder_stage}",
-        help="Sales-led pipeline velocity. Fractional values are allowed.",
-    )
-with _key_right:
-    starting_pro_subs = st.number_input("Pro subscribers", min_value=0, value=preset["pro"], step=50, key=f"pro_{founder_stage}")
-    # Paired slider + numeric input. Callbacks only synchronize presentation state; model inputs are unchanged.
-    _growth_slider_key = f"growth_slider_{founder_stage}"
-    _growth_number_key = f"growth_number_{founder_stage}"
-    _prompts_slider_key = f"prompts_slider_{founder_stage}"
-    _prompts_number_key = f"prompts_number_{founder_stage}"
-    if _growth_slider_key not in st.session_state:
-        st.session_state[_growth_slider_key] = float(preset["growth"])
-    if _growth_number_key not in st.session_state:
-        st.session_state[_growth_number_key] = float(preset["growth"])
-    if _prompts_slider_key not in st.session_state:
-        st.session_state[_prompts_slider_key] = int(preset["prompts"])
-    if _prompts_number_key not in st.session_state:
-        st.session_state[_prompts_number_key] = int(preset["prompts"])
-    def _sync_growth_slider():
-        st.session_state[_growth_number_key] = st.session_state[_growth_slider_key]
-    def _sync_growth_number():
-        st.session_state[_growth_slider_key] = st.session_state[_growth_number_key]
-    def _sync_prompts_slider():
-        st.session_state[_prompts_number_key] = st.session_state[_prompts_slider_key]
-    def _sync_prompts_number():
-        st.session_state[_prompts_slider_key] = st.session_state[_prompts_number_key]
-    st.caption("Forecast assumptions")
-    _growth_cols = st.columns([1.55, 0.8], gap="small")
-    with _growth_cols[0]:
-        st.slider("Monthly DAU growth (%)", 0.0, 25.0, step=0.5, key=_growth_slider_key,
-                  on_change=_sync_growth_slider, help="Growth of total daily active users, applied from month 2 onward.")
-    with _growth_cols[1]:
-        st.number_input("Exact value (%)", min_value=0.0, max_value=25.0, step=0.5, key=_growth_number_key,
-                        on_change=_sync_growth_number, help="Enter monthly DAU growth as a percentage.")
-    dau_monthly_growth = float(st.session_state[_growth_slider_key]) / 100
-    _prompts_help = "Typical paying user's prompts per day. Higher usage means a higher inference bill."
-    _prompt_cols = st.columns([1.55, 0.8], gap="small")
-    with _prompt_cols[0]:
-        st.slider("Prompts / paid user / day", 1, 20, step=1, key=_prompts_slider_key,
-                  on_change=_sync_prompts_slider, help=_prompts_help)
-    with _prompt_cols[1]:
-        st.number_input("Exact prompts / day", min_value=1, max_value=20, step=1, key=_prompts_number_key,
-                        on_change=_sync_prompts_number, help="Enter prompts per paid user per day.")
-    baseline_prompts = int(st.session_state[_prompts_slider_key])
+# Single-column controls prevent labels and numeric inputs from wrapping in the narrow sidebar.
+starting_dau = st.sidebar.number_input(
+    "Daily active users", min_value=0, value=preset["dau"], step=500, key=f"dau_{founder_stage}",
+    help="DAU in the first forecast month. Growth applies from month 2 onward.",
+)
+starting_pro_subs = st.sidebar.number_input(
+    "Pro subscribers", min_value=0, value=preset["pro"], step=50, key=f"pro_{founder_stage}"
+)
+starting_ent_accounts = st.sidebar.number_input(
+    "Team / SMB accounts", min_value=0, value=preset["ent"], step=10, key=f"ent_{founder_stage}"
+)
+net_new_ent_contracts = st.sidebar.number_input(
+    "New team deals / month", min_value=0.0, value=float(preset["deals"]), step=0.5, key=f"deals_{founder_stage}",
+    help="Sales-led pipeline velocity. Fractional values are allowed.",
+)
+# Paired slider + exact numeric input are stacked at full width for legibility.
+_growth_slider_key = f"growth_slider_{founder_stage}"
+_growth_number_key = f"growth_number_{founder_stage}"
+_prompts_slider_key = f"prompts_slider_{founder_stage}"
+_prompts_number_key = f"prompts_number_{founder_stage}"
+if _growth_slider_key not in st.session_state:
+    st.session_state[_growth_slider_key] = float(preset["growth"])
+if _growth_number_key not in st.session_state:
+    st.session_state[_growth_number_key] = float(preset["growth"])
+if _prompts_slider_key not in st.session_state:
+    st.session_state[_prompts_slider_key] = int(preset["prompts"])
+if _prompts_number_key not in st.session_state:
+    st.session_state[_prompts_number_key] = int(preset["prompts"])
+def _sync_growth_slider():
+    st.session_state[_growth_number_key] = st.session_state[_growth_slider_key]
+def _sync_growth_number():
+    st.session_state[_growth_slider_key] = st.session_state[_growth_number_key]
+def _sync_prompts_slider():
+    st.session_state[_prompts_number_key] = st.session_state[_prompts_slider_key]
+def _sync_prompts_number():
+    st.session_state[_prompts_slider_key] = st.session_state[_prompts_number_key]
+st.sidebar.caption("Forecast assumptions")
+st.sidebar.slider(
+    "Monthly DAU growth (%)", 0.0, 25.0, step=0.5, key=_growth_slider_key,
+    on_change=_sync_growth_slider, help="Growth of total daily active users, applied from month 2 onward."
+)
+st.sidebar.number_input(
+    "Exact value (%)", min_value=0.0, max_value=25.0, step=0.5, key=_growth_number_key,
+    on_change=_sync_growth_number, help="Enter monthly DAU growth as a percentage."
+)
+dau_monthly_growth = float(st.session_state[_growth_slider_key]) / 100
+_prompts_help = "Typical paying user's prompts per day. Higher usage means a higher inference bill."
+st.sidebar.slider(
+    "Prompts / paid user / day", 1, 20, step=1, key=_prompts_slider_key,
+    on_change=_sync_prompts_slider, help=_prompts_help
+)
+st.sidebar.number_input(
+    "Exact prompts / day", min_value=1, max_value=20, step=1, key=_prompts_number_key,
+    on_change=_sync_prompts_number, help="Enter prompts per paid user per day."
+)
+baseline_prompts = int(st.session_state[_prompts_slider_key])
 
 with st.sidebar.expander("More assumptions · targets and cost treatment", expanded=False):
     st.header("Targets")
@@ -2079,14 +2098,34 @@ if GUIDED:
         st.markdown(f'<div class="takeaway">Each prompt is about {P["in_tok"]:,} input and {P["out_tok"]:,} output tokens, growing {P["in_grow"] * 100:.0f}% a month on the input side. '
                     f'{P["front_mix"] * 100:.0f}% of traffic goes to the premium model and {P["cache_rate"] * 100:.0f}% of input hits the cache. '
                     f'<b>Token prices here are illustrative placeholders, not live vendor prices:</b> replace them with your rate card.</div>', unsafe_allow_html=True)
-        _fc = go.Figure()
-        _fc.add_trace(go.Scatter(x=df["Month"], y=df["API Cost / 1,000 Prompts ($)"], name="AI cost / 1,000 prompts ($)", mode="lines+markers",
-                                 line=dict(color=tone("#0b2cbc", "#7f97ff"), width=2.5)))
-        _fc.add_trace(go.Scatter(x=df["Month"], y=df["Paid-Customer COGS / Paid Account ($)"], name="Cost to serve / paid account ($)", mode="lines",
-                                 line=dict(color=tone("#9a5b00", "#f3b25c"), width=2, dash="dot"), yaxis="y2"))
-        _fc.update_layout(**CHART_KW, height=260, margin=dict(l=30, r=40, t=10, b=20), legend=dict(orientation="h", y=1.18),
-                          yaxis=dict(title="$ per 1,000 prompts"), yaxis2=dict(title="$ per paid account", overlaying="y", side="right"))
-        show_chart(_fc)
+        # Separate scales: prompt-level and account-level costs have different units and should not share dual axes.
+        _chart_left, _chart_right = st.columns(2, gap="medium")
+        _fc_prompt = go.Figure(go.Scatter(
+            x=df["Month"], y=df["API Cost / 1,000 Prompts ($)"], name="AI cost / 1,000 prompts",
+            mode="lines+markers", line=dict(color=tone("#0b2cbc", "#7f97ff"), width=2.7),
+            fill="tozeroy", fillcolor="rgba(11,44,188,0.07)"
+        ))
+        _fc_prompt.update_layout(**CHART_KW, title="Cost per 1,000 prompts", height=255,
+                                 margin=dict(l=20, r=12, t=42, b=25), showlegend=False,
+                                 yaxis=dict(title="$ / 1,000 prompts", rangemode="tozero"))
+        _fc_account = go.Figure(go.Scatter(
+            x=df["Month"], y=df["Paid-Customer COGS / Paid Account ($)"], name="Cost to serve a paid account",
+            mode="lines+markers", line=dict(color=tone("#9a5b00", "#f3b25c"), width=2.7),
+            fill="tozeroy", fillcolor="rgba(154,91,0,0.07)"
+        ))
+        _fc_account.update_layout(**CHART_KW, title="Monthly cost per paid account", height=255,
+                                  margin=dict(l=20, r=12, t=42, b=25), showlegend=False,
+                                  yaxis=dict(title="$ / paid account", rangemode="tozero"))
+        with _chart_left:
+            show_chart(_fc_prompt)
+        with _chart_right:
+            show_chart(_fc_account)
+        if not pd.isna(_k1) and not pd.isna(_k2):
+            _prompt_change = (_k2 / _k1 - 1) * 100 if _k1 != 0 else np.nan
+            _account_change = ((float(_cogs_pa) / float(df["Paid-Customer COGS / Paid Account ($)"].iloc[0])) - 1) * 100 if float(df["Paid-Customer COGS / Paid Account ($)"].iloc[0]) != 0 and not pd.isna(_cogs_pa) else np.nan
+            _prompt_trend = f"AI cost per 1,000 prompts {('increased' if _prompt_change >= 0 else 'decreased')} {abs(_prompt_change):.1f}% from month 1 to month {H}." if not pd.isna(_prompt_change) else "Prompt cost trend is not available for this forecast."
+            _account_trend = f"Cost to serve a paid account {('increased' if _account_change >= 0 else 'decreased')} {abs(_account_change):.1f}% over the same period." if not pd.isna(_account_change) else "Account-level cost trend is not available for this forecast."
+            st.markdown(f'<div class="story-insight"><b>What should Alex take away?</b> {_prompt_trend} {_account_trend} Compare the two movements with revenue per paid account before changing price or usage limits. The chart scales are intentionally separate because the units differ.</div>', unsafe_allow_html=True)
         _share = free_cost_alloc / (paid_cost_alloc + free_cost_alloc) * 100 if (paid_cost_alloc + free_cost_alloc) > 0 else np.nan
         _g1, _g2 = st.columns(2)
         _g1.markdown(ring_card("Free-tier share of the AI bill", _share, "Share of paid + free inference and infrastructure cost that goes to free users."), unsafe_allow_html=True)
