@@ -32,7 +32,7 @@ from plotly.subplots import make_subplots
 import streamlit as st
 
 APP_NAME = "The AI Unit Economics Deal Desk"
-APP_VERSION = "v3.0 UX refinement"
+APP_VERSION = "v2.9-ux-analyst"
 
 st.set_page_config(
     page_title="AI Deal Desk | Will my AI product make money?",
@@ -163,9 +163,7 @@ div[data-testid="stMetric"] div[data-testid="stMetricValue"] {font-size:1.1rem !
 .assumption-flag b {color: var(--flag-b);}
 .assumption-flag ul {margin: 4px 0 0 0; padding-left: 16px;}
 .assumption-flag li {margin-bottom: 2px;}
-.hero {padding: 2px 4px 0 4px;}
-.hero .skipbar {display:flex; flex-wrap:wrap; gap:8px 18px; align-items:center;}
-.hero .skipbar a {margin-right:0; padding:3px 0;}
+.hero {padding: 10px 4px 0 4px;}
 div.block-container {padding-top: 1.7rem !important; padding-bottom: 2rem !important;}
 header[data-testid="stHeader"] {background: transparent;}
 .eyebrow {font-family:'DM Sans', sans-serif; letter-spacing:.035em; text-transform:uppercase;
@@ -175,10 +173,10 @@ header[data-testid="stHeader"] {background: transparent;}
 .hero p.sub {font-size: 1rem; line-height: 1.55; color: var(--label); max-width: 62rem; margin: 0 0 12px 0;}
 .skipbar {font-size: .8rem; color: var(--label); margin: 4px 0 6px 0;}
 .skipbar a {color: var(--accent); text-decoration: none; margin-right: 14px; font-weight: 600;}
-.chapter {margin: 20px 0 6px 0; padding-top: 14px; border-top: 1px solid var(--card-border);}
+.chapter {margin: 26px 0 6px 0; padding-top: 18px; border-top: 1px solid var(--card-border);}
 .chapter h2 {font-size: 1.45rem !important; font-weight: 600 !important; padding: 0 !important; margin: 6px 0 8px 0 !important; color: var(--text); letter-spacing: -0.01em;}
 .chapter p.lede {font-size: .95rem; line-height: 1.5; color: var(--label); margin: 0 0 14px 0; max-width: 62rem;}
-.kpi-card {height: 100%; min-height: 116px; box-sizing: border-box; display: flex; flex-direction: column; border: 1px solid var(--card-border); border-radius: 10px; padding: 11px 13px; margin-bottom: 7px;
+.kpi-card {height: 100%; min-height: 158px; box-sizing: border-box; display: flex; flex-direction: column; border: 1px solid var(--card-border); border-radius: 10px; padding: 12px 14px; margin-bottom: 8px;
            background: linear-gradient(var(--card-bg), var(--card-bg)) padding-box, linear-gradient(135deg, var(--accent), var(--violet) 60%, var(--sky)) border-box;}
 .kpi-card .row {display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; margin: 2px 0 6px 0;}
 .kpi-card .row svg {flex: none;}
@@ -192,20 +190,7 @@ header[data-testid="stHeader"] {background: transparent;}
 .kpi-card .k {font-size:.72rem; font-weight:700; color:var(--metric-label); font-family:'DM Sans',sans-serif;
               letter-spacing:.015em; text-transform:none; line-height:1.3;}
 .kpi-card .v {font-size:clamp(1.35rem, 1.8vw, 1.75rem); font-weight:700; color:var(--text); line-height:1.15; margin:0; overflow-wrap:anywhere;}
-.kpi-card .d {font-size:.78rem; color:var(--label); min-height:1.5em; margin-top:auto; padding-top:6px; line-height:1.4;}
-.kpi-card .trend {margin:2px 0 0; font-size:.72rem;}
-.story-spacer {height:8px;}
-.story-note {margin:18px 0 10px; padding:11px 15px;}
-.stage-story {min-height:4.2rem !important;}
-.st-key-profile .stButton > button[kind="primary"] {background:#1236c7 !important; color:#fff !important; border-color:#1236c7 !important;}
-.st-key-profile .stButton > button[kind="secondary"] {background:#fff !important; color:#252936 !important; border-color:#c7d3e6 !important;}
-.story-insight {background:#f7f9ff; border:1px solid #dce5f7; border-left:4px solid #1739c6; border-radius:9px; padding:11px 14px; margin:10px 0 14px; color:#303747; font-size:.88rem; line-height:1.5;}
-.story-insight b {color:#1739c6;}
-section[data-testid="stSidebar"] .sidebar-section-note {font-size:.78rem; color:#687083; line-height:1.4;}
-section[data-testid="stSidebar"] [data-testid="stSlider"] {padding-bottom:.25rem !important;}
-section[data-testid="stSidebar"] [data-testid="stNumberInput"] {width:100% !important;}
-section[data-testid="stSidebar"] [data-testid="stNumberInput"] input {min-height:2.25rem !important;}
-section[data-testid="stSidebar"] [data-testid="stWidgetLabel"] label {white-space:normal !important; line-height:1.35 !important;}
+.kpi-card .d {font-size:.78rem; color:var(--label); min-height:2.5em; margin-top:auto; padding-top:7px; line-height:1.4;}
 .founder-art {max-width: 320px; margin: 4px auto 0; padding: 8px;}
 .founder-art svg {display:block; width:100%; height:auto; overflow:visible;}
 .founder-question {text-align:center; color:var(--label); font-size:.9rem; line-height:1.45; margin-top:2px;}
@@ -214,13 +199,25 @@ section[data-testid="stSidebar"] [data-testid="stWidgetLabel"] label {white-spac
 .story-question {font-family:Georgia,'Times New Roman',serif; font-size:1.12rem; line-height:1.35; color:var(--text); margin-bottom:5px;}
 .story-note p {font-size:.88rem; line-height:1.48; color:var(--label); margin:0 0 7px 0;}
 .story-next {font-size:.8rem; color:var(--label); padding-top:7px; border-top:1px solid var(--card-border);}
+.analyst-head {background:linear-gradient(115deg,#F7FAFF 0%,#FFFFFF 72%); border:1px solid #DCE6F5; border-left:4px solid #2457D6; border-radius:13px; padding:17px 20px 16px; margin:2px 0 18px;}
+.analyst-eyebrow {font-size:.68rem; font-weight:700; letter-spacing:.09em; color:#2457D6; text-transform:uppercase; margin-bottom:5px;}
+.analyst-title {font-size:1.22rem; line-height:1.3; font-weight:700; color:#172554; margin-bottom:5px;}
+.analyst-question {font-family:Georgia,'Times New Roman',serif; font-size:1.13rem; font-style:italic; color:#243B68; line-height:1.35; margin-bottom:5px;}
+.analyst-description {font-size:.86rem; line-height:1.5; color:#52627A; max-width:76rem;}
+[data-testid="stTabs"] [data-baseweb="tab-list"] {gap:5px; border-bottom:1px solid #DCE3EF;}
+[data-testid="stTabs"] [data-baseweb="tab"] {border-radius:9px 9px 0 0; padding:9px 12px; font-weight:600;}
+[data-testid="stTabs"] [aria-selected="true"] {background:#EEF4FF; color:#1739C6;}
+[data-testid="stDataFrame"], [data-testid="stTable"] {border:1px solid #E1E8F2; border-radius:10px; overflow:hidden;}
+[data-testid="stPlotlyChart"] {background:#FFFFFF; border:1px solid #E7ECF4; border-radius:12px; padding:7px 8px 2px;}
+div[data-testid="stMetric"] {border-radius:10px; padding:10px 12px !important; box-shadow:0 2px 8px rgba(20,45,90,.045);}
+
 .chapter h2 em {font-family: Georgia, 'Times New Roman', serif; font-weight:500; font-style:italic; letter-spacing:-.025em;}
 .hero h1, .chapter h2, .hero p.sub, .chapter p.lede {font-family:'DM Sans', sans-serif;}
 .chapter h2 em {font-family:Georgia,'Times New Roman',serif; font-style:italic; font-weight:400;}
 .stage-story {line-height:1.42; font-size:.8rem; padding:4px 3px 0; color:var(--label); min-height:4.5em;}
 .st-key-profile .stButton > button {border:1px solid #BFCDE2 !important; border-radius:8px !important; box-shadow:none !important; padding:10px 8px !important;}
 .st-key-profile .stButton > button[kind="primary"] {border:1px solid #1739C6 !important; box-shadow:none !important;}
-@media (max-width: 900px) {.founder-art {max-width:230px;} .kpi-card {min-height:116px;}}
+@media (max-width: 900px) {.founder-art {max-width:230px;} .kpi-card {min-height:220px;}}
 .pill {display: inline-block; padding: 2px 10px; border-radius: 999px; font-size: .72rem; font-weight: 600; margin-bottom: 4px;
        background: var(--chip-bg); color: var(--chip-text);}
 .pill.good {background: var(--good-bg); color: var(--good);} .pill.warn {background: var(--warn-bg); color: var(--warn);}
@@ -242,7 +239,7 @@ section[data-testid="stSidebar"] [data-testid="stWidgetLabel"] label {white-spac
 .st-key-profile .stButton {width: 100% !important; margin-bottom: 0 !important;}
 .st-key-profile [data-testid="stButton"] {width: 100% !important; display: block !important;}
 .st-key-profile .stButton > button {display: flex !important; align-items: center !important; justify-content: center !important; width: 100% !important; max-width: 100% !important; min-width: 0 !important; padding: 15px 8px !important; font-size: 1.02rem !important; min-height: 54px !important; box-sizing: border-box !important; margin: 0 !important; white-space: normal !important;}
-.st-key-profile .stage-story {display: block; width: 100%; text-align: center; font-size: 0.84rem; line-height: 1.4; min-height: 4.2rem; padding: 8px 4px 0; color: var(--label); overflow-wrap: anywhere; box-sizing: border-box;}
+.st-key-profile .stage-story {display: block; width: 100%; text-align: center; font-size: 0.84rem; line-height: 1.4; min-height: 5.2rem; padding: 8px 4px 0; color: var(--label); overflow-wrap: anywhere; box-sizing: border-box;}
 """
 st.markdown(f"<style>{_ROOT_CSS}\n{_STATIC_CSS}</style>", unsafe_allow_html=True)
 
@@ -416,7 +413,7 @@ def ai_path_text(p, horizon=None):
 
 def token_price_note(p, horizon=None):
     """Token-price disclaimer built from the LIVE inputs, so it can never quote stale prices or a stale cost path."""
-    base = (f"<b>Token-price assumption:</b> frontier ${p['f_in']:.2f} in / ${p['f_out']:.2f} out and standard ${p['s_in']:.4f} in / ${p['s_out']:.4f} out "
+    base = (f"<b>Token-price assumption:</b> frontier ${p['f_in']:,.0f} in / ${p['f_out']:,.0f} out and standard ${p['s_in']:,.0f} in / ${p['s_out']:,.0f} out "
             "per 1M tokens are illustrative, user-editable placeholders, not live vendor quotes. Verify against current vendor rate cards. ")
     if ai_path_is_flat(p):
         path = ("They are held <b>flat for the entire horizon</b> (no price decline or increase is modeled) while tokens per prompt grow; "
@@ -539,7 +536,27 @@ def show_df(obj, **kw):
 
 
 def show_chart(fig):
+    # Currency axes use whole-dollar labels; underlying trace values remain unchanged.
+    try:
+        for axis_name in ("yaxis", "yaxis2", "yaxis3"):
+            axis = fig.layout[axis_name]
+            title_obj = getattr(axis, "title", None)
+            title_text = getattr(title_obj, "text", "") if title_obj is not None else ""
+            if "$" in str(title_text) or "USD" in str(title_text):
+                fig.update_layout(**{axis_name: {"tickprefix": "$", "tickformat": ",.0f", "hoverformat": ",.0f", "separatethousands": True}})
+    except Exception:
+        pass
     return _stretch(st.plotly_chart, fig)
+
+
+def analyst_header(title, eyebrow, question, description):
+    st.markdown(
+        f'<div class="analyst-head"><div class="analyst-eyebrow">{html.escape(eyebrow)}</div>'
+        f'<div class="analyst-title">{html.escape(title)}</div>'
+        f'<div class="analyst-question">{html.escape(question)}</div>'
+        f'<div class="analyst-description">{html.escape(description)}</div></div>',
+        unsafe_allow_html=True,
+    )
 
 
 def style_frame(df):
@@ -548,14 +565,12 @@ def style_frame(df):
     for c in df.columns:
         if not pd.api.types.is_numeric_dtype(df[c]) or pd.api.types.is_bool_dtype(df[c]):
             continue
-        if "1,000 Prompts" in c:
-            fmt[c] = "${:,.4f}"
-        elif "/ Paid" in c or "/ Account-Month" in c:
-            fmt[c] = "${:,.2f}"
-        elif c.startswith("Δ") and "(pp)" in c:
+        if c.startswith("Δ") and "(pp)" in c:
             fmt[c] = "{:+.1f}pp"
         elif c.startswith("Δ") and "($)" in c:
             fmt[c] = "${:+,.0f}"
+        elif "($)" in c or "Cost / 1,000 Prompts" in c or "1,000 Prompts" in c or "/ Paid" in c or "/ Account-Month" in c:
+            fmt[c] = "${:,.0f}"
         elif "(%)" in c:
             fmt[c] = "{:.1f}%"
         elif "($)" in c:
@@ -670,62 +685,58 @@ cfg = dict(DEFAULTS)
 
 st.sidebar.header("Key assumptions")
 st.sidebar.caption("Five high-impact inputs. Open More assumptions for the rest.")
-# Single-column controls prevent labels and numeric inputs from wrapping in the narrow sidebar.
-starting_dau = st.sidebar.number_input(
-    "Daily active users", min_value=0, value=preset["dau"], step=500, key=f"dau_{founder_stage}",
-    help="DAU in the first forecast month. Growth applies from month 2 onward.",
-)
-starting_pro_subs = st.sidebar.number_input(
-    "Pro subscribers", min_value=0, value=preset["pro"], step=50, key=f"pro_{founder_stage}"
-)
-starting_ent_accounts = st.sidebar.number_input(
-    "Team / SMB accounts", min_value=0, value=preset["ent"], step=10, key=f"ent_{founder_stage}"
-)
-net_new_ent_contracts = st.sidebar.number_input(
-    "New team deals / month", min_value=0.0, value=float(preset["deals"]), step=0.5, key=f"deals_{founder_stage}",
-    help="Sales-led pipeline velocity. Fractional values are allowed.",
-)
-# Paired slider + exact numeric input are stacked at full width for legibility.
-_growth_slider_key = f"growth_slider_{founder_stage}"
-_growth_number_key = f"growth_number_{founder_stage}"
-_prompts_slider_key = f"prompts_slider_{founder_stage}"
-_prompts_number_key = f"prompts_number_{founder_stage}"
-if _growth_slider_key not in st.session_state:
-    st.session_state[_growth_slider_key] = float(preset["growth"])
-if _growth_number_key not in st.session_state:
-    st.session_state[_growth_number_key] = float(preset["growth"])
-if _prompts_slider_key not in st.session_state:
-    st.session_state[_prompts_slider_key] = int(preset["prompts"])
-if _prompts_number_key not in st.session_state:
-    st.session_state[_prompts_number_key] = int(preset["prompts"])
-def _sync_growth_slider():
-    st.session_state[_growth_number_key] = st.session_state[_growth_slider_key]
-def _sync_growth_number():
-    st.session_state[_growth_slider_key] = st.session_state[_growth_number_key]
-def _sync_prompts_slider():
-    st.session_state[_prompts_number_key] = st.session_state[_prompts_slider_key]
-def _sync_prompts_number():
-    st.session_state[_prompts_slider_key] = st.session_state[_prompts_number_key]
-st.sidebar.caption("Forecast assumptions")
-st.sidebar.slider(
-    "Monthly DAU growth (%)", 0.0, 25.0, step=0.5, key=_growth_slider_key,
-    on_change=_sync_growth_slider, help="Growth of total daily active users, applied from month 2 onward."
-)
-st.sidebar.number_input(
-    "Exact value (%)", min_value=0.0, max_value=25.0, step=0.5, key=_growth_number_key,
-    on_change=_sync_growth_number, help="Enter monthly DAU growth as a percentage."
-)
-dau_monthly_growth = float(st.session_state[_growth_slider_key]) / 100
-_prompts_help = "Typical paying user's prompts per day. Higher usage means a higher inference bill."
-st.sidebar.slider(
-    "Prompts / paid user / day", 1, 20, step=1, key=_prompts_slider_key,
-    on_change=_sync_prompts_slider, help=_prompts_help
-)
-st.sidebar.number_input(
-    "Exact prompts / day", min_value=1, max_value=20, step=1, key=_prompts_number_key,
-    on_change=_sync_prompts_number, help="Enter prompts per paid user per day."
-)
-baseline_prompts = int(st.session_state[_prompts_slider_key])
+_key_left, _key_right = st.sidebar.columns(2, gap="small")
+with _key_left:
+    starting_dau = st.number_input(
+        "Daily active users", min_value=0, value=preset["dau"], step=500, key=f"dau_{founder_stage}",
+        help="DAU in the first forecast month. Growth applies from month 2 onward.",
+    )
+    starting_ent_accounts = st.number_input("Team / SMB accounts", min_value=0, value=preset["ent"], step=10, key=f"ent_{founder_stage}")
+    net_new_ent_contracts = st.number_input(
+        "New team deals / month", min_value=0.0, value=float(preset["deals"]), step=0.5, key=f"deals_{founder_stage}",
+        help="Sales-led pipeline velocity. Fractional values are allowed.",
+    )
+with _key_right:
+    starting_pro_subs = st.number_input("Pro subscribers", min_value=0, value=preset["pro"], step=50, key=f"pro_{founder_stage}")
+    # Paired slider + numeric input. Callbacks only synchronize presentation state; model inputs are unchanged.
+    _growth_slider_key = f"growth_slider_{founder_stage}"
+    _growth_number_key = f"growth_number_{founder_stage}"
+    _prompts_slider_key = f"prompts_slider_{founder_stage}"
+    _prompts_number_key = f"prompts_number_{founder_stage}"
+    if _growth_slider_key not in st.session_state:
+        st.session_state[_growth_slider_key] = float(preset["growth"])
+    if _growth_number_key not in st.session_state:
+        st.session_state[_growth_number_key] = float(preset["growth"])
+    if _prompts_slider_key not in st.session_state:
+        st.session_state[_prompts_slider_key] = int(preset["prompts"])
+    if _prompts_number_key not in st.session_state:
+        st.session_state[_prompts_number_key] = int(preset["prompts"])
+    def _sync_growth_slider():
+        st.session_state[_growth_number_key] = st.session_state[_growth_slider_key]
+    def _sync_growth_number():
+        st.session_state[_growth_slider_key] = st.session_state[_growth_number_key]
+    def _sync_prompts_slider():
+        st.session_state[_prompts_number_key] = st.session_state[_prompts_slider_key]
+    def _sync_prompts_number():
+        st.session_state[_prompts_slider_key] = st.session_state[_prompts_number_key]
+    st.caption("Forecast assumptions")
+    _growth_cols = st.columns([1.55, 0.8], gap="small")
+    with _growth_cols[0]:
+        st.slider("Monthly DAU growth (%)", 0.0, 25.0, step=0.5, key=_growth_slider_key,
+                  on_change=_sync_growth_slider, help="Growth of total daily active users, applied from month 2 onward.")
+    with _growth_cols[1]:
+        st.number_input("Exact value (%)", min_value=0.0, max_value=25.0, step=0.5, key=_growth_number_key,
+                        on_change=_sync_growth_number, help="Enter monthly DAU growth as a percentage.")
+    dau_monthly_growth = float(st.session_state[_growth_slider_key]) / 100
+    _prompts_help = "Typical paying user's prompts per day. Higher usage means a higher inference bill."
+    _prompt_cols = st.columns([1.55, 0.8], gap="small")
+    with _prompt_cols[0]:
+        st.slider("Prompts / paid user / day", 1, 20, step=1, key=_prompts_slider_key,
+                  on_change=_sync_prompts_slider, help=_prompts_help)
+    with _prompt_cols[1]:
+        st.number_input("Exact prompts / day", min_value=1, max_value=20, step=1, key=_prompts_number_key,
+                        on_change=_sync_prompts_number, help="Enter prompts per paid user per day.")
+    baseline_prompts = int(st.session_state[_prompts_slider_key])
 
 with st.sidebar.expander("More assumptions · targets and cost treatment", expanded=False):
     st.header("Targets")
@@ -2091,41 +2102,21 @@ if GUIDED:
     _k1, _k2 = float(df["API Cost / 1,000 Prompts ($)"].dropna().iloc[0]) if df["API Cost / 1,000 Prompts ($)"].notna().any() else np.nan, float(m_last["API Cost / 1,000 Prompts ($)"])
     with slot_ch1_out:
         _a, _b, _c3 = st.columns(3)
-        _a.markdown(kpi_card("AI cost per 1,000 prompts", "n/a" if pd.isna(_k2) else f"${_k2:,.2f}",
-                             "No prompts yet" if pd.isna(_k1) else f"Month 1: ${_k1:,.2f}, month {H}: ${_k2:,.2f}"), unsafe_allow_html=True)
-        _b.markdown(kpi_card("Cost to serve a paid account", "n/a" if pd.isna(_cogs_pa) else f"${_cogs_pa:,.2f}", f"Per month, month {H}. Paying customers only."), unsafe_allow_html=True)
-        _c3.markdown(kpi_card("Revenue per paid account", "n/a" if pd.isna(_rev_pa) else f"${_rev_pa:,.2f}", f"Per month, month {H}."), unsafe_allow_html=True)
+        _a.markdown(kpi_card("AI cost per 1,000 prompts", "n/a" if pd.isna(_k2) else f"${_k2:,.0f}",
+                             "No prompts yet" if pd.isna(_k1) else f"Month 1: ${_k1:,.0f}, month {H}: ${_k2:,.0f}"), unsafe_allow_html=True)
+        _b.markdown(kpi_card("Cost to serve a paid account", "n/a" if pd.isna(_cogs_pa) else f"${_cogs_pa:,.0f}", f"Per month, month {H}. Paying customers only."), unsafe_allow_html=True)
+        _c3.markdown(kpi_card("Revenue per paid account", "n/a" if pd.isna(_rev_pa) else f"${_rev_pa:,.0f}", f"Per month, month {H}."), unsafe_allow_html=True)
         st.markdown(f'<div class="takeaway">Each prompt is about {P["in_tok"]:,} input and {P["out_tok"]:,} output tokens, growing {P["in_grow"] * 100:.0f}% a month on the input side. '
                     f'{P["front_mix"] * 100:.0f}% of traffic goes to the premium model and {P["cache_rate"] * 100:.0f}% of input hits the cache. '
                     f'<b>Token prices here are illustrative placeholders, not live vendor prices:</b> replace them with your rate card.</div>', unsafe_allow_html=True)
-        # Separate scales: prompt-level and account-level costs have different units and should not share dual axes.
-        _chart_left, _chart_right = st.columns(2, gap="medium")
-        _fc_prompt = go.Figure(go.Scatter(
-            x=df["Month"], y=df["API Cost / 1,000 Prompts ($)"], name="AI cost / 1,000 prompts",
-            mode="lines+markers", line=dict(color=tone("#0b2cbc", "#7f97ff"), width=2.7),
-            fill="tozeroy", fillcolor="rgba(11,44,188,0.07)"
-        ))
-        _fc_prompt.update_layout(**CHART_KW, title="Cost per 1,000 prompts", height=255,
-                                 margin=dict(l=20, r=12, t=42, b=25), showlegend=False,
-                                 yaxis=dict(title="$ / 1,000 prompts", rangemode="tozero"))
-        _fc_account = go.Figure(go.Scatter(
-            x=df["Month"], y=df["Paid-Customer COGS / Paid Account ($)"], name="Cost to serve a paid account",
-            mode="lines+markers", line=dict(color=tone("#9a5b00", "#f3b25c"), width=2.7),
-            fill="tozeroy", fillcolor="rgba(154,91,0,0.07)"
-        ))
-        _fc_account.update_layout(**CHART_KW, title="Monthly cost per paid account", height=255,
-                                  margin=dict(l=20, r=12, t=42, b=25), showlegend=False,
-                                  yaxis=dict(title="$ / paid account", rangemode="tozero"))
-        with _chart_left:
-            show_chart(_fc_prompt)
-        with _chart_right:
-            show_chart(_fc_account)
-        if not pd.isna(_k1) and not pd.isna(_k2):
-            _prompt_change = (_k2 / _k1 - 1) * 100 if _k1 != 0 else np.nan
-            _account_change = ((float(_cogs_pa) / float(df["Paid-Customer COGS / Paid Account ($)"].iloc[0])) - 1) * 100 if float(df["Paid-Customer COGS / Paid Account ($)"].iloc[0]) != 0 and not pd.isna(_cogs_pa) else np.nan
-            _prompt_trend = f"AI cost per 1,000 prompts {('increased' if _prompt_change >= 0 else 'decreased')} {abs(_prompt_change):.1f}% from month 1 to month {H}." if not pd.isna(_prompt_change) else "Prompt cost trend is not available for this forecast."
-            _account_trend = f"Cost to serve a paid account {('increased' if _account_change >= 0 else 'decreased')} {abs(_account_change):.1f}% over the same period." if not pd.isna(_account_change) else "Account-level cost trend is not available for this forecast."
-            st.markdown(f'<div class="story-insight"><b>What should Alex take away?</b> {_prompt_trend} {_account_trend} Compare the two movements with revenue per paid account before changing price or usage limits. The chart scales are intentionally separate because the units differ.</div>', unsafe_allow_html=True)
+        _fc = go.Figure()
+        _fc.add_trace(go.Scatter(x=df["Month"], y=df["API Cost / 1,000 Prompts ($)"], name="AI cost / 1,000 prompts ($)", mode="lines+markers",
+                                 line=dict(color=tone("#0b2cbc", "#7f97ff"), width=2.5)))
+        _fc.add_trace(go.Scatter(x=df["Month"], y=df["Paid-Customer COGS / Paid Account ($)"], name="Cost to serve / paid account ($)", mode="lines",
+                                 line=dict(color=tone("#9a5b00", "#f3b25c"), width=2, dash="dot"), yaxis="y2"))
+        _fc.update_layout(**CHART_KW, height=260, margin=dict(l=30, r=40, t=10, b=20), legend=dict(orientation="h", y=1.18),
+                          yaxis=dict(title="$ per 1,000 prompts"), yaxis2=dict(title="$ per paid account", overlaying="y", side="right"))
+        show_chart(_fc)
         _share = free_cost_alloc / (paid_cost_alloc + free_cost_alloc) * 100 if (paid_cost_alloc + free_cost_alloc) > 0 else np.nan
         _g1, _g2 = st.columns(2)
         _g1.markdown(ring_card("Free-tier share of the AI bill", _share, "Share of paid + free inference and infrastructure cost that goes to free users."), unsafe_allow_html=True)
@@ -2231,12 +2222,12 @@ def qa_answer(qid, p, dframe, t, target):
                      f"Revenue over the forecast goes from ${t['rev']:,.0f} to ${t2['rev']:,.0f}; paid-customer margin goes from {pct(t['paid_gm'])} to {pct(t2['paid_gm'])}. "
                      "This ignores any extra volume a discount might win, so it is the worst case for margin.")
         out["bars"] = ("Reported margin (%)", ["Now", "30% discount"], [t["gm"], t2["gm"]])
-        out["changed"] = f"Pro price ${p['arpu_pro']:,.2f} to ${p['arpu_pro'] * 0.7:,.2f}; Team / SMB price x0.7."
+        out["changed"] = f"Pro price ${p['arpu_pro']:,.0f} to ${p['arpu_pro'] * 0.7:,.0f}; Team / SMB price x0.7."
     elif qid == "lever":
         rows = []
         for key, lab, lo, hi, kind in GOAL_LEVERS:
             g = goal_seek_cached(p, key, lo, hi, float(target), "gm")
-            fm = (lambda v: f"{v * 100:.1f}%") if kind == "pct" else ((lambda v: f"${v:,.2f}") if kind == "usd" else (lambda v: f"x{v:.2f}"))
+            fm = (lambda v: f"{v * 100:.1f}%") if kind == "pct" else ((lambda v: f"${v:,.0f}") if kind == "usd" else (lambda v: f"x{v:.2f}"))
             if g["status"] == "ok":
                 rows.append({"Lever": lab.split(" (")[0], "Now": fm(g["current_value"]), "Needed alone": fm(g["value"])})
             else:
@@ -2421,7 +2412,7 @@ if GUIDED:
     _check_count = sum(1 for flag in _flags if flag[0] == "check")
 
     _story_chapter(2, "The margin reality", "Is growth actually making money?", "Revenue and margin are different questions. Compare what the paying customers earn, what the P&L reports, and what remains after the extra costs you have entered.", "Explore how free users and usage mix affect the answer.", [("Forecast revenue", f"${tot['rev']:,.0f}", "Recognized revenue across the selected forecast horizon."), ("Reported gross margin", fmt_pct(tot["gm"]), "Uses the current free-tier accounting treatment."), ("Fully loaded margin", fmt_pct(tot["fl_gm"]), "Includes other COGS lines entered above, if any.")], "Revenue & Margin")
-    _story_chapter(3, "Who drives the bill?", "Which customers and usage patterns consume the margin?", "Averages can hide the cost of free traffic, heavy users and infrastructure. These figures show how much demand is flowing through the model and the direct inference bill associated with it.", "Compare traffic types and pricing assumptions.", [("Free share of prompts", f"{_free_prompt_pct:.1f}%", "Free prompts divided by all modeled prompts over the horizon."), ("Free-tier inference cost", f"${tot['free_cost']:,.0f}", "Free and trial inference cost over the forecast horizon."), ("API cost / 1,000 prompts", "n/a" if pd.isna(_api_per_1k) else f"${_api_per_1k:,.2f}", "Aggregate API cost divided by total prompts; a blended estimate.")], "Value & Pricing Strategy")
+    _story_chapter(3, "Who drives the bill?", "Which customers and usage patterns consume the margin?", "Averages can hide the cost of free traffic, heavy users and infrastructure. These figures show how much demand is flowing through the model and the direct inference bill associated with it.", "Compare traffic types and pricing assumptions.", [("Free share of prompts", f"{_free_prompt_pct:.1f}%", "Free prompts divided by all modeled prompts over the horizon."), ("Free-tier inference cost", f"${tot['free_cost']:,.0f}", "Free and trial inference cost over the forecast horizon."), ("API cost / 1,000 prompts", "n/a" if pd.isna(_api_per_1k) else f"${_api_per_1k:,.0f}", "Aggregate API cost divided by total prompts; a blended estimate.")], "Value & Pricing Strategy")
     _story_chapter(4, "Credits and cash", "Can the business afford the bill when it arrives?", "Credits reduce cash payable but do not make usage economically free. Cash paid also depends on invoice timing, so look at balances and cash timing alongside gross margin.", "Inspect the monthly roll-forward and payment lag.", [("AI credits remaining", f"${_remaining_ai:,.0f}", "Modeled remaining AI credit balance at the end of the horizon."), ("Cloud credits remaining", f"${_remaining_cloud:,.0f}", "Modeled remaining cloud credit balance at the end of the horizon."), ("Estimated cash paid", "n/a" if pd.isna(_cash_paid) else f"${_cash_paid:,.0f}", "Modeled vendor cash paid during the horizon; not total company cash flow.")], "Credits & Cash")
     _story_chapter(5, "Forecast the fork in the road", "What if usage or pricing moves against us?", "This is the current base case, not a promise. The ending run-rate, ending margin and number of months below target show what the current assumptions imply before you stress them.", "Compare explicit scenario sensitivities before committing to a plan.", [("Ending ARR run-rate", f"${tot['arr']:,.0f}", "Annualized recurring revenue run-rate in the ending month."), ("Ending-month margin", fmt_pct(last_margin), "Reported gross margin in the final modeled month."), ("Months below target", f"{_below_target} of {H}", f"Months where reported margin is below the current {margin_target}% target.")], "Scenario Matrix")
     try:
@@ -2447,8 +2438,7 @@ tab1, tab2, tab3, tab4, tab5, tab6, tab7, tab8, tab9, tab_deal, tab10 = st.tabs(
 ])
 
 with tab1:
-    st.subheader("Forecast Recognized Revenue, COGS & Gross Margin")
-    if not GUIDED: st.caption("Connect customer revenue to serving costs. Compare paid-customer, reported and fully loaded margin.")
+    analyst_header("Revenue & Margin", "FINANCIAL PERFORMANCE", "Are we growing revenue profitably?", "Connect revenue, cost-to-serve and three views of gross margin. Start with the trend, then investigate the bridge and the customers driving cost.")
     fig = make_subplots(specs=[[{"secondary_y": True}]])
     fig.add_trace(go.Bar(x=df["Month"], y=df["Recognized Revenue ($)"], name="Recognized Revenue ($)", marker_color="#3182ce"), secondary_y=False)
     fig.add_trace(go.Scatter(x=df["Month"], y=df["Total Modeled COGS ($)"], name="Reported COGS ($)", mode="lines+markers", line=dict(color="#e53e3e", width=3)), secondary_y=False)
@@ -2530,10 +2520,10 @@ with tab1:
     cogs_pp = float(m_last["Paid-Customer COGS ($)"]) / end_paid if end_paid > 0 else 0.0
     rev_pp = float(m_last["Recognized Revenue ($)"]) / end_paid if end_paid > 0 else 0.0
     free_pp = float(m_last["Free-Tier Inference Cost ($)"]) / end_paid if end_paid > 0 else 0.0
-    k1.metric("Paid-customer COGS / paid account", f"${cogs_pp:,.2f}")
-    k2.metric("Revenue / paid account", f"${rev_pp:,.2f}")
-    k3.metric("Paid-customer gross profit / paid account", f"${rev_pp - cogs_pp:,.2f}")
-    k4.metric("Memo: free-tier cost / paid account", f"${free_pp:,.2f}")
+    k1.metric("Paid-customer COGS / paid account", f"${cogs_pp:,.0f}")
+    k2.metric("Revenue / paid account", f"${rev_pp:,.0f}")
+    k3.metric("Paid-customer gross profit / paid account", f"${rev_pp - cogs_pp:,.0f}")
+    k4.metric("Memo: free-tier cost / paid account", f"${free_pp:,.0f}")
     st.caption("Company-level averages across Pro subscribers and team/SMB accounts (a team account is a contract, not a user). "
                "Free-tier cost is shown as a memo and is NOT loaded onto paying accounts, so per-account cost reflects what it costs to serve a paying customer.")
 
@@ -2574,8 +2564,7 @@ with tab1:
     show_chart(fe)
 
 with tab2:
-    st.subheader("Credit Drawdown Velocity, Cash Payable & Cash Paid")
-    if not GUIDED: st.caption("Positive margin does not guarantee enough cash. Review credits, invoice timing and vendor bills.")
+    analyst_header("Credits & Cash", "CASH MANAGEMENT", "Can the business afford the bill when it arrives?", "Separate economic cost from cash timing. Follow credit drawdown, vendor payables and cash paid so credits do not disguise the cost of usage.")
     fig2 = make_subplots(specs=[[{"secondary_y": True}]])
     fig2.add_trace(go.Bar(x=df["Month"], y=df["AI Credits Applied ($)"], name="AI Credits Applied ($)", marker_color="#38a169"), secondary_y=False)
     fig2.add_trace(go.Bar(x=df["Month"], y=df["Cloud Credits Applied ($)"], name="Cloud Credits Applied ($)", marker_color="#4fd1c5"), secondary_y=False)
@@ -2597,15 +2586,13 @@ with tab2:
               help="Recognized revenue minus estimated cash payable (vendor invoices net of credits, plus payment fees and implementation costs). Not cash flow: invoice timing and customer collections are not modeled.")
 
 with tab3:
-    st.subheader("Monthly Roll-Forward Detail")
-    if not GUIDED: st.caption("Supporting analysis · Follow monthly usage, revenue, costs and margin behind the headline results.")
+    analyst_header("Monthly Detail", "PERIOD-BY-PERIOD DRILL-DOWN", "What changed each month?", "Trace the model from usage and customer activity through revenue, costs and margin. Use this as the supporting schedule behind the headline analysis.")
     show_df(style_frame(df), hide_index=True)
     st.download_button("Download Full Audit CSV", data=df.to_csv(index=False).encode("utf-8"),
                        file_name="ai_inference_deal_desk_model.csv", mime="text/csv")
 
 with tab4:
-    st.subheader("📈 Multi-Scenario Comparative Analysis Matrix")
-    if not GUIDED: st.caption("Compare plausible futures before deciding which assumptions or operating levers to change.")
+    analyst_header("Scenario Matrix", "PLANNING & SENSITIVITY", "Which assumptions could change the outcome?", "Compare the financial consequences of alternative operating conditions. Focus on the size and direction of the change versus the base case.")
     st.caption("Each scenario moves one driver family unless labeled combined. Prompt intensity scales ALL segments, including team/SMB. Deal counts are not rounded. "
                "These are simplified sensitivities on one operating plan, not independent plans. "
                "Scenarios 8-9 apply a flat price change to every month of the horizon; they are not a price-decline trajectory. "
@@ -2637,8 +2624,7 @@ with tab4:
     show_df(style_frame(scen_df), hide_index=True)
 
 with tab5:
-    st.subheader("📑 Assumptions & Audit Register (Data Governance)")
-    if not GUIDED: st.caption("Check assumptions, data quality and model-health flags before relying on a result.")
+    analyst_header("Audit Register", "MODEL GOVERNANCE", "Which inputs are estimates, and which have been checked?", "Review the assumptions, data sources and model-health flags behind the forecast. A flag is a prompt to validate an input, not proof that it is wrong.")
     st.caption("Generated from the live inputs, so values cannot drift from the model. 'Status' is an honest label: nothing here has been verified against actuals by this tool.")
     PRESET_EST = "Founder-profile preset (estimate) — replace with actuals"
     ASSUME = "Model assumption — verify"
@@ -2656,8 +2642,8 @@ with tab5:
         ("New-user conversion to Pro", f"{P['new_conv'] * 100:.1f}%", "Funnel analytics, cohort-based", ASSUME),
         ("Existing free-pool conversion / month", f"{P['base_conv'] * 100:.1f}%", "Funnel analytics, cohort-based", ASSUME),
         ("Pro monthly churn", f"{P['churn'] * 100:.1f}%", "Billing cohort retention", ASSUME),
-        ("Pro ARPU / overage-expansion", f"${P['arpu_pro']:,.2f} / +{P['pro_expansion_pct'] * 100:.0f}%", "Price book / metered billing invoices", ASSUME),
-        ("Team / SMB monthly value / account", f"${P['arpu_ent']:,.2f}", "Signed order forms", ASSUME),
+        ("Pro ARPU / overage-expansion", f"${P['arpu_pro']:,.0f} / +{P['pro_expansion_pct'] * 100:.0f}%", "Price book / metered billing invoices", ASSUME),
+        ("Team / SMB monthly value / account", f"${P['arpu_ent']:,.0f}", "Signed order forms", ASSUME),
         ("Team / SMB term / renewal rate / in-term churn", f"{P['ent_term']} mo / {P['ent_renewal_rate'] * 100:.0f}% / {P['ent_in_term_churn'] * 100:.1f}%", "Contract register; historical renewals", ASSUME),
         ("Team / SMB renewal-month exemption", "Cohorts at term end face the renewal decision only; in-term churn is not also applied to them that month", "Contract terms (termination for cause, insolvency)", ASSUME),
         ("Team / SMB expansion / seats / prompts per account", f"{P['ent_expansion'] * 100:.1f}% mo / {P['ent_seats']} seats / {P['ent_prompts']:,} prompts", "Account usage telemetry", ASSUME),
@@ -2668,8 +2654,8 @@ with tab5:
         ("Free-tier usage multiplier", f"{P['free_mult'] * 100:.0f}% of typical", "Gateway logs by plan", ASSUME),
         ("Tokens / prompt (in / out) and MoM growth", f"{P['in_tok']:,} / {P['out_tok']:,}; +{P['in_grow'] * 100:.1f}% / +{P['out_grow'] * 100:.1f}% "
                                                       f"(input tokens x{(1 + P['in_grow']) ** max(0, H - 1):.2f} by month {H})", "LLM provider logs", ASSUME),
-        ("Frontier routing share and prices", f"{P['front_mix'] * 100:.0f}%; ${P['f_in']:.2f} in / ${P['f_out']:.2f} out per 1M", "Vendor rate card (public, unverified)", TOKEN_FLAG),
-        ("Standard model prices", f"${P['s_in']:.4f} in / ${P['s_out']:.4f} out per 1M", "Vendor rate card (public, unverified)", TOKEN_FLAG),
+        ("Frontier routing share and prices", f"{P['front_mix'] * 100:.0f}%; ${P['f_in']:,.0f} in / ${P['f_out']:,.0f} out per 1M", "Vendor rate card (public, unverified)", TOKEN_FLAG),
+        ("Standard model prices", f"${P['s_in']:,.0f} in / ${P['s_out']:,.0f} out per 1M", "Vendor rate card (public, unverified)", TOKEN_FLAG),
         ("AI cost path (efficiency / vendor price change)",
          ("Flat: no price decline or increase is modeled. Scenarios 8-9 apply one flat % change to every month" if ai_path_is_flat(P) else ai_path_text(P, H)),
          "Vendor price history and commit terms; engineering cost-reduction plan with owners and dates", TOKEN_FLAG),
@@ -2696,7 +2682,7 @@ with tab5:
         ("Prompt caching", f"{P['cache_rate'] * 100:.0f}% hit / {P['cache_ratio'] * 100:.0f}% price", "Gateway cache logs; vendor terms", ASSUME),
         ("Batch routing / inference overhead", f"{P['batch_share'] * 100:.0f}% at {P['batch_ratio'] * 100:.0f}% price / +{P['overhead'] * 100:.0f}%", "Batch API telemetry", ASSUME),
         ("Base infrastructure / step block / step cost", f"${P['base_infra']:,.0f} / {P['step_thresh']:,.0f} ({P['step_type']}) / ${P['step_cost']:,.0f}", "Cloud invoices; capacity plan", PRESET_EST),
-        ("Vector DB cost / 1k prompts", f"${P['vec_cost']:.3f}", "Vector vendor invoices", ASSUME),
+        ("Vector DB cost / 1k prompts", f"${P['vec_cost']:,.0f}", "Vector vendor invoices", ASSUME),
         ("Starting credits (AI / Cloud)", f"${P['ai_credits']:,.0f} / ${P['cloud_credits']:,.0f}", "Grant agreements and vendor portals", PRESET_EST),
         ("Credit expiry month / eligible share", f"AI {P['ai_expiry'] or 'none'} @ {P['ai_elig'] * 100:.0f}% / Cloud {P['cloud_expiry'] or 'none'} @ {P['cloud_elig'] * 100:.0f}%", "Grant terms", ASSUME),
         ("Vendor invoice payment lag", f"{P['invoice_lag']} month(s)", "AP terms with vendors", ASSUME),
@@ -2739,8 +2725,7 @@ with tab5:
     st.caption("The curve the engine uses, by calendar month. Peaks are absolute prompts per day (not multipliers over baseline) and drive the cost of every user, including free users.")
 
 with tab6:
-    st.subheader("🎯 Value-Creation Anchor & Hybrid Pricing Strategy")
-    if not GUIDED: st.caption("Explore how customer value, pricing and usage patterns influence unit economics and who drives cost.")
+    analyst_header("Value & Pricing Strategy", "CUSTOMER ECONOMICS", "Are customers receiving enough value to support our price?", "Connect customer value, willingness to pay and usage intensity. Explore where pricing captures value and where serving costs can erode it.")
     col_v1, col_v2 = st.columns(2)
 
     with col_v1:
@@ -2764,7 +2749,7 @@ with tab6:
         capture_text = f"{price_charged / economic_value * 100:.1f}%" if economic_value > 0 else "N/A (no value created)"
         roi_text = f"{economic_value / price_charged:.1f}x" if price_charged > 0 else "N/A (price is zero)"
         st.markdown(f"""
-        * **Price charged ({price_basis}):** `${price_charged:,.2f} / user / mo`
+        * **Price charged ({price_basis}):** `${price_charged:,.0f} / user / mo`
         * **Value capture ratio:** `{capture_text}` of value created
         * **Customer ROI multiple:** `{roi_text}`
         """)
@@ -2807,8 +2792,7 @@ with tab6:
 
 # ---------- tab 7: levers & goal-seek ----------
 with tab7:
-    st.subheader("🎛️ What Moves Margin? Sensitivity & Goal-Seek")
-    if not GUIDED: st.caption("Test what-if changes and goal-seek toward a target, keeping the changed assumptions visible.")
+    analyst_header("Levers & Goal-Seek", "DECISION LEVERS", "What can we change to improve margin?", "Rank the assumptions that move margin most, then test what it would take to reach a target. Treat goal-seek results as directional planning guidance.")
     lc1, lc2 = st.columns(2)
     sens_metric_label = lc1.selectbox("Margin measure", list(METRIC_OPTIONS), index=0)
     sens_pct = lc2.slider("Move each input by ± (%)", 5, 50, 25, 5) / 100
@@ -2840,7 +2824,7 @@ with tab7:
     _gmk = METRIC_OPTIONS[goal_metric_label]
 
     def _fmt_lever(v):
-        return f"{v * 100:.1f}%" if _gkind == "pct" else (f"${v:,.2f}" if _gkind == "usd" else f"x{v:.2f}")
+        return f"{v * 100:.1f}%" if _gkind == "pct" else (f"${v:,.0f}" if _gkind == "usd" else f"x{v:.2f}")
 
     gres = goal_seek_cached(P, _gkey, _glo, _ghi, float(goal_target), _gmk)
     if gres["status"] == "ok":
@@ -2868,8 +2852,7 @@ with tab7:
 
 # ---------- tab 8: CAC, LTV & payback ----------
 with tab8:
-    st.subheader("💰 CAC, LTV & Payback (free-tier cost counted as acquisition cost)")
-    if not GUIDED: st.caption("Add acquisition cost and lifetime economics when assessing customer profitability.")
+    analyst_header("CAC & LTV", "CUSTOMER ACQUISITION ECONOMICS", "Does each new customer pay back the cost to win them?", "Bring acquisition spend and free-tier serving cost into the customer economics. Check payback and lifetime value alongside the assumptions that drive them.")
     ac1, ac2 = st.columns(2)
     sm_monthly = ac1.number_input("Monthly sales & marketing spend ($, excluding free-tier inference)", min_value=0.0, value=0.0, step=500.0,
                                   help="Ads, sales salaries and commissions, tools, content. The model has no sales & marketing spend of its own, so enter yours.")
@@ -2882,11 +2865,11 @@ with tab8:
     r1.metric("New paying customers", f"{cl['n_new']:,.0f}", f"{cl['n_pro']:,.0f} Pro, {cl['n_team']:,.1f} Team / SMB deals", delta_color="off",
               help="Pro conversions plus new team deals over the horizon (existing customers at the start are excluded).")
     r2.metric("Acquisition cost over horizon", f"${cl['spend'] + cl['free_cost']:,.0f}", f"${cl['spend']:,.0f} S&M + ${cl['free_cost']:,.0f} free-tier inference", delta_color="off")
-    r3.metric("Blended CAC", "n/a" if pd.isna(cl["cac"]) else f"${cl['cac']:,.2f}",
-              "n/a" if pd.isna(cl["cac_ex_free"]) else f"${cl['cac_ex_free']:,.2f} excluding free-tier cost", delta_color="off")
+    r3.metric("Blended CAC", "n/a" if pd.isna(cl["cac"]) else f"${cl['cac']:,.0f}",
+              "n/a" if pd.isna(cl["cac_ex_free"]) else f"${cl['cac_ex_free']:,.0f} excluding free-tier cost", delta_color="off")
     q1, q2, q3 = st.columns(3)
     _neg = pd.isna(cl["margin"]) or cl["margin"] <= 0
-    q1.metric("Blended LTV", "n/m (margin <= 0)" if _neg else f"${cl['ltv']:,.2f}", f"Pro ${cl['ltv_pro']:,.0f} / Team ${cl['ltv_team']:,.0f}" if not _neg else "", delta_color="off",
+    q1.metric("Blended LTV", "n/m (margin <= 0)" if _neg else f"${cl['ltv']:,.0f}", f"Pro ${cl['ltv_pro']:,.0f} / Team ${cl['ltv_team']:,.0f}" if not _neg else "", delta_color="off",
               help="Monthly price x margin x expected lifetime, averaged over new Pro and team customers. Lifetime is capped at 60 months; not discounted.")
     q2.metric("LTV / CAC", "n/m" if (_neg or pd.isna(cl["ltv_cac"])) else f"{cl['ltv_cac']:.1f}x", "Common rule of thumb: 3x or more", delta_color="off")
     q3.metric("CAC payback", "n/a" if (_neg or pd.isna(cl["payback"])) else f"{cl['payback']:.1f} months", "Common rule of thumb: under 12", delta_color="off")
@@ -2898,8 +2881,7 @@ with tab8:
 
 # ---------- tab 9: save, compare & export ----------
 with tab9:
-    st.subheader("🧪 Save, Compare & Export")
-    if not GUIDED: st.caption("Compare and export results for review, keeping assumptions and limitations with the numbers.")
+    analyst_header("Compare & Export", "DECISION RECORD", "Can we preserve and explain the decision?", "Save named scenarios, compare their assumptions and outcomes, and export a reviewable record for discussion with finance and business partners.")
     if "saved_scenarios" not in st.session_state:
         st.session_state["saved_scenarios"] = {}
     saved = st.session_state["saved_scenarios"]
@@ -2960,8 +2942,7 @@ with tab9:
 
 # ---------- tab: deal desk ----------
 with tab_deal:
-    st.subheader("🤝 Deal Desk: does this customer deal clear the margin floor?")
-    if not GUIDED: st.caption("Pressure-test an individual customer deal against usage, price, cost-to-serve and contract assumptions.")
+    analyst_header("Deal Desk", "COMMERCIAL DECISION", "Should we sign this customer deal at this price?", "Pressure-test the specific commercial terms against expected usage, cost-to-serve and the configured margin floor before making a pricing decision.")
     st.caption("Prices one customer deal with the same per-prompt AI cost, token prices, caching, batch and AI cost path as the rest of the model. "
                "Token prices are illustrative placeholders, so treat the verdict as a planning view and confirm against your vendor rate card.")
     dd = dict(DEAL_DEFAULTS)
@@ -3039,8 +3020,8 @@ with tab_deal:
         b1.metric("Max typical prompts per seat", "none (fails even at zero usage)" if _su == "none" else ("no limit found" if _su == "unbounded" else f"{_mu:,.0f}"),
                   f"asked: {dd['pps']:,.0f}", delta_color="off", help="Highest typical-user usage at which the whole-term margin still meets the floor, holding price and everything else.")
         _mp, _sp = _be["min_net_price"]
-        b2.metric("Min net price per seat / month", "not reachable" if _sp == "none" else ("any price" if _sp == "free" else f"${_mp:,.2f}"),
-                  f"quoted: ${dd['list_price'] * (1 - dd['discount']):,.2f}", delta_color="off", help="Lowest net price (after discount) at the expected usage that meets the floor.")
+        b2.metric("Min net price per seat / month", "not reachable" if _sp == "none" else ("any price" if _sp == "free" else f"${_mp:,.0f}"),
+                  f"quoted: ${dd['list_price'] * (1 - dd['discount']):,.0f}", delta_color="off", help="Lowest net price (after discount) at the expected usage that meets the floor.")
         _md, _sd = _be["max_discount"]
         b3.metric("Max discount off list", "n/a" if _md is None else f"{_md * 100:.0f}%", f"quoted: {dd['discount'] * 100:.0f}%", delta_color="off")
 
@@ -3066,7 +3047,7 @@ with tab_deal:
         figd.update_yaxes(title_text="Gross margin (%)", secondary_y=True)
         show_chart(figd)
         with st.expander("Deal P&L and cash by month"):
-            show_df(safe_frame(dpnl).style.format("{:,.2f}", subset=[c for c in dpnl.columns if c != "Deal month"], na_rep="n/a"), hide_index=True)
+            show_df(style_frame(safe_frame(dpnl)), hide_index=True)
         _dsum_json = {"app": APP_NAME, "app_version": APP_VERSION, "generated_at_utc": datetime.datetime.now(datetime.timezone.utc).isoformat(),
                       "deal_inputs": dd, "margin_floor_pct": floor_pct, "verdict": verdict,
                       "results": {k: (None if (not isinstance(v, str) and v is not None and pd.isna(v)) else v) for k, v in dsum.items()},
@@ -3079,7 +3060,7 @@ with tab_deal:
 
 # ---------- tab 10: feedback ----------
 with tab10:
-    st.subheader("💬 Feedback")
+    analyst_header("Feedback", "HELP IMPROVE THE SIMULATOR", "What would make this tool more useful?", "Share an issue, suggest an improvement or tell us where the analysis could better support a real finance decision.")
     st.caption("Utility · Share feedback or report an issue with the simulator.")
     st.markdown(FEEDBACK_WELCOME)
     _fb = feedback_config()
