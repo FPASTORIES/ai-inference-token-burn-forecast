@@ -104,7 +104,25 @@ _STATIC_CSS = """
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap');
 .stApp {background:#FFFFFF;color:var(--text);font-family:'DM Sans', sans-serif;}
 .main .block-container {background:#FFFFFF;}
-section[data-testid="stMain"] .block-container p {text-align:justify; text-justify:inter-word;}
+/* Word-like paragraph treatment: justify prose, but keep headings, labels and controls natural. */
+section[data-testid="stMain"] .block-container .stMarkdown p,
+section[data-testid="stMain"] .block-container p.lede,
+section[data-testid="stMain"] .block-container .story-note p,
+section[data-testid="stMain"] .block-container .stage-story,
+section[data-testid="stMain"] .block-container .cfo-commentary p,
+section[data-testid="stMain"] .block-container .assumption-flag p {
+    text-align: justify !important;
+    text-justify: inter-word;
+    line-height: 1.68;
+    margin-bottom: .9rem;
+}
+/* Give longer explanations more breathing room without enlarging the whole interface. */
+.hero p.sub {line-height:1.68; margin-bottom:1.1rem; max-width:58rem;}
+.chapter p.lede {line-height:1.68; margin:0 0 1.15rem 0; max-width:58rem;}
+.story-note {padding:18px 21px; margin:12px 0 20px;}
+.story-note p {line-height:1.68; margin:0 0 12px 0;}
+.chapter {margin:32px 0 8px 0; padding-top:22px;}
+.stage-story {line-height:1.55 !important; padding:8px 7px 0 !important; min-height:4.8em !important;}
 section[data-testid="stSidebar"] {background:#FFFFFF !important; border-right: 1px solid #DCE3EF;}
 section[data-testid="stSidebar"] h2, section[data-testid="stSidebar"] h3 {
     font-size: 0.95rem !important; line-height: 1.25 !important;
@@ -192,6 +210,8 @@ header[data-testid="stHeader"] {background: transparent;}
               letter-spacing:.015em; text-transform:none; line-height:1.3;}
 .kpi-card .v {font-size:clamp(1.35rem, 1.8vw, 1.75rem); font-weight:700; color:var(--text); line-height:1.15; margin:0; overflow-wrap:anywhere;}
 .kpi-card .d {font-size:.78rem; color:var(--label); min-height:2.5em; margin-top:auto; padding-top:7px; line-height:1.4;}
+.profile-assumption-note {display:flex; align-items:flex-start; gap:9px; max-width:58rem; margin:8px 0 2px; padding:11px 14px; border:1px solid var(--card-border); border-radius:9px; background:var(--card-bg); color:var(--label); font-size:.84rem; line-height:1.55;}
+.info-dot {display:inline-flex; align-items:center; justify-content:center; flex:none; width:18px; height:18px; border-radius:50%; background:var(--chip-bg); color:var(--accent); font-size:.72rem; font-weight:700;}
 .founder-art {max-width: 320px; margin: 4px auto 0; padding: 8px;}
 .founder-art svg {display:block; width:100%; height:auto; overflow:visible;}
 .founder-question {text-align:center; color:var(--label); font-size:.9rem; line-height:1.45; margin-top:2px;}
@@ -355,7 +375,8 @@ if GUIDED:
 """, unsafe_allow_html=True)
     st.markdown(f'<div class="chapter" id="ch0" style="border-top:0;margin-top:6px"><div class="eyebrow">00 / Start here</div>'
                 f'<h2>More users. More revenue. <span class="accent"><em>More profit?</em></span></h2>'
-                f'<p class="lede">Meet Alex, an AI product founder. Start by choosing the profile that best describes your startup stage: Pre-launch, Early Traction or Scaling. Each profile comes with illustrative starting assumptions so you can get going without building every input from scratch. These are planning estimates, not industry benchmarks. Change the assumptions to reflect your own customers, pricing and usage; the financial outlook and margin views update as you experiment.</p></div>',
+                f'<p class="lede">Meet Alex, an AI product founder. Choose the stage that best describes your startup. Each profile gives you editable planning assumptions to get started — then make them your own by changing customers, pricing and usage.</p>'
+                f'<div class="profile-assumption-note"><span class="info-dot">i</span> Starting assumptions are illustrative planning estimates, not industry benchmarks. Your financial outlook and margin views update as you experiment.</div></div>',
                 unsafe_allow_html=True)
     slot_pick = st.container()
     st.markdown(chapter_head("ch1", 1, "AI serving costs", 'What does it cost to <span class="accent">run my AI product?</span>',
@@ -630,8 +651,22 @@ if GUIDED:
             _pcols = st.columns(3, gap="small")
             for _pc, _nm in zip(_pcols, ["Pre-launch", "Early traction", "Scaling"]):
                 with _pc:
-                    st.button(_nm, key=f"stage_{_nm}", type="primary" if _nm == _cur else "secondary", on_click=_set_stage, args=(_nm,), use_container_width=True)
+                    _stage_help = {
+                        "Pre-launch": "Use a hypothetical customer base and expected usage. You do not need actual revenue or traction to explore the economics.",
+                        "Early traction": "Start with initial customers and usage, then test whether subscription revenue can cover the cost of serving them.",
+                        "Scaling": "Explore a larger customer base and rising usage. Test whether AI and infrastructure costs grow more slowly than revenue.",
+                    }[_nm]
+                    st.button(_nm, key=f"stage_{_nm}", type="primary" if _nm == _cur else "secondary", on_click=_set_stage, args=(_nm,), use_container_width=True, help=_stage_help)
                     st.markdown(f'<div class="stage-story">{html.escape(_STAGE_DESC[_nm])}</div>', unsafe_allow_html=True)
+            with st.expander("How do the starting assumptions work?", expanded=False):
+                st.markdown("""
+These profiles populate the model with **illustrative starting values** so you can explore the economics without entering every assumption from scratch.
+
+- They are **planning estimates, not industry benchmarks**.
+- You can change customer numbers, pricing, usage and other assumptions in the sidebar.
+- The forecast and margin views recalculate as you experiment.
+- Choose a different profile to reset the starting values for that startup stage.
+""")
     founder_stage = st.session_state.get("_stage", "Early traction")
     st.sidebar.header("Forecast setup")
 else:
